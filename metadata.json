@@ -1,0 +1,6 @@
+{
+  "name": "OpenBook",
+  "description": "An online personal library and reading platform combining Apple Books, Kindle, Arc, and Scandinavian interior design aesthetics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
