@@ -1,8 +1,64 @@
+# Dependencies
 node_modules/
+package-lock.json
+bun.lock
+yarn.lock
+
+# Build and dist
 build/
 dist/
-coverage/
-.DS_Store
-*.log
-.env*
+server.cjs
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.*.local
 !.env.example
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing and coverage
+coverage/
+.nyc_output/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.env.local.swp
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# OS files
+Thumbs.db
+.DS_Store
+.AppleDouble
+.LSOverride
+*.bak
+*.tmp
+
+# Cache and temporary files
+.cache/
+.parcel-cache
+.eslintcache
+.prettier-ignore
+.turbo/
+dist-*
+
+# Misc
+.pnp
+.pnp.js
+out/
