@@ -2,6 +2,8 @@
  * Environment variable configuration for the OpenBook backend
  */
 
+import 'dotenv/config';
+
 function getEnvVar(key: string, defaultValue?: string): string {
   const value = process.env[key] ?? defaultValue;
   if (value === undefined) {
