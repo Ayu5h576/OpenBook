@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { ViewMode, Book } from './types';
 import { sampleBooks, sampleCollections, sampleQuotes, sampleAuthors, currentUser } from './data/mockData';
+import { AuthContext } from './context/AuthContext';
 
 // Layout Components
 import { Navbar } from './components/Navbar';
@@ -32,7 +33,15 @@ import { AchievementsView } from './views/AchievementsView';
 import { SettingsView } from './views/SettingsView';
 
 export function App() {
-  const [currentView, setCurrentView] = useState<ViewMode>('home');
+  const auth = useContext(AuthContext);
+
+  if (!auth) {
+    throw new Error('AuthContext not found');
+  }
+
+  const { isAuthenticated, isLoading: authLoading } = auth;
+
+  const [currentView, setCurrentView] = useState<ViewMode>(isAuthenticated ? 'home' : 'auth');
   const [books, setBooks] = useState<Book[]>(sampleBooks);
   const [collections] = useState(sampleCollections);
   const [quotes] = useState(sampleQuotes);
@@ -41,6 +50,28 @@ export function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Show loading while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#F8F6F1] flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1D1D1D] mb-4"></div>
+          <p className="text-[#1D1D1D] font-serif text-lg">Loading OpenBook...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth view if not authenticated
+  if (!isAuthenticated && currentView !== 'auth' && currentView !== 'landing') {
+    return (
+      <AuthView
+        onNavigate={setCurrentView}
+        onLoginSuccess={() => setCurrentView('home')}
+      />
+    );
+  }
 
   const handleNavigate = (view: ViewMode) => {
     setIsLoading(true);
@@ -163,6 +194,8 @@ export function App() {
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onRefresh={handleRefresh}
         isLoading={isLoading}
+        isAuthenticated={isAuthenticated}
+        onLogout={auth.logout}
       />
 
       {/* Main Layout Container */}

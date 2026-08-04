@@ -13,6 +13,8 @@ interface NavbarProps {
   onToggleSidebar?: () => void;
   onRefresh?: () => void;
   isLoading?: boolean;
+  isAuthenticated?: boolean;
+  onLogout?: () => Promise<void>;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -24,7 +26,24 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenCompass,
   onRefresh,
   isLoading = false,
+  isAuthenticated = false,
+  onLogout,
 }) => {
+  const [isLogoutLoading, setIsLogoutLoading] = React.useState(false);
+
+  const handleLogout = async () => {
+    if (onLogout) {
+      try {
+        setIsLogoutLoading(true);
+        await onLogout();
+        onNavigate('auth');
+      } catch (err) {
+        console.error('Logout failed:', err);
+      } finally {
+        setIsLogoutLoading(false);
+      }
+    }
+  };
   return (
     <header className="sticky top-0 z-40 bg-[#F8F6F1]/90 backdrop-blur-md border-b border-[#E5E0D8] px-4 md:px-8 py-3 transition-all">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -119,18 +138,39 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Profile Button */}
-          <button
-            onClick={() => onNavigate('home')}
-            className="flex items-center gap-2 pl-2 pr-3 py-1 rounded-full bg-[#FFFFFF] border border-[#E5E0D8] hover:border-[#1D1D1D] transition-all shadow-warm-sm"
-          >
-            <img
-              src={user?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80"}
-              alt={user?.name || "User"}
-              className="w-7 h-7 rounded-full object-cover"
-            />
-            <span className="text-xs font-medium text-[#1D1D1D] hidden lg:inline">{(user?.name || "User").split(' ')[0]}</span>
-          </button>
+          {/* Profile Button with Dropdown */}
+          <div className="relative group">
+            <button
+              onClick={() => onNavigate('settings')}
+              className="flex items-center gap-2 pl-2 pr-3 py-1 rounded-full bg-[#FFFFFF] border border-[#E5E0D8] hover:border-[#1D1D1D] transition-all shadow-warm-sm group-hover:bg-[#EFE8DD]"
+            >
+              <img
+                src={user?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80"}
+                alt={user?.name || "User"}
+                className="w-7 h-7 rounded-full object-cover"
+              />
+              <span className="text-xs font-medium text-[#1D1D1D] hidden lg:inline">{(user?.name || "User").split(' ')[0]}</span>
+            </button>
+
+            {/* Dropdown Menu */}
+            <div className="absolute right-0 mt-1 w-48 bg-white border border-[#E5E0D8] rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+              <button
+                onClick={() => onNavigate('settings')}
+                className="w-full text-left px-4 py-2.5 text-xs text-[#1D1D1D] hover:bg-[#EFE8DD] transition-all border-b border-[#E5E0D8] rounded-t-lg"
+              >
+                Settings
+              </button>
+              {isAuthenticated && onLogout && (
+                <button
+                  onClick={handleLogout}
+                  disabled={isLogoutLoading}
+                  className="w-full text-left px-4 py-2.5 text-xs text-[#C53030] hover:bg-[#FEE5E5] transition-all rounded-b-lg font-medium disabled:opacity-50"
+                >
+                  {isLogoutLoading ? 'Logging out...' : 'Logout'}
+                </button>
+              )}
+            </div>
+          </div>
 
         </div>
       </div>

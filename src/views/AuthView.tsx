@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { ViewMode } from '../types';
-import { BookOpen, ArrowLeft, Shield, Check, Lock, Mail, User } from 'lucide-react';
+import { BookOpen, ArrowLeft, Shield, Check, Lock, Mail, User, AlertCircle } from 'lucide-react';
+import { AuthContext } from '../context/AuthContext';
 
 interface AuthViewProps {
   onNavigate: (view: ViewMode) => void;
@@ -8,14 +9,30 @@ interface AuthViewProps {
 }
 
 export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }) => {
+  const auth = useContext(AuthContext);
+  if (!auth) throw new Error('AuthContext not found');
+
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [localError, setLocalError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLoginSuccess();
+    setLocalError('');
+
+    try {
+      if (mode === 'login') {
+        await auth.login(email, password);
+      } else if (mode === 'signup') {
+        await auth.register(email, name, password);
+      }
+      onLoginSuccess();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Authentication failed';
+      setLocalError(message);
+    }
   };
 
   return (
@@ -67,27 +84,35 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             </p>
           </div>
 
+          {/* Error Message */}
+          {(localError || auth.error) && (
+            <div className="mb-6 p-3 rounded-2xl bg-[#FEE5E5] border border-[#C53030] flex gap-3">
+              <AlertCircle className="w-4 h-4 text-[#C53030] flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-[#C53030]">{localError || auth.error}</p>
+            </div>
+          )}
+
           {/* Single-Click Social Logins */}
           {mode !== 'forgot' && (
             <div className="grid grid-cols-3 gap-3 mb-6">
               <button
                 type="button"
-                onClick={onLoginSuccess}
-                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-[#E5E0D8] text-xs font-semibold text-[#1D1D1D] hover:bg-[#F8F6F1] transition-all"
+                disabled={auth.isLoading}
+                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-[#E5E0D8] text-xs font-semibold text-[#1D1D1D] hover:bg-[#F8F6F1] transition-all disabled:opacity-50"
               >
                 Google
               </button>
               <button
                 type="button"
-                onClick={onLoginSuccess}
-                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-[#E5E0D8] text-xs font-semibold text-[#1D1D1D] hover:bg-[#F8F6F1] transition-all"
+                disabled={auth.isLoading}
+                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-[#E5E0D8] text-xs font-semibold text-[#1D1D1D] hover:bg-[#F8F6F1] transition-all disabled:opacity-50"
               >
                 GitHub
               </button>
               <button
                 type="button"
-                onClick={onLoginSuccess}
-                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-[#E5E0D8] text-xs font-semibold text-[#1D1D1D] hover:bg-[#F8F6F1] transition-all"
+                disabled={auth.isLoading}
+                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-[#E5E0D8] text-xs font-semibold text-[#1D1D1D] hover:bg-[#F8F6F1] transition-all disabled:opacity-50"
               >
                 Apple
               </button>
@@ -152,11 +177,16 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
 
             <button
               type="submit"
-              className="w-full py-3 rounded-2xl bg-[#1D1D1D] text-[#F8F6F1] font-bold text-xs hover:bg-[#333333] transition-all shadow-warm-md"
+              disabled={auth.isLoading}
+              className="w-full py-3 rounded-2xl bg-[#1D1D1D] text-[#F8F6F1] font-bold text-xs hover:bg-[#333333] transition-all shadow-warm-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {mode === 'login' && 'Sign In'}
-              {mode === 'signup' && 'Create Free Account'}
-              {mode === 'forgot' && 'Send Recovery Email'}
+              {auth.isLoading ? 'Loading...' : (
+                <>
+                  {mode === 'login' && 'Sign In'}
+                  {mode === 'signup' && 'Create Free Account'}
+                  {mode === 'forgot' && 'Send Recovery Email'}
+                </>
+              )}
             </button>
           </form>
 
