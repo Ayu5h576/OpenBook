@@ -1,163 +1,87 @@
 /**
  * User Profile Service
- * Handles profile updates, lookups, and validations
+ * Handles profile lookups and updates
  */
 
-import { supabaseAdmin } from '../config/supabase';
+import { prisma } from '../config/prisma';
 import { User, ProfileUpdateData } from '../types/index';
-import { ConflictError, NotFoundError, mapSupabaseError } from '../utils/errors';
+import { ConflictError, NotFoundError, mapPrismaError } from '../utils/errors';
+
+type ProfileWithUser = {
+  id: string;
+  username: string;
+  avatar: string | null;
+  bio: string | null;
+  favoriteGenres: string[];
+  readingGoal: number;
+  createdAt: Date;
+  updatedAt: Date;
+  user: { email: string };
+};
 
 export class ProfileService {
-  /**
-   * Get user profile by ID
-   */
   async getProfile(userId: string): Promise<User> {
-    try {
-      const { data, error } = await supabaseAdmin
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+    const profile = await prisma.profile.findUnique({
+      where: { id: userId },
+      include: { user: { select: { email: true } } },
+    });
 
-      if (error) {
-        if (error.code === 'PGRST116') {
-          throw new NotFoundError('User profile');
-        }
-        throw mapSupabaseError(error);
-      }
-
-      return this.formatProfile(data);
-    } catch (error) {
-      throw error;
+    if (!profile) {
+      throw new NotFoundError('User profile');
     }
+
+    return this.formatProfile(profile);
   }
 
-  /**
-   * Update user profile
-   */
   async updateProfile(userId: string, data: ProfileUpdateData): Promise<User> {
+    if (data.username) {
+      const isAvailable = await this.isUsernameAvailable(data.username, userId);
+      if (!isAvailable) {
+        throw new ConflictError('Username already taken');
+      }
+    }
+
     try {
-      // Check if username is being changed and if it's available
-      if (data.username) {
-        const isAvailable = await this.isUsernameAvailable(data.username, userId);
-        if (!isAvailable) {
-          throw new ConflictError('Username already taken');
-        }
-      }
+      const profile = await prisma.profile.update({
+        where: { id: userId },
+        data: {
+          ...(data.username !== undefined && { username: data.username }),
+          ...(data.avatar !== undefined && { avatar: data.avatar }),
+          ...(data.bio !== undefined && { bio: data.bio }),
+          ...(data.favoriteGenres !== undefined && { favoriteGenres: data.favoriteGenres }),
+          ...(data.readingGoal !== undefined && { readingGoal: data.readingGoal }),
+        },
+        include: { user: { select: { email: true } } },
+      });
 
-      const updateData: any = {};
-
-      if (data.username !== undefined) updateData.username = data.username;
-      if (data.avatar !== undefined) updateData.avatar = data.avatar;
-      if (data.bio !== undefined) updateData.bio = data.bio;
-      if (data.favoriteGenres !== undefined) updateData.favorite_genres = data.favoriteGenres;
-      if (data.readingGoal !== undefined) updateData.reading_goal = data.readingGoal;
-
-      const { error } = await supabaseAdmin
-        .from('profiles')
-        .update(updateData)
-        .eq('id', userId);
-
-      if (error) {
-        throw mapSupabaseError(error);
-      }
-
-      return this.getProfile(userId);
+      return this.formatProfile(profile);
     } catch (error) {
-      throw error;
+      throw mapPrismaError(error);
     }
   }
 
-  /**
-   * Check if username is available
-   */
   async isUsernameAvailable(username: string, excludeUserId?: string): Promise<boolean> {
-    try {
-      let query = supabaseAdmin
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .eq('username', username);
+    const count = await prisma.profile.count({
+      where: {
+        username,
+        ...(excludeUserId && { id: { not: excludeUserId } }),
+      },
+    });
 
-      if (excludeUserId) {
-        query = query.neq('id', excludeUserId);
-      }
-
-      const { count, error } = await query;
-
-      if (error) {
-        throw mapSupabaseError(error);
-      }
-
-      return (count || 0) === 0;
-    } catch (error) {
-      throw error;
-    }
+    return count === 0;
   }
 
-  /**
-   * Check if email is available
-   */
-  async isEmailAvailable(email: string, excludeUserId?: string): Promise<boolean> {
-    try {
-      let query = supabaseAdmin
-        .from('profiles')
-        .select('id', { count: 'exact', head: true })
-        .eq('email', email);
-
-      if (excludeUserId) {
-        query = query.neq('id', excludeUserId);
-      }
-
-      const { count, error } = await query;
-
-      if (error) {
-        throw mapSupabaseError(error);
-      }
-
-      return (count || 0) === 0;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Get user profile by username (for public profile views)
-   */
-  async getProfileByUsername(username: string): Promise<User> {
-    try {
-      const { data, error } = await supabaseAdmin
-        .from('profiles')
-        .select('*')
-        .eq('username', username)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') {
-          throw new NotFoundError(`User "${username}"`);
-        }
-        throw mapSupabaseError(error);
-      }
-
-      return this.formatProfile(data);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  /**
-   * Format profile data to User type
-   */
-  private formatProfile(data: any): User {
+  private formatProfile(profile: ProfileWithUser): User {
     return {
-      id: data.id,
-      email: data.email,
-      username: data.username,
-      avatar: data.avatar || undefined,
-      bio: data.bio || undefined,
-      favoriteGenres: data.favorite_genres || [],
-      readingGoal: data.reading_goal || 12,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
+      id: profile.id,
+      email: profile.user.email,
+      username: profile.username,
+      avatar: profile.avatar || undefined,
+      bio: profile.bio || undefined,
+      favoriteGenres: profile.favoriteGenres,
+      readingGoal: profile.readingGoal,
+      createdAt: profile.createdAt.toISOString(),
+      updatedAt: profile.updatedAt.toISOString(),
     };
   }
 }

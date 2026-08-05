@@ -1,14 +1,11 @@
 /**
- * Authentication middleware - Verifies JWT tokens from Supabase
+ * Authentication middleware - Verifies access tokens issued by this server
  */
 
 import { Response, NextFunction } from 'express';
-import { jwtVerify } from 'jose';
 import { AuthenticatedRequest } from '../types/index';
 import { AuthenticationError } from '../utils/errors';
-import { env } from '../config/env';
-
-const JWT_SECRET = new TextEncoder().encode(env.supabase.jwtSecret);
+import { verifyAccessToken } from '../utils/tokens';
 
 export async function authMiddleware(
   req: AuthenticatedRequest,
@@ -29,13 +26,11 @@ export async function authMiddleware(
 
     const token = parts[1];
 
-    // Verify JWT token
-    const verified = await jwtVerify(token, JWT_SECRET);
+    const payload = await verifyAccessToken(token);
 
     // Extract user information from token
-    const payload = verified.payload as any;
     req.userId = payload.sub;
-    req.userEmail = payload.email;
+    req.userEmail = payload.email as string | undefined;
     req.token = token;
 
     next();
@@ -47,6 +42,8 @@ export async function authMiddleware(
       });
     }
 
+    console.error('[Auth] Token verification failed:', error);
+
     res.status(401).json({
       error: 'Invalid or expired token',
       code: 'INVALID_TOKEN',
@@ -54,38 +51,26 @@ export async function authMiddleware(
   }
 }
 
-export function optionalAuthMiddleware(
+export async function optionalAuthMiddleware(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) {
-  try {
-    const authHeader = req.headers.authorization;
+  const authHeader = req.headers.authorization;
+  const parts = authHeader?.split(' ') ?? [];
 
-    if (authHeader) {
-      const parts = authHeader.split(' ');
-      if (parts.length === 2 && parts[0] === 'Bearer') {
-        const token = parts[1];
-        // Try to verify but don't fail if invalid
-        jwtVerify(token, JWT_SECRET)
-          .then((verified) => {
-            const payload = verified.payload as any;
-            req.userId = payload.sub;
-            req.userEmail = payload.email;
-            req.token = token;
-            next();
-          })
-          .catch(() => {
-            // Token invalid but that's ok for optional auth
-            next();
-          });
-      } else {
-        next();
-      }
-    } else {
-      next();
+  if (parts.length === 2 && parts[0] === 'Bearer') {
+    try {
+      const token = parts[1];
+      const payload = await verifyAccessToken(token);
+
+      req.userId = payload.sub;
+      req.userEmail = payload.email as string | undefined;
+      req.token = token;
+    } catch {
+      // Token invalid but that's ok for optional auth
     }
-  } catch (error) {
-    next();
   }
+
+  next();
 }

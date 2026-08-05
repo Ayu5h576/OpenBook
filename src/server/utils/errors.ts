@@ -56,25 +56,31 @@ export class ServerError extends ApiError {
   }
 }
 
-export function mapSupabaseError(error: any): ApiError {
-  const message = error?.message || 'Unknown error';
-  const code = error?.code || 'UNKNOWN_ERROR';
-
-  // Map common Supabase errors
-  if (message.includes('duplicate') || code === '23505') {
-    return new ConflictError('Email or username already exists');
-  }
-  if (message.includes('invalid') || code === '401') {
-    return new AuthenticationError('Invalid credentials');
-  }
-  if (message.includes('permission') || code === '42501') {
-    return new AuthorizationError('Insufficient permissions');
-  }
-  if (code === 'PGRST116' || message.includes('not found')) {
-    return new NotFoundError('Resource');
+/**
+ * Maps a Prisma error to the equivalent API error.
+ * Codes: https://www.prisma.io/docs/orm/reference/error-reference
+ */
+export function mapPrismaError(error: any): ApiError {
+  if (isApiError(error)) {
+    return error;
   }
 
-  return new ServerError(`Supabase error: ${message}`);
+  switch (error?.code) {
+    case 'P2002': {
+      const target = error?.meta?.target;
+      const field = Array.isArray(target) ? target[0] : target;
+      return new ConflictError(
+        field ? `That ${field} is already taken` : 'Record already exists'
+      );
+    }
+    case 'P2025':
+      return new NotFoundError('Resource');
+    case 'P2003':
+      return new ValidationError('Referenced record does not exist');
+    default:
+      console.error('[Prisma] Unmapped error:', error);
+      return new ServerError('Database error');
+  }
 }
 
 export function isApiError(error: any): error is ApiError {

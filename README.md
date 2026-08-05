@@ -120,6 +120,7 @@ openbook/
 
 - **Node.js**: v20 or higher ([Download](https://nodejs.org/))
 - **npm** or **bun**: Package manager (comes with Node.js)
+- **PostgreSQL**: v14 or higher ([Download](https://www.postgresql.org/download/))
 - **Gemini API Key**: Get one from [Google AI Studio](https://ai.google.dev)
 
 ### Installation
@@ -139,12 +140,35 @@ openbook/
 
 3. **Configure environment variables**
    ```bash
-   cp .env.example .env.local
+   cp .env.example .env
    ```
-   Then edit `.env.local` and add your actual values:
+   Then edit `.env` and add your actual values:
    ```env
+   DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/openbook?schema=public
+   JWT_SECRET=generate-with-openssl-rand-base64-32
    GEMINI_API_KEY=your_gemini_api_key_here
    APP_URL=http://localhost:5173
+   ```
+
+### Database Setup
+
+1. **Create the database**
+   ```bash
+   createdb -U postgres openbook
+   ```
+   Or from `psql`: `CREATE DATABASE openbook;`
+
+2. **Set `DATABASE_URL`** in `.env` to point at it.
+
+3. **Apply migrations**
+   ```bash
+   npm run db:migrate
+   ```
+   Creates the `users`, `profiles`, and `refresh_tokens` tables.
+
+4. **Inspect the data** (optional)
+   ```bash
+   npm run db:studio
    ```
 
 ### Local Development Setup
@@ -181,10 +205,21 @@ openbook/
 
 ## 📝 Environment Variables
 
-Create a `.env.local` file in the project root with the following variables:
+Create a `.env` file in the project root with the following variables:
 
 ```env
-# Google Gemini API Key (Required)
+# PostgreSQL connection string (Required)
+DATABASE_URL=postgresql://postgres:password@localhost:5432/openbook?schema=public
+
+# Signs access tokens (Required)
+# Generate with: openssl rand -base64 32
+JWT_SECRET=your-long-random-secret
+
+# Token lifetimes (Optional, defaults shown)
+ACCESS_TOKEN_TTL=15m
+REFRESH_TOKEN_TTL_DAYS=30
+
+# Google Gemini API Key (Optional, enables AI features)
 # Get your key from https://ai.google.dev
 GEMINI_API_KEY=your_gemini_api_key_here
 
@@ -207,6 +242,9 @@ See `.env.example` for the complete template.
 | `npm run preview` | Preview production build locally |
 | `npm run clean` | Clean build artifacts and temporary files |
 | `npm run lint` | Run TypeScript type checking |
+| `npm run db:migrate` | Create and apply Prisma migrations |
+| `npm run db:generate` | Regenerate the Prisma client |
+| `npm run db:studio` | Browse the database in Prisma Studio |
 
 ## 🗂️ Folder Structure Details
 

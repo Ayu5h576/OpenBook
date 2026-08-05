@@ -4,8 +4,7 @@
  */
 
 import React, { createContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
-import { AuthService, User, Session } from '../services/api';
+import { AuthService, User, setAccessToken } from '../services/api';
 
 export interface AuthContextType {
   user: User | null;
@@ -31,24 +30,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize auth state from Supabase session
+  // Restore the session on boot. The access token lives in memory only, so a
+  // page reload recovers it by exchanging the httpOnly refresh cookie.
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         setIsLoading(true);
 
-        // Check if there's an existing session
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        const response = await AuthService.refresh();
 
-        if (session?.user?.id) {
-          // Fetch user profile from backend
-          const response = await AuthService.getProfile();
-          if (response.data?.user) {
-            setUser(response.data.user);
-            setIsAuthenticated(true);
-          }
+        if (response.data?.session?.accessToken && response.data.user) {
+          setAccessToken(response.data.session.accessToken);
+          setUser(response.data.user);
+          setIsAuthenticated(true);
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
@@ -58,30 +52,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     initializeAuth();
-
-    // Listen for auth state changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user?.id) {
-        try {
-          const response = await AuthService.getProfile();
-          if (response.data?.user) {
-            setUser(response.data.user);
-            setIsAuthenticated(true);
-          }
-        } catch (err) {
-          console.error('Error fetching user profile:', err);
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setIsAuthenticated(false);
-      }
-    });
-
-    return () => {
-      subscription?.unsubscribe();
-    };
   }, []);
 
   const login = async (email: string, password: string) => {
@@ -90,30 +60,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
 
       const response = await AuthService.login(email, password);
+
       if (response.error) {
         setError(response.error);
         throw new Error(response.error);
       }
 
-      if (response.data?.session) {
-        // Sign in with Supabase to store the session
-        const {
-          error: signInError,
-          data: { session },
-        } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (signInError) {
-          setError(signInError.message);
-          throw signInError;
-        }
-
-        if (response.data?.user) {
-          setUser(response.data.user);
-          setIsAuthenticated(true);
-        }
+      if (response.data?.session?.accessToken && response.data.user) {
+        setAccessToken(response.data.session.accessToken);
+        setUser(response.data.user);
+        setIsAuthenticated(true);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed';
@@ -130,14 +86,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
 
       const response = await AuthService.register(email, username, password, password);
+
       if (response.error) {
         setError(response.error);
         throw new Error(response.error);
       }
 
-      if (response.data?.user) {
-        // Auto-login after registration
-        await login(email, password);
+      // Registration issues a full session, so no second sign-in is needed.
+      if (response.data?.session?.accessToken && response.data.user) {
+        setAccessToken(response.data.session.accessToken);
+        setUser(response.data.user);
+        setIsAuthenticated(true);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Registration failed';
@@ -154,15 +113,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
 
       await AuthService.logout();
-      await supabase.auth.signOut();
-
-      setUser(null);
-      setIsAuthenticated(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Logout failed';
       setError(message);
       throw err;
     } finally {
+      // Drop local state regardless: if the revoke call failed, the client
+      // should still end up signed out.
+      setAccessToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
       setIsLoading(false);
     }
   };

@@ -5,7 +5,7 @@
 
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../types/index';
-import { authService } from '../services/supabaseAuthService';
+import { authService } from '../services/authService';
 import { profileService } from '../services/profileService';
 import { validateData } from '../validators/auth';
 import {
@@ -14,157 +14,160 @@ import {
   forgotPasswordSchema,
   changePasswordSchema,
   updateProfileSchema,
-  refreshTokenSchema,
 } from '../validators/auth';
-import { AuthenticationError, ValidationError } from '../utils/errors';
+import { AuthenticationError } from '../utils/errors';
+import { REFRESH_COOKIE_NAME, REFRESH_COOKIE_PATH, refreshTokenExpiry } from '../utils/tokens';
+import { env } from '../config/env';
+
+function setRefreshCookie(res: Response, token: string) {
+  res.cookie(REFRESH_COOKIE_NAME, token, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: env.app.nodeEnv === 'production',
+    path: REFRESH_COOKIE_PATH,
+    expires: refreshTokenExpiry(),
+  });
+}
+
+function clearRefreshCookie(res: Response) {
+  res.clearCookie(REFRESH_COOKIE_NAME, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: env.app.nodeEnv === 'production',
+    path: REFRESH_COOKIE_PATH,
+  });
+}
 
 export class AuthController {
   /**
    * POST /api/auth/register
-   * Register a new user
    */
   async register(req: AuthenticatedRequest, res: Response) {
-    try {
-      const { email, password, confirmPassword, username } = validateData(
-        registerSchema,
-        req.body
-      );
+    const { email, password, username } = validateData(registerSchema, req.body);
 
-      const result = await authService.registerUser(email, password, username);
+    const { user, session, refreshToken } = await authService.registerUser(
+      email,
+      password,
+      username
+    );
 
-      res.status(201).json({
-        user: result.user,
-        session: result.session,
-      });
-    } catch (error) {
-      throw error;
-    }
+    setRefreshCookie(res, refreshToken);
+
+    res.status(201).json({ user, session });
   }
 
   /**
    * POST /api/auth/login
-   * Login endpoint - handled by frontend with Supabase
-   * Backend only returns user profile for authenticated requests
    */
   async login(req: AuthenticatedRequest, res: Response) {
+    const { email, password } = validateData(loginSchema, req.body);
+
+    const { user, session, refreshToken } = await authService.loginUser(email, password);
+
+    setRefreshCookie(res, refreshToken);
+
+    res.json({ user, session });
+  }
+
+  /**
+   * POST /api/auth/refresh
+   * Authenticates via the refresh cookie rather than a Bearer token.
+   */
+  async refresh(req: AuthenticatedRequest, res: Response) {
+    const token = req.cookies?.[REFRESH_COOKIE_NAME];
+
+    if (!token) {
+      throw new AuthenticationError('Missing refresh token');
+    }
+
     try {
-      const { email, password } = validateData(loginSchema, req.body);
+      const { user, session, refreshToken } = await authService.refreshSession(token);
 
-      // Note: Actual password verification is handled by Supabase
-      // This endpoint is here for API consistency
-      // Frontend should use Supabase.auth.signInWithPassword()
+      setRefreshCookie(res, refreshToken);
 
-      res.json({
-        message: 'Use Supabase auth to login. This endpoint validates credentials structure only.',
-        success: false,
-      });
+      res.json({ user, session });
     } catch (error) {
+      // The stored token is unusable, so drop the client's copy too - otherwise
+      // it retries with the same dead cookie on every request.
+      clearRefreshCookie(res);
       throw error;
     }
   }
 
   /**
-   * POST /api/auth/refresh
-   * Refresh access token - handled by Supabase directly
-   */
-  async refresh(req: AuthenticatedRequest, res: Response) {
-    // Supabase handles token refresh automatically
-    // Frontend can use supabase.auth.refreshSession()
-    res.json({
-      message: 'Use Supabase auth to refresh tokens. Supabase handles this automatically.',
-      success: false,
-    });
-  }
-
-  /**
    * POST /api/auth/logout
-   * Logout user (client-side primarily, backend just validates)
    */
   async logout(req: AuthenticatedRequest, res: Response) {
-    if (!req.userId) {
-      throw new AuthenticationError('User not authenticated');
-    }
+    await authService.logout(req.cookies?.[REFRESH_COOKIE_NAME]);
+
+    clearRefreshCookie(res);
 
     res.json({ message: 'Logged out successfully' });
   }
 
   /**
    * POST /api/auth/change-password
-   * Change user password (requires authentication)
    */
   async changePassword(req: AuthenticatedRequest, res: Response) {
     if (!req.userId) {
       throw new AuthenticationError('User not authenticated');
     }
 
-    try {
-      const { newPassword, confirmPassword } = validateData(
-        changePasswordSchema,
-        req.body
-      );
+    const { newPassword } = validateData(changePasswordSchema, req.body);
 
-      await authService.changePassword(req.userId, newPassword);
+    await authService.changePassword(req.userId, newPassword);
 
-      res.json({ message: 'Password changed successfully' });
-    } catch (error) {
-      throw error;
-    }
+    // Every session was revoked, including this one.
+    clearRefreshCookie(res);
+
+    res.json({ message: 'Password changed successfully. Please sign in again.' });
   }
 
   /**
    * POST /api/auth/forgot-password
-   * Request password reset email
    */
   async forgotPassword(req: AuthenticatedRequest, res: Response) {
     try {
       const { email } = validateData(forgotPasswordSchema, req.body);
 
       await authService.forgotPassword(email);
-
-      // Always return success for security (don't leak email existence)
-      res.json({ message: 'If that email is registered, you will receive a password reset email.' });
     } catch (error) {
-      // Log the error but return success response
+      // Log but still return success below: the response must not reveal
+      // whether the email is registered.
       console.error('Forgot password error:', error);
-      res.json({ message: 'If that email is registered, you will receive a password reset email.' });
     }
+
+    res.json({
+      message: 'If that email is registered, you will receive a password reset email.',
+    });
   }
 
   /**
    * GET /api/auth/me
-   * Get current user profile (requires authentication)
    */
   async getMe(req: AuthenticatedRequest, res: Response) {
     if (!req.userId) {
       throw new AuthenticationError('User not authenticated');
     }
 
-    try {
-      const user = await profileService.getProfile(req.userId);
-      res.json({ user });
-    } catch (error) {
-      throw error;
-    }
+    const user = await profileService.getProfile(req.userId);
+
+    res.json({ user });
   }
 
   /**
    * PUT /api/auth/profile
-   * Update user profile (requires authentication)
    */
   async updateProfile(req: AuthenticatedRequest, res: Response) {
     if (!req.userId) {
       throw new AuthenticationError('User not authenticated');
     }
 
-    try {
-      const profileData = validateData(updateProfileSchema, req.body);
+    const profileData = validateData(updateProfileSchema, req.body);
 
-      const user = await profileService.updateProfile(req.userId, profileData);
+    const user = await profileService.updateProfile(req.userId, profileData);
 
-      res.json({ user });
-    } catch (error) {
-      throw error;
-    }
+    res.json({ user });
   }
 }
 

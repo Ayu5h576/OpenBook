@@ -17,11 +17,16 @@ function getOptionalEnvVar(key: string): string | undefined {
 }
 
 export const env = {
-  // Supabase Configuration
-  supabase: {
-    url: getEnvVar('SUPABASE_URL'),
-    serviceKey: getEnvVar('SUPABASE_SERVICE_KEY'),
-    jwtSecret: getEnvVar('SUPABASE_JWT_SECRET'),
+  // Database Configuration
+  database: {
+    url: getEnvVar('DATABASE_URL'),
+  },
+
+  // Token Configuration
+  jwt: {
+    secret: getEnvVar('JWT_SECRET'),
+    accessTtl: getEnvVar('ACCESS_TOKEN_TTL', '15m'),
+    refreshTtlDays: parseInt(getEnvVar('REFRESH_TOKEN_TTL_DAYS', '30'), 10),
   },
 
   // Application Configuration
@@ -41,9 +46,8 @@ export const env = {
 export function validateEnv() {
   try {
     // Access all required fields to trigger validation
-    env.supabase.url;
-    env.supabase.serviceKey;
-    env.supabase.jwtSecret;
+    env.database.url;
+    env.jwt.secret;
     env.app.port;
     console.log('[Config] Environment variables validated successfully');
   } catch (error) {

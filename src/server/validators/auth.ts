@@ -23,9 +23,9 @@ const bioSchema = z.string().max(500, 'Bio must be at most 500 characters').opti
 
 const avatarSchema = z.string().url('Invalid URL').optional();
 
-const genresSchema = z.array(z.string()).default([]);
+const genresSchema = z.array(z.string());
 
-const readingGoalSchema = z.number().int().min(1, 'Reading goal must be at least 1').default(12);
+const readingGoalSchema = z.number().int().min(1, 'Reading goal must be at least 1');
 
 // Register validation
 export const registerSchema = z
@@ -70,23 +70,17 @@ export const changePasswordSchema = z
 
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
-// Profile update validation
+// Profile update validation. Every field is optional: a partial update must
+// leave unmentioned fields untouched rather than resetting them to a default.
 export const updateProfileSchema = z.object({
   username: usernameSchema.optional(),
   avatar: avatarSchema,
   bio: bioSchema,
-  favoriteGenres: genresSchema,
-  readingGoal: readingGoalSchema,
+  favoriteGenres: genresSchema.optional(),
+  readingGoal: readingGoalSchema.optional(),
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
-
-// Refresh token validation
-export const refreshTokenSchema = z.object({
-  refreshToken: z.string().min(1, 'Refresh token is required'),
-});
-
-export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 
 // Helper function to validate data
 export function validateData<T>(schema: z.ZodSchema<T>, data: unknown): T {
@@ -98,7 +92,9 @@ export function validateData<T>(schema: z.ZodSchema<T>, data: unknown): T {
         field: err.path.join('.'),
         message: err.message,
       }));
-      throw { message: 'Validation failed', details };
+      const err = new Error('Validation failed');
+      (err as any).details = details;
+      throw err;
     }
     throw error;
   }

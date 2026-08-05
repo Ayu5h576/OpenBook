@@ -3,9 +3,21 @@
  * Reusable HTTP client for backend API calls with automatic token handling
  */
 
-import { supabase } from '../lib/supabase';
+// Express serves the Vite dev middleware, so the app is always same-origin.
+const API_BASE_URL = '';
 
-const API_BASE_URL = import.meta.env.DEV ? 'http://localhost:3000' : '';
+// The access token is deliberately kept in memory only. Persistence across
+// reloads comes from the httpOnly refresh cookie, which JavaScript cannot read
+// and an XSS payload therefore cannot steal.
+let accessToken: string | null = null;
+
+export function setAccessToken(token: string | null) {
+  accessToken = token;
+}
+
+export function getAccessToken(): string | null {
+  return accessToken;
+}
 
 export interface ApiResponse<T = any> {
   data?: T;
@@ -15,22 +27,87 @@ export interface ApiResponse<T = any> {
   timestamp?: string;
 }
 
+/**
+ * Builds a human-readable message from an error body.
+ * Validation failures come back as `{ error: 'Validation failed', details: [{ field, message }] }`
+ * so surface the per-field messages instead of the generic headline.
+ */
+function formatApiError(body: any): string {
+  const details = body?.details;
+
+  if (Array.isArray(details) && details.length > 0) {
+    const messages = details
+      .map((d: any) => (d?.field ? `${d.field}: ${d.message}` : d?.message))
+      .filter(Boolean);
+
+    if (messages.length > 0) {
+      return messages.join('\n');
+    }
+  }
+
+  return body?.error || 'Request failed';
+}
+
 class ApiClient {
   private baseUrl: string;
+  // Concurrent 401s must share one refresh attempt; otherwise each would rotate
+  // the refresh token and invalidate the others' in-flight rotation.
+  private refreshInFlight: Promise<boolean> | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
   }
 
-  private async getAuthToken(): Promise<string | null> {
-    try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      return session?.access_token || null;
-    } catch {
-      return null;
+  private async refreshSession(): Promise<boolean> {
+    this.refreshInFlight ??= (async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}/api/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          setAccessToken(null);
+          return false;
+        }
+
+        const data = await response.json();
+        const token = data?.session?.accessToken;
+
+        if (!token) {
+          setAccessToken(null);
+          return false;
+        }
+
+        setAccessToken(token);
+        return true;
+      } catch {
+        setAccessToken(null);
+        return false;
+      } finally {
+        this.refreshInFlight = null;
+      }
+    })();
+
+    return this.refreshInFlight;
+  }
+
+  private async send(method: string, endpoint: string, body?: any): Promise<Response> {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    const token = getAccessToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
+
+    return fetch(`${this.baseUrl}${endpoint}`, {
+      method,
+      headers,
+      credentials: 'include',
+      body: body ? JSON.stringify(body) : undefined,
+    });
   }
 
   private async request<T>(
@@ -39,32 +116,29 @@ class ApiClient {
     body?: any
   ): Promise<ApiResponse<T>> {
     try {
-      const token = await this.getAuthToken();
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
+      let response = await this.send(method, endpoint, body);
 
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      // The access token is short-lived. On expiry, rotate once and replay the
+      // request so callers never see a spurious 401.
+      if (response.status === 401 && endpoint !== '/api/auth/refresh') {
+        if (await this.refreshSession()) {
+          response = await this.send(method, endpoint, body);
+        }
       }
 
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         return {
-          error: data.error || 'Request failed',
+          error: formatApiError(data),
           code: data.code,
           details: data.details,
         };
       }
 
-      return data;
+      // The backend returns the payload at the top level (e.g. `{ user, session }`),
+      // so wrap it to match the `{ data }` shape callers expect.
+      return { data: data as T };
     } catch (error) {
       return {
         error: error instanceof Error ? error.message : 'Network error',
@@ -144,8 +218,12 @@ export const AuthService = {
     return apiClient.post('/api/auth/logout', {});
   },
 
-  async refresh(refreshToken: string): Promise<ApiResponse<{ session: Session }>> {
-    return apiClient.post('/api/auth/refresh', { refreshToken });
+  /**
+   * Exchanges the httpOnly refresh cookie for a new session.
+   * Used on app boot to restore a session across page reloads.
+   */
+  async refresh(): Promise<ApiResponse<AuthResponse>> {
+    return apiClient.post('/api/auth/refresh', {});
   },
 
   async getProfile(): Promise<ApiResponse<{ user: User }>> {

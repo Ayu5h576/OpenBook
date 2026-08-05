@@ -15,18 +15,50 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
   const [mode, setMode] = useState<'login' | 'signup' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [localError, setLocalError] = useState('');
+
+  // Mirrors the server-side rules in src/server/validators/auth.ts so the user
+  // gets the specific reason before a round trip.
+  const validateSignup = (): string | null => {
+    if (username.length < 3 || username.length > 30) {
+      return 'Username must be between 3 and 30 characters.';
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      return 'Username can only contain letters, numbers, underscores and hyphens (no spaces).';
+    }
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters.';
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      return 'Password must contain an uppercase letter, a lowercase letter and a number.';
+    }
+    return null;
+  };
+
+  const switchMode = (next: 'login' | 'signup' | 'forgot') => {
+    setMode(next);
+    setLocalError('');
+    auth.clearError();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError('');
+    auth.clearError();
 
     try {
       if (mode === 'login') {
         await auth.login(email, password);
       } else if (mode === 'signup') {
-        await auth.register(email, name, password);
+        const validationError = validateSignup();
+        if (validationError) {
+          setLocalError(validationError);
+          return;
+        }
+        await auth.register(email, username.trim(), password);
+      } else {
+        return;
       }
       onLoginSuccess();
     } catch (err) {
@@ -88,7 +120,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
           {(localError || auth.error) && (
             <div className="mb-6 p-3 rounded-2xl bg-[#FEE5E5] border border-[#C53030] flex gap-3">
               <AlertCircle className="w-4 h-4 text-[#C53030] flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-[#C53030]">{localError || auth.error}</p>
+              <p className="text-xs text-[#C53030] whitespace-pre-line">{localError || auth.error}</p>
             </div>
           )}
 
@@ -128,18 +160,25 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (
               <div>
-                <label className="block text-xs font-semibold text-[#1D1D1D] mb-1">Full Name</label>
+                <label className="block text-xs font-semibold text-[#1D1D1D] mb-1">Username</label>
                 <div className="relative">
                   <User className="w-4 h-4 text-[#777777] absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     required
-                    placeholder="Astrid Lindgren"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    minLength={3}
+                    maxLength={30}
+                    pattern="[a-zA-Z0-9_-]+"
+                    autoComplete="username"
+                    placeholder="astrid_lindgren"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     className="w-full bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl pl-10 pr-4 py-2.5 text-sm text-[#1D1D1D] focus:outline-none focus:border-[#1D1D1D]"
                   />
                 </div>
+                <p className="text-[10px] text-[#777777] mt-1">
+                  3-30 characters. Letters, numbers, underscores and hyphens only - no spaces.
+                </p>
               </div>
             )}
 
@@ -172,6 +211,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                     className="w-full bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl pl-10 pr-4 py-2.5 text-sm text-[#1D1D1D] focus:outline-none focus:border-[#1D1D1D]"
                   />
                 </div>
+                {mode === 'signup' && (
+                  <p className="text-[10px] text-[#777777] mt-1">
+                    At least 8 characters, with an uppercase letter, a lowercase letter and a number.
+                  </p>
+                )}
               </div>
             )}
 
@@ -195,7 +239,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             {mode === 'login' && (
               <p>
                 Don't have an account?{' '}
-                <button onClick={() => setMode('signup')} className="font-bold text-[#1D1D1D] underline">
+                <button onClick={() => switchMode('signup')} className="font-bold text-[#1D1D1D] underline">
                   Sign up
                 </button>
               </p>
@@ -203,7 +247,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             {mode === 'signup' && (
               <p>
                 Already have an account?{' '}
-                <button onClick={() => setMode('login')} className="font-bold text-[#1D1D1D] underline">
+                <button onClick={() => switchMode('login')} className="font-bold text-[#1D1D1D] underline">
                   Sign in
                 </button>
               </p>
