@@ -1,11 +1,55 @@
 import React, { useState, useContext } from 'react';
 import { ViewMode } from '../types';
-import { BookOpen, ArrowLeft, Shield, Check, Lock, Mail, User, AlertCircle } from 'lucide-react';
+import { BookOpen, ArrowLeft, Check, X, Lock, Mail, User, AlertCircle } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 
 interface AuthViewProps {
   onNavigate: (view: ViewMode) => void;
   onLoginSuccess: () => void;
+}
+
+// Per-field validation helpers
+function validateUsername(v: string): string | null {
+  if (v.length < 3 || v.length > 30) return 'Must be 3–30 characters';
+  if (!/^[a-zA-Z0-9_-]+$/.test(v)) return 'Letters, numbers, _ and - only';
+  return null;
+}
+
+function validateEmail(v: string): string | null {
+  if (!v) return 'Required';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Invalid email address';
+  return null;
+}
+
+const pwRules = [
+  { label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
+  { label: 'One uppercase letter', test: (p: string) => /[A-Z]/.test(p) },
+  { label: 'One lowercase letter', test: (p: string) => /[a-z]/.test(p) },
+  { label: 'One number', test: (p: string) => /[0-9]/.test(p) },
+];
+
+function validatePassword(v: string): string | null {
+  if (pwRules.every((r) => r.test(v))) return null;
+  return 'Password does not meet requirements';
+}
+
+type FieldStatus = 'idle' | 'valid' | 'invalid';
+
+function fieldStatus(touched: boolean, error: string | null): FieldStatus {
+  if (!touched) return 'idle';
+  return error ? 'invalid' : 'valid';
+}
+
+function inputBorder(status: FieldStatus) {
+  if (status === 'valid') return 'border-[#22863a]';
+  if (status === 'invalid') return 'border-[#C53030]';
+  return 'border-[#E5E0D8]';
+}
+
+function FieldIcon({ status }: { status: FieldStatus }) {
+  if (status === 'valid') return <Check className="w-4 h-4 text-[#22863a]" />;
+  if (status === 'invalid') return <X className="w-4 h-4 text-[#C53030]" />;
+  return null;
 }
 
 export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }) => {
@@ -18,27 +62,24 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
   const [username, setUsername] = useState('');
   const [localError, setLocalError] = useState('');
 
-  // Mirrors the server-side rules in src/server/validators/auth.ts so the user
-  // gets the specific reason before a round trip.
-  const validateSignup = (): string | null => {
-    if (username.length < 3 || username.length > 30) {
-      return 'Username must be between 3 and 30 characters.';
-    }
-    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
-      return 'Username can only contain letters, numbers, underscores and hyphens (no spaces).';
-    }
-    if (password.length < 8) {
-      return 'Password must be at least 8 characters.';
-    }
-    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
-      return 'Password must contain an uppercase letter, a lowercase letter and a number.';
-    }
-    return null;
-  };
+  // Track which fields the user has interacted with
+  const [touched, setTouched] = useState({ username: false, email: false, password: false });
+
+  const touch = (field: keyof typeof touched) =>
+    setTouched((t) => ({ ...t, [field]: true }));
+
+  const usernameError = validateUsername(username);
+  const emailError = validateEmail(email);
+  const passwordError = validatePassword(password);
+
+  const usernameStatus = fieldStatus(touched.username, usernameError);
+  const emailStatus = fieldStatus(touched.email, emailError);
+  const passwordStatus = fieldStatus(touched.password, passwordError);
 
   const switchMode = (next: 'login' | 'signup' | 'forgot') => {
     setMode(next);
     setLocalError('');
+    setTouched({ username: false, email: false, password: false });
     auth.clearError();
   };
 
@@ -51,9 +92,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
       if (mode === 'login') {
         await auth.login(email, password);
       } else if (mode === 'signup') {
-        const validationError = validateSignup();
-        if (validationError) {
-          setLocalError(validationError);
+        if (usernameError || emailError || passwordError) {
+          setTouched({ username: true, email: true, password: true });
           return;
         }
         await auth.register(email, username.trim(), password);
@@ -62,16 +102,15 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
       }
       onLoginSuccess();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Authentication failed';
-      setLocalError(message);
+      setLocalError(err instanceof Error ? err.message : 'Authentication failed');
     }
   };
 
   return (
     <div className="min-h-screen bg-[#F8F6F1] flex items-center justify-center p-4">
       <div className="max-w-4xl w-full bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl overflow-hidden shadow-warm-lg grid grid-cols-1 md:grid-cols-12">
-        
-        {/* Left Illustration & Quote Panel */}
+
+        {/* Left panel */}
         <div className="md:col-span-5 bg-[#1D1D1D] text-[#F8F6F1] p-8 flex flex-col justify-between relative overflow-hidden">
           <div className="relative z-10">
             <button
@@ -100,9 +139,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
           </div>
         </div>
 
-        {/* Right Form Area */}
+        {/* Right form area */}
         <div className="md:col-span-7 p-8 md:p-12 flex flex-col justify-center">
-          
+
           <div className="mb-6">
             <h3 className="font-serif-title text-3xl font-bold text-[#1D1D1D]">
               {mode === 'login' && 'Sign in to your Library'}
@@ -116,48 +155,37 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             </p>
           </div>
 
-          {/* Error Message */}
           {(localError || auth.error) && (
             <div className="mb-6 p-3 rounded-2xl bg-[#FEE5E5] border border-[#C53030] flex gap-3">
-              <AlertCircle className="w-4 h-4 text-[#C53030] flex-shrink-0 mt-0.5" />
+              <AlertCircle className="w-4 h-4 text-[#C53030] shrink-0 mt-0.5" />
               <p className="text-xs text-[#C53030] whitespace-pre-line">{localError || auth.error}</p>
             </div>
           )}
 
-          {/* Single-Click Social Logins */}
           {mode !== 'forgot' && (
             <div className="grid grid-cols-3 gap-3 mb-6">
-              <button
-                type="button"
-                disabled={auth.isLoading}
-                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-[#E5E0D8] text-xs font-semibold text-[#1D1D1D] hover:bg-[#F8F6F1] transition-all disabled:opacity-50"
-              >
-                Google
-              </button>
-              <button
-                type="button"
-                disabled={auth.isLoading}
-                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-[#E5E0D8] text-xs font-semibold text-[#1D1D1D] hover:bg-[#F8F6F1] transition-all disabled:opacity-50"
-              >
-                GitHub
-              </button>
-              <button
-                type="button"
-                disabled={auth.isLoading}
-                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-[#E5E0D8] text-xs font-semibold text-[#1D1D1D] hover:bg-[#F8F6F1] transition-all disabled:opacity-50"
-              >
-                Apple
-              </button>
+              {['Google', 'GitHub', 'Apple'].map((provider) => (
+                <button
+                  key={provider}
+                  type="button"
+                  disabled={auth.isLoading}
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-[#E5E0D8] text-xs font-semibold text-[#1D1D1D] hover:bg-[#F8F6F1] transition-all disabled:opacity-50"
+                >
+                  {provider}
+                </button>
+              ))}
             </div>
           )}
 
           <div className="relative flex items-center my-4">
-            <div className="flex-grow border-t border-[#E5E0D8]" />
-            <span className="flex-shrink mx-3 text-[11px] text-[#777777] uppercase font-semibold">Or with Email</span>
-            <div className="flex-grow border-t border-[#E5E0D8]" />
+            <div className="grow border-t border-[#E5E0D8]" />
+            <span className="shrink mx-3 text-[11px] text-[#777777] uppercase font-semibold">Or with Email</span>
+            <div className="grow border-t border-[#E5E0D8]" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+
+            {/* Username — signup only */}
             {mode === 'signup' && (
               <div>
                 <label className="block text-xs font-semibold text-[#1D1D1D] mb-1">Username</label>
@@ -166,22 +194,28 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                   <input
                     type="text"
                     required
-                    minLength={3}
-                    maxLength={30}
-                    pattern="[a-zA-Z0-9_-]+"
                     autoComplete="username"
                     placeholder="astrid_lindgren"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl pl-10 pr-4 py-2.5 text-sm text-[#1D1D1D] focus:outline-none focus:border-[#1D1D1D]"
+                    onBlur={() => touch('username')}
+                    className={`w-full bg-[#F8F6F1] border ${inputBorder(usernameStatus)} rounded-2xl pl-10 pr-9 py-2.5 text-sm text-[#1D1D1D] focus:outline-none transition-colors`}
                   />
+                  {usernameStatus !== 'idle' && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <FieldIcon status={usernameStatus} />
+                    </span>
+                  )}
                 </div>
-                <p className="text-[10px] text-[#777777] mt-1">
-                  3-30 characters. Letters, numbers, underscores and hyphens only - no spaces.
-                </p>
+                {usernameStatus === 'invalid' ? (
+                  <p className="text-[10px] text-[#C53030] mt-1">{usernameError}</p>
+                ) : (
+                  <p className="text-[10px] text-[#777777] mt-1">3–30 chars. Letters, numbers, _ and - only.</p>
+                )}
               </div>
             )}
 
+            {/* Email */}
             <div>
               <label className="block text-xs font-semibold text-[#1D1D1D] mb-1">Email Address</label>
               <div className="relative">
@@ -192,11 +226,21 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                   placeholder="astrid@openbook.library"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl pl-10 pr-4 py-2.5 text-sm text-[#1D1D1D] focus:outline-none focus:border-[#1D1D1D]"
+                  onBlur={() => touch('email')}
+                  className={`w-full bg-[#F8F6F1] border ${mode === 'signup' ? inputBorder(emailStatus) : 'border-[#E5E0D8] focus:border-[#1D1D1D]'} rounded-2xl pl-10 pr-9 py-2.5 text-sm text-[#1D1D1D] focus:outline-none transition-colors`}
                 />
+                {mode === 'signup' && emailStatus !== 'idle' && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <FieldIcon status={emailStatus} />
+                  </span>
+                )}
               </div>
+              {mode === 'signup' && emailStatus === 'invalid' && (
+                <p className="text-[10px] text-[#C53030] mt-1">{emailError}</p>
+              )}
             </div>
 
+            {/* Password */}
             {mode !== 'forgot' && (
               <div>
                 <label className="block text-xs font-semibold text-[#1D1D1D] mb-1">Password</label>
@@ -208,13 +252,29 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl pl-10 pr-4 py-2.5 text-sm text-[#1D1D1D] focus:outline-none focus:border-[#1D1D1D]"
+                    onBlur={() => touch('password')}
+                    className={`w-full bg-[#F8F6F1] border ${mode === 'signup' ? inputBorder(passwordStatus) : 'border-[#E5E0D8] focus:border-[#1D1D1D]'} rounded-2xl pl-10 pr-9 py-2.5 text-sm text-[#1D1D1D] focus:outline-none transition-colors`}
                   />
+                  {mode === 'signup' && passwordStatus !== 'idle' && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <FieldIcon status={passwordStatus} />
+                    </span>
+                  )}
                 </div>
-                {mode === 'signup' && (
-                  <p className="text-[10px] text-[#777777] mt-1">
-                    At least 8 characters, with an uppercase letter, a lowercase letter and a number.
-                  </p>
+
+                {/* Live password rules checklist — only in signup, once user starts typing */}
+                {mode === 'signup' && touched.password && (
+                  <ul className="mt-2 space-y-1">
+                    {pwRules.map((rule) => {
+                      const ok = rule.test(password);
+                      return (
+                        <li key={rule.label} className={`flex items-center gap-1.5 text-[10px] ${ok ? 'text-[#22863a]' : 'text-[#C53030]'}`}>
+                          {ok ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
+                          {rule.label}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </div>
             )}
@@ -234,7 +294,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             </button>
           </form>
 
-          {/* Toggle mode links */}
           <div className="mt-6 text-center text-xs text-[#777777]">
             {mode === 'login' && (
               <p>
@@ -255,7 +314,6 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
           </div>
 
         </div>
-
       </div>
     </div>
   );
