@@ -8,6 +8,12 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { env, validateEnv } from './src/server/config/env';
 import authRoutes from './src/server/routes/authRoutes';
+import bookRoutes from './src/server/routes/bookRoutes';
+import libraryRoutes from './src/server/routes/libraryRoutes';
+import collectionRoutes from './src/server/routes/collectionRoutes';
+import reviewRoutes from './src/server/routes/reviewRoutes';
+import wishlistRoutes from './src/server/routes/wishlistRoutes';
+import analyticsRoutes from './src/server/routes/analyticsRoutes';
 import { errorHandlerMiddleware } from './src/server/middlewares/errorHandler';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -51,6 +57,14 @@ app.get('/api/health', (req, res) => {
 
 // Auth routes (moved to separate file)
 app.use('/api/auth', authRoutes);
+
+// Phase 3: Books, Library, Collections, Reviews, Wishlist, Analytics
+app.use('/api/books', bookRoutes);
+app.use('/api/library', libraryRoutes);
+app.use('/api/collections', collectionRoutes);
+app.use('/api/books/:bookId/review', reviewRoutes);
+app.use('/api/wishlist', wishlistRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // AI API: AI Assistant Chat & Analysis
 app.post('/api/ai/analyze', async (req, res) => {

@@ -7,14 +7,40 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum LibraryStatus {
+  READING
+  COMPLETED
+  PAUSED
+  DROPPED
+  ARCHIVED
+  OWNED
+}
+
+enum WishlistPriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+// ─── Auth Models ──────────────────────────────────────────────────────────────
+
 model User {
   id            String         @id @default(uuid()) @db.Uuid
   email         String         @unique
   passwordHash  String         @map("password_hash")
   createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
   profile       Profile?
   refreshTokens RefreshToken[]
+  libraryEntries LibraryEntry[]
+  wishlistEntries WishlistEntry[]
+  collections   Collection[]
+  reviews       Review[]
+  quotes        UserQuote[]
+  readingGoals  ReadingGoal[]
 
   @@map("users")
 }
@@ -44,4 +70,214 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+// ─── Book Catalog ─────────────────────────────────────────────────────────────
+
+model Book {
+  id              String   @id @default(uuid()) @db.Uuid
+  googleBooksId   String?  @unique @map("google_books_id")
+  title           String
+  subtitle        String?
+  authors         String[] @default([])
+  description     String?  @db.Text
+  coverImage      String?  @map("cover_image")
+  pageCount       Int?     @map("page_count")
+  categories      String[] @default([])
+  language        String   @default("en")
+  publisher       String?
+  publishedDate   String?  @map("published_date")
+  isbn10          String?  @map("isbn_10")
+  isbn13          String?  @map("isbn_13")
+  averageRating   Decimal? @map("average_rating") @db.Decimal(3, 2)
+  ratingsCount    Int      @default(0) @map("ratings_count")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  libraryEntries  LibraryEntry[]
+  wishlistEntries WishlistEntry[]
+  collectionBooks CollectionBook[]
+  reviews         Review[]
+  quotes          UserQuote[]
+
+  @@index([title])
+  @@index([authors])
+  @@map("books")
+}
+
+// ─── User Library ─────────────────────────────────────────────────────────────
+
+model LibraryEntry {
+  id           String        @id @default(uuid()) @db.Uuid
+  userId       String        @map("user_id") @db.Uuid
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId       String        @map("book_id") @db.Uuid
+  book         Book          @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  status       LibraryStatus @default(OWNED)
+  currentPage  Int           @default(0) @map("current_page")
+  isFavorite   Boolean       @default(false) @map("is_favorite")
+  isPinned     Boolean       @default(false) @map("is_pinned")
+  startedAt    DateTime?     @map("started_at") @db.Timestamptz(6)
+  finishedAt   DateTime?     @map("finished_at") @db.Timestamptz(6)
+  lastReadAt   DateTime?     @map("last_read_at") @db.Timestamptz(6)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  readingSessions ReadingSession[]
+  notes           BookNote[]
+  highlights      BookHighlight[]
+
+  @@unique([userId, bookId])
+  @@index([userId, status])
+  @@index([userId, isFavorite])
+  @@map("library_entries")
+}
+
+model ReadingSession {
+  id           String       @id @default(uuid()) @db.Uuid
+  entryId      String       @map("entry_id") @db.Uuid
+  entry        LibraryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  startPage    Int          @map("start_page")
+  endPage      Int          @map("end_page")
+  durationSecs Int          @map("duration_secs")
+  startedAt    DateTime     @map("started_at") @db.Timestamptz(6)
+  endedAt      DateTime     @map("ended_at") @db.Timestamptz(6)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([entryId])
+  @@map("reading_sessions")
+}
+
+// ─── Wishlist ─────────────────────────────────────────────────────────────────
+
+model WishlistEntry {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @map("user_id") @db.Uuid
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId    String           @map("book_id") @db.Uuid
+  book      Book             @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  priority  WishlistPriority @default(MEDIUM)
+  notes     String?
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([userId, bookId])
+  @@index([userId, priority])
+  @@map("wishlist_entries")
+}
+
+// ─── Collections ──────────────────────────────────────────────────────────────
+
+model Collection {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  coverImage  String?  @map("cover_image")
+  isPublic    Boolean  @default(false) @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  books CollectionBook[]
+
+  @@index([userId])
+  @@map("collections")
+}
+
+model CollectionBook {
+  id           String     @id @default(uuid()) @db.Uuid
+  collectionId String     @map("collection_id") @db.Uuid
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  bookId       String     @map("book_id") @db.Uuid
+  book         Book       @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  sortOrder    Int        @default(0) @map("sort_order")
+  addedAt      DateTime   @default(now()) @map("added_at") @db.Timestamptz(6)
+
+  @@unique([collectionId, bookId])
+  @@index([collectionId])
+  @@map("collection_books")
+}
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────
+
+model Review {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId    String   @map("book_id") @db.Uuid
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  rating    Decimal  @db.Decimal(3, 1)
+  title     String?
+  body      String?  @db.Text
+  isPrivate Boolean  @default(false) @map("is_private")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, bookId])
+  @@index([bookId])
+  @@map("reviews")
+}
+
+// ─── Notes & Highlights ───────────────────────────────────────────────────────
+
+model BookNote {
+  id      String       @id @default(uuid()) @db.Uuid
+  entryId String       @map("entry_id") @db.Uuid
+  entry   LibraryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  text    String       @db.Text
+  page    Int?
+  chapter Int?
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([entryId])
+  @@map("book_notes")
+}
+
+model BookHighlight {
+  id      String       @id @default(uuid()) @db.Uuid
+  entryId String       @map("entry_id") @db.Uuid
+  entry   LibraryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  text    String       @db.Text
+  color   String       @default("amber")
+  page    Int?
+  chapter Int?
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([entryId])
+  @@map("book_highlights")
+}
+
+// ─── Quotes ───────────────────────────────────────────────────────────────────
+
+model UserQuote {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId    String?  @map("book_id") @db.Uuid
+  book      Book?    @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  text      String   @db.Text
+  page      Int?
+  category  String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@map("user_quotes")
+}
+
+// ─── Goals ────────────────────────────────────────────────────────────────────
+
+model ReadingGoal {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year        Int
+  targetBooks Int      @map("target_books")
+  targetPages Int?     @map("target_pages")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, year])
+  @@index([userId])
+  @@map("reading_goals")
 }

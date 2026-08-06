@@ -249,4 +249,334 @@ export const AuthService = {
   },
 };
 
+// ─── Books ────────────────────────────────────────────────────────────────────
+
+export interface GoogleBookResult {
+  googleBooksId: string;
+  title: string;
+  subtitle?: string;
+  authors: string[];
+  description?: string;
+  coverImage?: string;
+  pageCount?: number;
+  categories: string[];
+  language: string;
+  publisher?: string;
+  publishedDate?: string;
+  isbn10?: string;
+  isbn13?: string;
+  averageRating?: number;
+  ratingsCount: number;
+}
+
+export interface LocalBook {
+  id: string;
+  googleBooksId?: string;
+  title: string;
+  subtitle?: string;
+  authors: string[];
+  description?: string;
+  coverImage?: string;
+  pageCount?: number;
+  categories: string[];
+  language: string;
+  publisher?: string;
+  publishedDate?: string;
+  isbn10?: string;
+  isbn13?: string;
+  averageRating?: number;
+  ratingsCount: number;
+  createdAt: string;
+}
+
+export const BookApiService = {
+  async search(
+    q: string,
+    type: 'title' | 'author' | 'isbn' | 'category' = 'title',
+    page = 0,
+    limit = 20
+  ) {
+    const params = new URLSearchParams({ q, type, page: String(page), limit: String(limit) });
+    return apiClient.get<{ items: GoogleBookResult[]; totalItems: number }>(
+      `/api/books/search?${params}`
+    );
+  },
+
+  async getById(id: string) {
+    return apiClient.get<{ book: LocalBook }>(`/api/books/${id}`);
+  },
+
+  async importBook(googleBooksId: string) {
+    return apiClient.post<{ book: LocalBook }>('/api/books/import', { googleBooksId });
+  },
+};
+
+// ─── Library ──────────────────────────────────────────────────────────────────
+
+export type LibraryStatus = 'READING' | 'COMPLETED' | 'PAUSED' | 'DROPPED' | 'ARCHIVED' | 'OWNED';
+
+export interface LibraryEntry {
+  id: string;
+  userId: string;
+  bookId: string;
+  book: LocalBook;
+  status: LibraryStatus;
+  currentPage: number;
+  isFavorite: boolean;
+  isPinned: boolean;
+  startedAt?: string;
+  finishedAt?: string;
+  lastReadAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReadingSession {
+  id: string;
+  entryId: string;
+  startPage: number;
+  endPage: number;
+  durationSecs: number;
+  startedAt: string;
+  endedAt: string;
+}
+
+export const LibraryApiService = {
+  async getLibrary(status?: LibraryStatus) {
+    const params = status ? `?status=${status}` : '';
+    return apiClient.get<{ entries: LibraryEntry[] }>(`/api/library${params}`);
+  },
+
+  async getEntry(entryId: string) {
+    return apiClient.get<{ entry: LibraryEntry & { readingSessions: ReadingSession[] } }>(
+      `/api/library/${entryId}`
+    );
+  },
+
+  async addToLibrary(bookId: string, status: LibraryStatus = 'OWNED', currentPage = 0) {
+    return apiClient.post<{ entry: LibraryEntry }>('/api/library', { bookId, status, currentPage });
+  },
+
+  async updateEntry(entryId: string, data: Partial<Pick<LibraryEntry, 'status' | 'currentPage' | 'isFavorite' | 'isPinned' | 'startedAt' | 'finishedAt'>>) {
+    return apiClient.put<{ entry: LibraryEntry }>(`/api/library/${entryId}`, data);
+  },
+
+  async removeFromLibrary(entryId: string) {
+    return apiClient.delete(`/api/library/${entryId}`);
+  },
+
+  async logSession(entryId: string, session: { startPage: number; endPage: number; durationSecs: number; startedAt: string; endedAt: string }) {
+    return apiClient.post<{ session: ReadingSession }>(`/api/library/${entryId}/sessions`, session);
+  },
+};
+
+// ─── Wishlist ─────────────────────────────────────────────────────────────────
+
+export interface WishlistEntry {
+  id: string;
+  bookId: string;
+  book: LocalBook;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  notes?: string;
+  createdAt: string;
+}
+
+export const WishlistApiService = {
+  async getWishlist() {
+    return apiClient.get<{ entries: WishlistEntry[] }>('/api/wishlist');
+  },
+
+  async addToWishlist(bookId: string, priority: 'HIGH' | 'MEDIUM' | 'LOW' = 'MEDIUM', notes?: string) {
+    return apiClient.post<{ entry: WishlistEntry }>('/api/wishlist', { bookId, priority, notes });
+  },
+
+  async removeFromWishlist(entryId: string) {
+    return apiClient.delete(`/api/wishlist/${entryId}`);
+  },
+};
+
+// ─── Collections ──────────────────────────────────────────────────────────────
+
+export interface CollectionBook {
+  id: string;
+  collectionId: string;
+  bookId: string;
+  book: LocalBook;
+  sortOrder: number;
+  addedAt: string;
+}
+
+export interface ApiCollection {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  coverImage?: string;
+  isPublic: boolean;
+  books: CollectionBook[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const CollectionApiService = {
+  async getCollections() {
+    return apiClient.get<{ collections: ApiCollection[] }>('/api/collections');
+  },
+
+  async getCollection(id: string) {
+    return apiClient.get<{ collection: ApiCollection }>(`/api/collections/${id}`);
+  },
+
+  async createCollection(data: { name: string; description?: string; coverImage?: string; isPublic?: boolean }) {
+    return apiClient.post<{ collection: ApiCollection }>('/api/collections', data);
+  },
+
+  async updateCollection(id: string, data: { name?: string; description?: string; coverImage?: string; isPublic?: boolean }) {
+    return apiClient.put<{ collection: ApiCollection }>(`/api/collections/${id}`, data);
+  },
+
+  async deleteCollection(id: string) {
+    return apiClient.delete(`/api/collections/${id}`);
+  },
+
+  async addBook(collectionId: string, bookId: string, sortOrder = 0) {
+    return apiClient.post<{ entry: CollectionBook }>(`/api/collections/${collectionId}/books`, { bookId, sortOrder });
+  },
+
+  async removeBook(collectionId: string, bookId: string) {
+    return apiClient.delete(`/api/collections/${collectionId}/books/${bookId}`);
+  },
+};
+
+// ─── Reviews ──────────────────────────────────────────────────────────────────
+
+export interface ApiReview {
+  id: string;
+  userId: string;
+  bookId: string;
+  rating: number;
+  title?: string;
+  body?: string;
+  isPrivate: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const ReviewApiService = {
+  async getBookReviews(bookId: string) {
+    return apiClient.get<{ reviews: ApiReview[] }>(`/api/books/${bookId}/review`);
+  },
+
+  async getMyReview(bookId: string) {
+    return apiClient.get<{ review: ApiReview | null }>(`/api/books/${bookId}/review/mine`);
+  },
+
+  async upsertReview(bookId: string, data: { rating: number; title?: string; body?: string; isPrivate?: boolean }) {
+    return apiClient.put<{ review: ApiReview }>(`/api/books/${bookId}/review`, data);
+  },
+
+  async deleteReview(bookId: string) {
+    return apiClient.delete(`/api/books/${bookId}/review`);
+  },
+};
+
+// ─── Notes & Highlights ───────────────────────────────────────────────────────
+
+export interface ApiNote {
+  id: string;
+  entryId: string;
+  text: string;
+  page?: number;
+  chapter?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiHighlight {
+  id: string;
+  entryId: string;
+  text: string;
+  color: string;
+  page?: number;
+  chapter?: number;
+  createdAt: string;
+}
+
+export const NoteApiService = {
+  async getNotes(entryId: string) {
+    return apiClient.get<{ notes: ApiNote[] }>(`/api/library/${entryId}/notes`);
+  },
+
+  async createNote(entryId: string, data: { text: string; page?: number; chapter?: number }) {
+    return apiClient.post<{ note: ApiNote }>(`/api/library/${entryId}/notes`, data);
+  },
+
+  async updateNote(entryId: string, noteId: string, data: { text?: string; page?: number; chapter?: number }) {
+    return apiClient.put<{ note: ApiNote }>(`/api/library/${entryId}/notes/${noteId}`, data);
+  },
+
+  async deleteNote(entryId: string, noteId: string) {
+    return apiClient.delete(`/api/library/${entryId}/notes/${noteId}`);
+  },
+
+  async getHighlights(entryId: string) {
+    return apiClient.get<{ highlights: ApiHighlight[] }>(`/api/library/${entryId}/highlights`);
+  },
+
+  async createHighlight(entryId: string, data: { text: string; color?: string; page?: number; chapter?: number }) {
+    return apiClient.post<{ highlight: ApiHighlight }>(`/api/library/${entryId}/highlights`, data);
+  },
+
+  async deleteHighlight(entryId: string, highlightId: string) {
+    return apiClient.delete(`/api/library/${entryId}/highlights/${highlightId}`);
+  },
+};
+
+// ─── Analytics ────────────────────────────────────────────────────────────────
+
+export interface AnalyticsStats {
+  overview: {
+    booksInLibrary: number;
+    booksCompleted: number;
+    booksReading: number;
+    totalPagesRead: number;
+    totalHours: number;
+    readingStreak: number;
+    yearlyGoal: number | null;
+    yearlyCompleted: number;
+  };
+  genreDistribution: { name: string; count: number }[];
+  monthly: { month: string; pages: number; hours: number; books: number }[];
+  calendar: { date: string; minutes: number }[];
+  records: {
+    longestBookId: string | null;
+    shortestBookId: string | null;
+    fastestReadBookId: string | null;
+    fastestReadDays: number | null;
+  };
+}
+
+export interface ReadingGoal {
+  id: string;
+  userId: string;
+  year: number;
+  targetBooks: number;
+  targetPages?: number;
+}
+
+export const AnalyticsApiService = {
+  async getStats() {
+    return apiClient.get<{ stats: AnalyticsStats }>('/api/analytics');
+  },
+
+  async getGoal(year?: number) {
+    const params = year ? `?year=${year}` : '';
+    return apiClient.get<{ goal: ReadingGoal | null }>(`/api/analytics/goal${params}`);
+  },
+
+  async upsertGoal(data: { year: number; targetBooks: number; targetPages?: number }) {
+    return apiClient.post<{ goal: ReadingGoal }>('/api/analytics/goal', data);
+  },
+};
+
 export default apiClient;

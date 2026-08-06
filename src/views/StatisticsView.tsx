@@ -1,12 +1,38 @@
 import React from 'react';
-import { readingStatsMonthly, genreDistribution } from '../data/mockData';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
-import { BarChart3, BookOpen, Clock, Flame, Award } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
+import { useAnalytics } from '../hooks/useAnalytics';
+
+const GENRE_COLORS = ['#A0522D', '#E0A96D', '#4A3B32', '#2D4030', '#1B263B', '#6B4F3A', '#8B7355', '#556B2F'];
 
 export const StatisticsView: React.FC = () => {
+  const { stats, goal, loading } = useAnalytics();
+  const year = new Date().getFullYear();
+
+  if (loading) {
+    return (
+      <div className="space-y-8 pb-12">
+        <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-8 shadow-warm-md animate-pulse h-32" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <div key={i} className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-2xl p-5 h-24 animate-pulse" />)}
+        </div>
+        <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-8 h-80 animate-pulse" />
+      </div>
+    );
+  }
+
+  const ov = stats?.overview;
+  const monthly = stats?.monthly ?? [];
+  const genres = (stats?.genreDistribution ?? []).map((g, i) => ({
+    ...g,
+    color: GENRE_COLORS[i % GENRE_COLORS.length],
+    value: g.count,
+  }));
+  const total = genres.reduce((s, g) => s + g.value, 0);
+
   return (
     <div className="space-y-8 pb-12">
-      
+
       {/* Header */}
       <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div>
@@ -19,87 +45,99 @@ export const StatisticsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Top Quick Metric Cards */}
+      {/* Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-2xl p-5 shadow-warm-sm">
           <span className="text-[10px] font-bold uppercase text-[#777777]">Total Pages Read</span>
-          <h3 className="font-serif-title text-3xl font-bold text-[#1D1D1D] my-1">3,604</h3>
-          <span className="text-[11px] text-[#A0522D] font-medium">+18% vs last month</span>
+          <h3 className="font-serif-title text-3xl font-bold text-[#1D1D1D] my-1">{(ov?.totalPagesRead ?? 0).toLocaleString()}</h3>
+          <span className="text-[11px] text-[#A0522D] font-medium">All time</span>
         </div>
 
         <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-2xl p-5 shadow-warm-sm">
           <span className="text-[10px] font-bold uppercase text-[#777777]">Hours Logged</span>
-          <h3 className="font-serif-title text-3xl font-bold text-[#1D1D1D] my-1">193 hrs</h3>
+          <h3 className="font-serif-title text-3xl font-bold text-[#1D1D1D] my-1">{ov?.totalHours ?? 0} hrs</h3>
           <span className="text-[11px] text-[#2D4030] font-medium">Deep focus reading</span>
         </div>
 
         <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-2xl p-5 shadow-warm-sm">
           <span className="text-[10px] font-bold uppercase text-[#777777]">Finished Volumes</span>
-          <h3 className="font-serif-title text-3xl font-bold text-[#1D1D1D] my-1">18 Books</h3>
-          <span className="text-[11px] text-[#777777]">2026 Challenge Goal: 30</span>
+          <h3 className="font-serif-title text-3xl font-bold text-[#1D1D1D] my-1">{ov?.booksCompleted ?? 0} Books</h3>
+          {goal && (
+            <span className="text-[11px] text-[#777777]">{year} Goal: {goal.targetBooks}</span>
+          )}
         </div>
 
         <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-2xl p-5 shadow-warm-sm">
           <span className="text-[10px] font-bold uppercase text-[#777777]">Active Streak</span>
-          <h3 className="font-serif-title text-3xl font-bold text-[#1D1D1D] my-1">14 Days</h3>
-          <span className="text-[11px] text-[#B8860B] font-medium">Personal best</span>
+          <h3 className="font-serif-title text-3xl font-bold text-[#1D1D1D] my-1">{ov?.readingStreak ?? 0} Days</h3>
+          <span className="text-[11px] text-[#B8860B] font-medium">Keep it going</span>
         </div>
       </div>
 
-      {/* Monthly Reading Area Chart */}
-      <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-sm">
-        <h3 className="font-serif-title text-2xl font-bold text-[#1D1D1D] mb-4">Monthly Pages Turned Trend</h3>
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={readingStatsMonthly}>
-              <defs>
-                <linearGradient id="colorPages" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#A0522D" stopOpacity={0.4}/>
-                  <stop offset="95%" stopColor="#A0522D" stopOpacity={0.0}/>
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="month" stroke="#777777" fontSize={12} tickLine={false} />
-              <YAxis stroke="#777777" fontSize={12} tickLine={false} />
-              <Tooltip />
-              <Area type="monotone" dataKey="pages" stroke="#A0522D" strokeWidth={3} fillOpacity={1} fill="url(#colorPages)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Genre Distribution Pie Chart */}
-      <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-sm grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-        <div>
-          <h3 className="font-serif-title text-2xl font-bold text-[#1D1D1D] mb-2">Genre Resonance Breakdown</h3>
-          <p className="text-xs text-[#777777] mb-6 leading-relaxed">
-            Your reading library is strongly anchored in Architecture & Scandinavian Design (35%) followed by Philosophy (25%).
-          </p>
-          <div className="space-y-2">
-            {genreDistribution.map((g) => (
-              <div key={g.name} className="flex items-center justify-between text-xs font-medium">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: g.color }} />
-                  <span>{g.name}</span>
-                </div>
-                <span className="font-bold text-[#1D1D1D]">{g.value}%</span>
-              </div>
-            ))}
+      {monthly.length > 0 && (
+        <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-sm">
+          <h3 className="font-serif-title text-2xl font-bold text-[#1D1D1D] mb-4">Monthly Pages Turned Trend</h3>
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={monthly}>
+                <defs>
+                  <linearGradient id="colorPages" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#A0522D" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#A0522D" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="month" stroke="#777777" fontSize={11} tickLine={false} />
+                <YAxis stroke="#777777" fontSize={11} tickLine={false} />
+                <Tooltip />
+                <Area type="monotone" dataKey="pages" stroke="#A0522D" strokeWidth={3} fillOpacity={1} fill="url(#colorPages)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
+      )}
 
-        <div className="h-64 w-full flex items-center justify-center">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie data={genreDistribution} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={50} paddingAngle={4}>
-                {genreDistribution.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+      {genres.length > 0 && (
+        <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-sm grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+          <div>
+            <h3 className="font-serif-title text-2xl font-bold text-[#1D1D1D] mb-2">Genre Resonance Breakdown</h3>
+            <p className="text-xs text-[#777777] mb-6 leading-relaxed">
+              Distribution across your entire reading library.
+            </p>
+            <div className="space-y-2">
+              {genres.map((g) => (
+                <div key={g.name} className="flex items-center justify-between text-xs font-medium">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: g.color }} />
+                    <span>{g.name}</span>
+                  </div>
+                  <span className="font-bold text-[#1D1D1D]">
+                    {total > 0 ? Math.round((g.value / total) * 100) : 0}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-64 w-full flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={genres} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={50} paddingAngle={4}>
+                  {genres.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      </div>
+      )}
+
+      {genres.length === 0 && monthly.every((m) => m.pages === 0) && (
+        <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-12 shadow-warm-sm text-center">
+          <p className="text-[#777777] text-sm">Start reading and logging sessions to see your analytics.</p>
+        </div>
+      )}
 
     </div>
   );

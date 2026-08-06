@@ -1,8 +1,8 @@
 # OpenBook - Project Progress
 
 **Last Updated**: August 6, 2026  
-**Project Phase**: Foundation ✅ → Authentication & User System ✅ → DB Migration & UX Polish ✅  
-**Overall Progress**: ~35% Complete (Phases 1-2 done + DB migration complete, Phases 3-6 planned)
+**Project Phase**: Foundation ✅ → Authentication ✅ → DB Migration ✅ → Book Management ✅  
+**Overall Progress**: ~60% Complete (Phases 1-3 done, Phases 4-6 planned)
 
 ---
 
@@ -11,12 +11,13 @@
 | Category | Status | Details |
 |----------|--------|---------|
 | **Foundation** | ✅ Complete | Documentation, project setup, frontend scaffolding |
-| **Frontend** | ✅ Complete | 14 UI components, 13 views, Auth Context, real-time validation |
-| **Backend** | ✅ Complete | Express, auth routes, middleware, services, error handling |
-| **Database** | ✅ Complete | PostgreSQL + Prisma ORM, migrations applied |
+| **Frontend** | ✅ Complete | 14+ components, 13+ views, live data hooks |
+| **Backend** | ✅ Complete | Express, auth + books + library + collections + analytics routes |
+| **Database** | ✅ Complete | PostgreSQL + Prisma ORM, Phase 3 migration applied |
 | **Authentication** | ✅ Complete | JWT, bcrypt, refresh token rotation, full auth flow |
-| **AI Features** | Planned | Phase 3 - Gemini endpoints already scaffolded |
-| **Book Management** | Planned | Phase 4 |
+| **Book Management** | ✅ Complete | Google Books API, library, wishlist, collections, reviews, notes |
+| **Reading Analytics** | ✅ Complete | Stats, streaks, heatmap, genre distribution, reading goals |
+| **AI Features** | Planned | Phase 4 |
 | **Community** | Not Started | Phase 5 |
 | **Deployment** | Not Started | Phase 6 |
 
@@ -27,51 +28,86 @@
 ### Phase 1: Foundation ✅
 
 - Professional README, MIT License, .gitignore (30+ patterns)
-- FOLDER_STRUCTURE.md, GITHUB_ISSUES_MILESTONES.md, PROJECT_FOUNDATION_REPORT.md
 - React 19 + TypeScript 5.8 + Vite 6 setup
 - 14 reusable UI components (BookCard3D, InteractiveBookshelf3D, ReadingCompass, WishlistGalaxy, BookDNA, BookMemories, QuoteWall, SmartPlanner, Navbar, Sidebar, RightSidebar, etc.)
-- 13 page-level views (HomeView, LibraryView, BookDetailView, ExploreView, WishlistView, CollectionsView, ReaderView, CommunityView, AuthorView, StatisticsView, AchievementsView, SettingsView, AuthView, LandingView)
+- 13 page-level views
 - Tailwind CSS 4, Motion animations, Lucide React, Recharts
 - 66 GitHub issues planned across 6 milestones
 
 ### Phase 2: Authentication & User System ✅
 
 #### Backend
-- Express server (`server.ts`) with CORS, cookie-parser, Vite middleware
+- Express server with CORS, cookie-parser, Vite middleware
 - Environment config with validation (`src/server/config/env.ts`)
-- Zod validation schemas for all auth endpoints (`src/server/validators/auth.ts`)
+- Zod validation schemas for all auth endpoints
 - `AuthService` — register, login, refresh token rotation, logout, change password, forgot password
 - `ProfileService` — profile update
-- `AuthController` — all HTTP handlers
 - JWT access tokens (jose) + secure refresh tokens with hash storage
 - bcrypt password hashing (12 rounds) with timing-safe dummy hash for enumeration protection
 - Refresh token rotation with reuse detection (revokes entire family on replay attack)
 - Auth middleware for protected routes
-- Global async error handler
 - nodemon + tsx for hot-reload dev server
 
 #### Database
 - **Supabase → PostgreSQL + Prisma migration complete**
-- Prisma schema: `User`, `Profile`, `RefreshToken` models with proper indexes and cascade deletes
-- `prisma/migrations/20260806180432_init/` — initial migration applied to local PostgreSQL
-- Prisma client singleton with connection pool guard (`src/server/config/prisma.ts`)
-- npm scripts: `db:migrate`, `db:generate`, `db:studio`
+- Prisma schema: `User`, `Profile`, `RefreshToken` models
+- `prisma/migrations/20260806180432_init/` — initial migration applied
 
 #### Frontend Auth
 - `AuthContext` + `useAuth` hook wired to backend API
 - `AuthView` — login, signup, forgot password modes
-- Real-time per-field validation on signup:
-  - Username: green/red border + icon, error message below
-  - Email: green/red border + icon on blur
-  - Password: green/red border + live rule checklist (8 chars, uppercase, lowercase, number) — each rule turns green individually as satisfied
-  - Validation fires only after user touches a field (no aggressive on-load errors)
+- Real-time per-field validation on signup (username, email, password rules — green/red indicators, fires only on blur)
 
-#### AI Endpoints (scaffolded, Gemini-powered)
-- `POST /api/ai/analyze` — book analysis, summaries, relationship graphs
-- `POST /api/ai/compass` — mood-based book recommendations
-- `POST /api/ai/search` — natural language search intent parsing
-- `POST /api/ai/recommendations` — personalized library recommendations
-- All endpoints have graceful offline fallbacks
+### Phase 3: Book Management & Reading System ✅
+
+#### Database Models (migration `20260806183857_phase3_books_library`)
+- `Book` — Google Books metadata (title, authors[], cover, pageCount, categories[], isbn10/13, ratings)
+- `LibraryEntry` — per-user book with `LibraryStatus` enum (READING/COMPLETED/PAUSED/DROPPED/ARCHIVED/OWNED), currentPage, isFavorite, isPinned, timestamps
+- `ReadingSession` — startPage, endPage, durationSecs, startedAt/endedAt
+- `WishlistEntry` — `WishlistPriority` enum (HIGH/MEDIUM/LOW), notes
+- `Collection` + `CollectionBook` — user collections with sort order
+- `Review` — rating (Decimal 3,1), title, body, isPrivate; unique per userId+bookId
+- `BookNote` + `BookHighlight` — per entry, with page/chapter metadata
+- `UserQuote` — free-form quotes linked optionally to a book
+- `ReadingGoal` — yearly targetBooks + targetPages; unique per userId+year
+
+#### Backend Services
+- `bookService.ts` — Google Books API search (intitle:/inauthor:/isbn:/subject: prefixes), import book to local DB (upsert by googleBooksId), cover URLs forced to HTTPS
+- `libraryService.ts` — CRUD for library entries; auto-sets startedAt (on READING), finishedAt (on COMPLETED), lastReadAt (on page update); `logSession()` uses Prisma transaction
+- `collectionService.ts` — collections CRUD with `requireOwner()` ownership guard
+- `noteService.ts` — notes + highlights CRUD with `requireEntryOwner()` guard
+- `reviewService.ts` — upsert via `userId_bookId` composite unique
+- `analyticsService.ts` — overview stats, genre distribution, 12-month rolling history, reading streak (consecutive session days), calendar heatmap, records (longest/shortest/fastest) — 3 parallel Prisma queries
+
+#### Backend Controllers & Routes
+- `bookController.ts` + `bookRoutes.ts` — `GET /api/books/search`, `GET /api/books/:id`, `POST /api/books/import`
+- `libraryController.ts` + `libraryRoutes.ts` — full CRUD on `/api/library`; notes + highlights sub-routes mounted under `/api/library/:entryId/notes` and `/highlights`
+- `collectionController.ts` + `collectionRoutes.ts` — `/api/collections` with book add/remove sub-routes
+- `reviewController.ts` + `reviewRoutes.ts` — `/api/books/:bookId/review` (mergeParams)
+- `wishlistRoutes.ts` — `/api/wishlist`
+- `analyticsRoutes.ts` — `/api/analytics`
+
+#### Frontend API Layer (`src/services/api.ts`)
+- `GoogleBookResult`, `LocalBook`, `BookApiService`
+- `LibraryEntry`, `LibraryStatus`, `LibraryApiService`
+- `WishlistEntry`, `WishlistApiService`
+- `ApiCollection`, `CollectionBook`, `CollectionApiService`
+- `ApiReview`, `ReviewApiService`
+- `ApiNote`, `ApiHighlight`, `NoteApiService`
+- `AnalyticsStats`, `ReadingGoal`, `AnalyticsApiService`
+
+#### Custom Hooks
+- `useBookSearch` — debounced search (400ms), importBook helper
+- `useLibrary(statusFilter?)` — optimistic CRUD updates
+- `useWishlist` — add/remove with optimistic state
+- `useCollections` — inline create/delete
+- `useAnalytics` — parallel fetch of stats + goal
+
+#### Views Wired to Live Data
+- `StatisticsView` — uses `useAnalytics()`; loading skeleton, empty state, computed genre percentages
+- `CollectionsView` — uses `useCollections()`; inline create form, delete button, loading skeleton
+- `LibraryView` — uses `useLibrary(statusFilter)`; grid/list view toggle, per-status tabs, reading progress bar
+- `WishlistView` — uses `useWishlist()`; priority badges, remove button, loading skeleton
 
 ---
 
@@ -79,25 +115,26 @@
 
 ```
 openbook/
-├── server.ts              # Express entry point + AI routes
+├── server.ts                    # Express entry + 6 route mounts
 ├── prisma/
-│   ├── schema.prisma      # User, Profile, RefreshToken models
-│   └── migrations/        # Applied migrations
+│   ├── schema.prisma            # 12 models, 2 enums
+│   └── migrations/              # init + phase3_books_library
 ├── src/
 │   ├── server/
-│   │   ├── config/        # env.ts, prisma.ts
-│   │   ├── controllers/   # authController.ts
-│   │   ├── middlewares/   # auth.ts, errorHandler.ts
-│   │   ├── routes/        # authRoutes.ts
-│   │   ├── services/      # authService.ts, profileService.ts
-│   │   ├── types/         # index.ts
-│   │   ├── utils/         # tokens.ts, errors.ts
-│   │   └── validators/    # auth.ts (Zod schemas)
-│   ├── context/           # AuthContext.tsx
-│   ├── hooks/             # useAuth.ts
-│   ├── views/             # 13+ page views incl. AuthView.tsx
-│   └── components/        # 14+ UI components
-└── .env                   # DATABASE_URL, JWT_SECRET, etc.
+│   │   ├── config/              # env.ts, prisma.ts
+│   │   ├── controllers/         # auth, book, library, collection, review, analytics, note
+│   │   ├── middlewares/         # auth.ts, errorHandler.ts
+│   │   ├── routes/              # auth, book, library, collection, review, wishlist, analytics
+│   │   ├── services/            # auth, profile, book, library, collection, note, review, analytics
+│   │   ├── types/               # index.ts
+│   │   ├── utils/               # tokens.ts, errors.ts
+│   │   └── validators/          # auth.ts, books.ts (Zod schemas)
+│   ├── context/                 # AuthContext.tsx
+│   ├── hooks/                   # useAuth, useBookSearch, useLibrary, useWishlist, useCollections, useAnalytics
+│   ├── views/                   # 13+ page views — Library, Wishlist, Collections, Statistics on live data
+│   ├── services/                # api.ts (ApiClient + all domain services)
+│   └── components/              # 14+ UI components
+└── .env                         # DATABASE_URL, JWT_SECRET, etc.
 ```
 
 ---
@@ -112,31 +149,21 @@ REFRESH_TOKEN_TTL_DAYS=30
 API_PORT=3002
 NODE_ENV=development
 APP_URL=http://localhost:3002
-GEMINI_API_KEY=<optional>
+GEMINI_API_KEY=<optional, used as Google Books API key>
 ```
 
 ---
 
 ## Upcoming Work
 
-### Phase 3: Book Management & Database
-
-- [ ] Prisma schema: Book, UserBook (library entry), Collection, ReadingSession models
-- [ ] Google Books API integration for book search/metadata
-- [ ] Reading progress tracking (current page, % complete, sessions)
-- [ ] User library CRUD (add, remove, update status: reading/read/want-to-read)
-- [ ] Collections management
-- [ ] Book ratings and reviews
-- [ ] Reading statistics aggregation
-- [ ] Wishlist functionality
-
 ### Phase 4: AI Features & Recommendations
 
-- [ ] Wire existing Gemini endpoints to real user library data
-- [ ] Reading Compass full implementation
+- [ ] Wire Gemini endpoints to real user library data
+- [ ] Reading Compass full implementation with live data
 - [ ] Book DNA analysis
 - [ ] Smart reading schedule planner
 - [ ] Personalized insights dashboard
+- [ ] Wire HomeView and BookDetailView to live API data
 
 ### Phase 5: Social & Community
 
@@ -160,15 +187,15 @@ GEMINI_API_KEY=<optional>
 
 | Commit | Message |
 |--------|---------|
-| latest | feat(auth): real-time signup field validation with green/red indicators |
+| latest | feat(phase3): complete book management system with live data |
+| 08e13df | feat(auth): real-time signup field validation with green/red indicators |
 | 25cbe77 | your commit message |
 | d80cc84 | feat(auth): integrate authentication UI with AuthContext |
 | ca97dd5 | feat(dev): add nodemon for auto-restart and fix .env.example security |
 | da66071 | fix(env): load dotenv config and provide credential setup guide |
 | b1a6bdd | docs: update progress.md - Phase 2 authentication complete |
 | fd7df2c | feat(auth): implement complete authentication system with Supabase |
-| 9f46bff | docs: add comprehensive project foundation documentation |
 
 ---
 
-**Next Action**: Begin Phase 3 — Prisma schema for books and reading library API
+**Next Action**: Phase 4 — wire AI features to live library data, complete HomeView and BookDetailView with live API hooks

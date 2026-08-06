@@ -1,6 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { ViewMode, Book } from './types';
-import { sampleBooks, sampleCollections, sampleQuotes, sampleAuthors, currentUser } from './data/mockData';
+import { sampleBooks, sampleQuotes, sampleAuthors, currentUser } from './data/mockData';
 import { AuthContext } from './context/AuthContext';
 
 // Layout Components
@@ -43,7 +43,6 @@ export function App() {
 
   const [currentView, setCurrentView] = useState<ViewMode>(isAuthenticated ? 'home' : 'auth');
   const [books, setBooks] = useState<Book[]>(sampleBooks);
-  const [collections] = useState(sampleCollections);
   const [quotes] = useState(sampleQuotes);
   const [selectedBook, setSelectedBook] = useState<Book>(sampleBooks[0]);
   const [readerBook, setReaderBook] = useState<Book | null>(null);
@@ -247,18 +246,12 @@ export function App() {
 
           {currentView === 'library' && (
             <LibraryView
-              books={books}
-              onSelectBook={handleSelectBook}
-              onOpenReader={handleOpenReader}
               onNavigate={handleNavigate}
-              isLoading={isLoading}
             />
           )}
 
           {currentView === 'wishlist' && (
             <WishlistView
-              wishlistBooks={books.filter((b) => b.status === 'wishlist')}
-              onSelectBook={handleSelectBook}
               onNavigate={setCurrentView}
             />
           )}
@@ -272,9 +265,6 @@ export function App() {
 
           {currentView === 'collections' && (
             <CollectionsView
-              collections={collections}
-              allBooks={books}
-              onSelectBook={handleSelectBook}
               onNavigate={setCurrentView}
             />
           )}
