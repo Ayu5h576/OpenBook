@@ -3,7 +3,9 @@ import { Book, ViewMode } from '../types';
 import { BookCard3D } from '../components/BookCard3D';
 import { HeroSkeleton, BookCardSkeleton } from '../components/Skeleton';
 import { RecommendedForYou } from '../components/RecommendedForYou';
-import { Sparkles, ArrowRight, Play, BookOpen, Flame, Compass, Star } from 'lucide-react';
+import { useAIHome } from '../hooks/useAI';
+import { useAuth } from '../hooks/useAuth';
+import { Sparkles, ArrowRight, BookOpen, Flame, Compass, Star, RefreshCw } from 'lucide-react';
 
 interface HomeViewProps {
   books: Book[];
@@ -22,9 +24,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onAddBookToWishlist,
   isLoading = false,
 }) => {
+  const { user } = useAuth();
+  const aiHome = useAIHome();
   const continueReadingBook = books.find((b) => b.status === 'reading') || books[0];
   const recentlyOpened = books.filter((b) => b.progress > 0);
   const newReleases = books.filter((b) => b.publishedYear >= 2023);
+  const insight = aiHome.insights.data?.insights;
 
   if (isLoading) {
     return (
@@ -118,7 +123,77 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </section>
       )}
 
-      {/* Gemini AI Powered "Recommended for You" Section */}
+      {/* Live AI Reading Brief */}
+      <section className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-md">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-6">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFE8DD] text-[#A0522D] text-xs font-semibold mb-3">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>AI Reading Companion</span>
+            </div>
+            <h3 className="font-serif-title text-3xl font-bold text-[#1D1D1D]">
+              {user?.username ? `Good to see you, ${user.username}` : 'Your Reading Brief'}
+            </h3>
+            <p className="text-xs text-[#777777] mt-1">
+              Personalized from your library, wishlist, reviews, reading sessions, and goals.
+            </p>
+          </div>
+          <button
+            onClick={aiHome.retry}
+            disabled={aiHome.loading}
+            className="self-start inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#E5E0D8] text-xs font-bold text-[#1D1D1D] hover:bg-[#F8F6F1] disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${aiHome.loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        {aiHome.loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-36 bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : aiHome.error ? (
+          <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">{aiHome.error}</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
+              <div className="flex items-center gap-2 text-[#A0522D] text-[10px] font-bold uppercase mb-2">
+                <Compass className="w-4 h-4" />
+                <span>Current Recommendation</span>
+              </div>
+              <h4 className="font-serif-title text-xl font-bold text-[#1D1D1D]">{aiHome.recommendation?.title ?? 'Build your reading signal'}</h4>
+              <p className="text-xs text-[#777777] mt-2 line-clamp-4">
+                {aiHome.recommendation?.reasoning ?? 'Add books, ratings, wishlist entries, and sessions to get a grounded recommendation.'}
+              </p>
+            </div>
+            <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
+              <div className="flex items-center gap-2 text-[#B8860B] text-[10px] font-bold uppercase mb-2">
+                <Star className="w-4 h-4" />
+                <span>Insight of the Day</span>
+              </div>
+              <h4 className="font-serif-title text-xl font-bold text-[#1D1D1D]">{insight?.readingTrend ?? 'stable'} trend</h4>
+              <p className="text-xs text-[#777777] mt-2 line-clamp-4">
+                {insight?.moodPattern ?? 'OpenBook is waiting for more reading history before making a strong pattern call.'}
+              </p>
+            </div>
+            <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
+              <div className="flex items-center gap-2 text-[#2D4030] text-[10px] font-bold uppercase mb-2">
+                <Flame className="w-4 h-4" />
+                <span>Personal Goal</span>
+              </div>
+              <h4 className="font-serif-title text-xl font-bold text-[#1D1D1D]">
+                {insight ? `${insight.totalBooksRead} books, ${insight.totalPagesRead} pages` : 'Start with one session'}
+              </h4>
+              <p className="text-xs text-[#777777] mt-2 line-clamp-4">
+                {insight?.nextLikelyBook?.reasoning ?? 'Daily motivation and smart tips become sharper as your sessions accumulate.'}
+              </p>
+            </div>
+          </div>
+        )}
+      </section>
+
       <RecommendedForYou
         userBooks={books}
         onSelectBook={onSelectBook}

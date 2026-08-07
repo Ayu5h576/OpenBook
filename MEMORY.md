@@ -1,0 +1,6 @@
+- [OpenBook Project Overview](./memory/project_overview.md) — Full-stack React+Express reading platform with Prisma/PostgreSQL
+- [Auth Implementation Details](./memory/auth_implementation.md) — JWT tokens, bcrypt hashing, AuthContext, token refresh flow
+- [Database Schema & Patterns](./memory/db_schema.md) — 8 model groups (Auth, Books, Library, Wishlist, Collections, Reviews, Quotes, Goals), UUID PKs, timestamptz
+- [Code Patterns & Architecture](./memory/code_patterns.md) — Error handling, validation with Zod, centralized API service, custom hooks for data
+- [Recent Completed Work](./memory/recent_work.md) — Phase 3 book management complete, auth system integrated, live data wiring done
+- [Development Setup & Scripts](./memory/dev_setup.md) — nodemon dev server, build pipeline, Prisma migrations, environment config

@@ -579,4 +579,125 @@ export const AnalyticsApiService = {
   },
 };
 
+// AI Reading Companion
+export interface AIRecommendation {
+  bookId?: string;
+  title: string;
+  authors: string[];
+  coverImage?: string;
+  reasoning: string;
+  matchScore: number;
+  categories: string[];
+}
+
+export interface ReadingCompassResponse {
+  recommendations: AIRecommendation[];
+  reasoning: string;
+  generatedAt: string;
+  fromCache?: boolean;
+}
+
+export interface AIBookDNA {
+  bookId: string;
+  title: string;
+  themes: { name: string; weight: number }[];
+  writingStyle: string;
+  difficulty: number;
+  emotionalTone: string;
+  pacing: string;
+  complexity: number;
+  characterDepth: number;
+  worldBuilding: number;
+  philosophy: string;
+  adventure?: number;
+  romance?: number;
+  mystery?: number;
+}
+
+export interface BookDNAResponse {
+  dna: AIBookDNA;
+  explanation: string;
+  generatedAt: string;
+  fromCache?: boolean;
+}
+
+export type SummaryFormat = 'quick' | 'detailed' | 'chapter' | 'theme' | 'character';
+
+export interface SummaryResponse {
+  format: SummaryFormat;
+  summary: string;
+  keyPoints?: string[];
+  generatedAt: string;
+  fromCache?: boolean;
+}
+
+export interface ChatResponse {
+  response: string;
+  conversationId?: string;
+  generatedAt: string;
+}
+
+export interface PersonalInsights {
+  favoriteGenres: { genre: string; percentage: number }[];
+  readingSpeed: number;
+  averageRating: number;
+  totalBooksRead: number;
+  totalPagesRead: number;
+  currentReadingStreak: number;
+  nextLikelyBook: { bookId: string; title: string; reasoning: string };
+  moodPattern: string;
+  readingTrend: 'increasing' | 'decreasing' | 'stable';
+  mostHighlightedThemes: string[];
+}
+
+export interface InsightsResponse {
+  insights: PersonalInsights;
+  generatedAt: string;
+  fromCache?: boolean;
+}
+
+export interface ReadingPlan {
+  dailyPages: number;
+  weeklyGoal: number;
+  estimatedFinishDate: string;
+  weeklySchedule: { day: string; targetPages: number; estimatedMinutes: number }[];
+  adaptiveNotes: string;
+}
+
+export interface PlannerResponse {
+  plan: ReadingPlan;
+  generatedAt: string;
+  fromCache?: boolean;
+}
+
+export const AIApiService = {
+  getReadingCompass(data: { limit?: number; genres?: string[]; useCache?: boolean } = {}) {
+    return apiClient.post<ReadingCompassResponse>('/api/ai/reading-compass', data);
+  },
+
+  getBookDNA(bookId: string, useCache = true) {
+    return apiClient.post<BookDNAResponse>('/api/ai/book-dna', { bookId, useCache });
+  },
+
+  getSummary(bookId: string, format: SummaryFormat = 'quick', spoilerLevel: 'none' | 'mild' | 'full' = 'none') {
+    return apiClient.post<SummaryResponse>('/api/ai/summaries', { bookId, format, spoilerLevel });
+  },
+
+  chat(data: { message: string; bookId?: string; context?: string; conversationId?: string }) {
+    return apiClient.post<ChatResponse>('/api/ai/chat', data);
+  },
+
+  getInsights(useCache = true) {
+    return apiClient.post<InsightsResponse>('/api/ai/insights', { useCache });
+  },
+
+  getPlanner(bookId: string, dailyAvailableMinutes = 60) {
+    return apiClient.post<PlannerResponse>('/api/ai/planner', { bookId, dailyAvailableMinutes });
+  },
+
+  searchSimilar(bookId: string, limit = 5) {
+    return apiClient.post<{ similarBooks: AIRecommendation[] }>('/api/ai/search-similar', { bookId, limit });
+  },
+};
+
 export default apiClient;

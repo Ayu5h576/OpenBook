@@ -3,7 +3,6 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { env, validateEnv } from './src/server/config/env';
@@ -14,10 +13,8 @@ import collectionRoutes from './src/server/routes/collectionRoutes';
 import reviewRoutes from './src/server/routes/reviewRoutes';
 import wishlistRoutes from './src/server/routes/wishlistRoutes';
 import analyticsRoutes from './src/server/routes/analyticsRoutes';
+import aiRoutes from './src/server/routes/aiRoutes';
 import { errorHandlerMiddleware } from './src/server/middlewares/errorHandler';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Validate environment on startup
 validateEnv();
@@ -66,8 +63,11 @@ app.use('/api/books/:bookId/review', reviewRoutes);
 app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// AI API: AI Assistant Chat & Analysis
-app.post('/api/ai/analyze', async (req, res) => {
+// Phase 4: AI Reading Companion
+app.use('/api/ai', aiRoutes);
+
+// Legacy AI endpoints (deprecated - kept for backward compatibility)
+app.post('/api/ai/analyze-legacy', async (req, res) => {
   try {
     const { prompt, context, type } = req.body;
     const ai = getGeminiClient();
@@ -90,7 +90,7 @@ app.post('/api/ai/analyze', async (req, res) => {
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
+      model: 'gemini-2.5-flash',
       contents: `${context ? `Book Context:\n${context}\n\n` : ''}User Query: ${prompt}`,
       config: {
         systemInstruction,
@@ -132,7 +132,7 @@ app.post('/api/ai/compass', async (req, res) => {
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
+      model: 'gemini-2.5-flash',
       contents: `Suggest 3 books based on this emotional/mood description: "${mood}". Return a JSON array of objects with keys: "title", "author", "genre", "matchReason", "rating".`,
       config: {
         responseMimeType: 'application/json',
@@ -165,7 +165,7 @@ app.post('/api/ai/search', async (req, res) => {
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
+      model: 'gemini-2.5-flash',
       contents: `User searched for: "${query}". Analyze search intent and return a JSON object with: "intentKeywords": ["keyword1", "keyword2"], "recommendedGenres": ["Genre1"], "editorialInsight": "1 sentence describing what kind of books match this vibe".`,
       config: {
         responseMimeType: 'application/json',
@@ -258,7 +258,7 @@ Generate 3-4 highly tailored book recommendations. Return a JSON object with:
 ]`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
+      model: 'gemini-2.5-flash',
       contents: prompt,
       config: {
         systemInstruction:
@@ -275,9 +275,6 @@ Generate 3-4 highly tailored book recommendations. Return a JSON object with:
   }
 });
 
-// Global error handler (must be last)
-app.use(errorHandlerMiddleware);
-
 // Vite Middleware for dev or static serving for prod
 async function startServer() {
   if (env.app.nodeEnv !== 'production') {
@@ -293,6 +290,9 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+
+  // Global error handler must come after all other middleware (including Vite)
+  app.use(errorHandlerMiddleware);
 
   app.listen(env.app.port, '0.0.0.0', () => {
     console.log(`[OpenBook] Server running at http://0.0.0.0:${env.app.port}`);

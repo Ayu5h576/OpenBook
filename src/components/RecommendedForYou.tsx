@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Book } from '../types';
+import { AIApiService, AIRecommendation } from '../services/api';
 import { Sparkles, RefreshCw, BookOpen, Plus, Check, Star, Compass, Bookmark, Lightbulb, ArrowRight } from 'lucide-react';
 
 interface RecommendationItem {
@@ -13,6 +14,21 @@ interface RecommendationItem {
   cover: string;
   rating: number;
   pages: number;
+}
+
+function toRecommendationItem(rec: AIRecommendation, index: number): RecommendationItem {
+  return {
+    id: rec.bookId || `${rec.title}-${index}`,
+    title: rec.title,
+    author: rec.authors.join(', ') || 'Unknown author',
+    genre: rec.categories[0] || 'Personalized pick',
+    matchPercentage: rec.matchScore,
+    basedOnBook: rec.categories.slice(0, 2).join(', '),
+    personalizedSummary: rec.reasoning,
+    cover: rec.coverImage || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+    rating: 4.8,
+    pages: 280,
+  };
 }
 
 interface RecommendedForYouProps {
@@ -35,19 +51,15 @@ export const RecommendedForYou: React.FC<RecommendedForYouProps> = ({
   const fetchRecommendations = async (focus?: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/ai/recommendations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userBooks,
-          preferenceFocus: focus && focus !== 'All Tastes' ? focus : undefined,
-        }),
+      const response = await AIApiService.getReadingCompass({
+        limit: 3,
+        genres: focus && focus !== 'All Tastes' ? [focus] : undefined,
+        useCache: false,
       });
 
-      const data = await response.json();
-      if (data.recommendations) {
-        setRecommendations(data.recommendations);
-        setAnalysisSummary(data.analysisSummary || '');
+      if (response.data) {
+        setRecommendations(response.data.recommendations.map(toRecommendationItem));
+        setAnalysisSummary(response.data.reasoning || '');
       }
     } catch (err) {
       console.error('Failed to fetch recommendations:', err);

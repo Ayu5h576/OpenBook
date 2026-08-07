@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Book, ViewMode } from '../types';
 import { BookDetailSkeleton } from '../components/Skeleton';
-import { BookOpen, Heart, Bookmark, Share2, Download, Star, ArrowLeft, Play, Sparkles, MessageSquare, Highlighter, FileText } from 'lucide-react';
+import { useAIBookDetail } from '../hooks/useAI';
+import { BookOpen, Heart, Bookmark, Share2, Star, ArrowLeft, Play, Sparkles, MessageSquare, Send, RefreshCw } from 'lucide-react';
 
 interface BookDetailViewProps {
   book: Book;
@@ -24,8 +25,11 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'comments' | 'ai-insights'>('overview');
   const [showTrailerModal, setShowTrailerModal] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
-  const [loadingAi, setLoadingAi] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [conversationId, setConversationId] = useState<string | undefined>();
+  const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const isUuidBook = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(book.id);
+  const ai = useAIBookDetail(isUuidBook ? book.id : undefined);
 
   if (isLoading) {
     return (
@@ -42,26 +46,29 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
     );
   }
 
-  const fetchAiAnalysis = async (type: string) => {
-    setLoadingAi(true);
-    try {
-      const res = await fetch('/api/ai/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: `Analyze the literary significance, core themes, and structural craftsmanship of "${book.title}" by ${book.author}.`,
-          context: book.description,
-          type
-        }),
-      });
-      const data = await res.json();
-      setAiAnalysis(data.response);
-    } catch (err) {
-      setAiAnalysis("Failed to load analysis");
-    } finally {
-      setLoadingAi(false);
+  const sendChat = async () => {
+    const message = chatInput.trim();
+    if (!message) return;
+    setChatInput('');
+    setChatMessages((messages) => [...messages, { role: 'user', content: message }]);
+    const response = await ai.sendChat(message, conversationId);
+    if (response) {
+      setConversationId(response.conversationId);
+      setChatMessages((messages) => [...messages, { role: 'assistant', content: response.response }]);
     }
   };
+
+  const dnaMetrics = ai.dna.data?.dna
+    ? [
+        ['Difficulty', ai.dna.data.dna.difficulty],
+        ['Complexity', ai.dna.data.dna.complexity],
+        ['Character Depth', ai.dna.data.dna.characterDepth],
+        ['World Building', ai.dna.data.dna.worldBuilding],
+        ['Adventure', ai.dna.data.dna.adventure ?? 0],
+        ['Romance', ai.dna.data.dna.romance ?? 0],
+        ['Mystery', ai.dna.data.dna.mystery ?? 0],
+      ]
+    : [];
 
   return (
     <div className="space-y-8 pb-12">
@@ -178,7 +185,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
             </button>
 
             <button
-              onClick={() => fetchAiAnalysis('summary')}
+              onClick={() => setActiveTab('ai-insights')}
               className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#FFFFFF] border border-[#E5E0D8] text-[#1D1D1D] font-bold text-sm hover:bg-[#EFE8DD] transition-all shadow-warm-sm"
             >
               <Sparkles className="w-4 h-4 text-[#B8860B]" />
@@ -209,21 +216,129 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
         </div>
       </div>
 
-      {/* AI Analysis Modal / Container */}
-      {aiAnalysis && (
-        <div className="bg-[#1D1D1D] text-[#F8F6F1] rounded-3xl p-6 md:p-8 shadow-warm-lg space-y-4">
-          <div className="flex items-center justify-between border-b border-[#333333] pb-3">
-            <div className="flex items-center gap-2 text-[#E0A96D] text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-4 h-4" />
-              <span>Gemini AI Editorial Synthesis</span>
+      {/* AI Detail Surface */}
+      <section className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-md">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFE8DD] text-[#A0522D] text-xs font-semibold mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Gemini Reading Companion</span>
             </div>
-            <button onClick={() => setAiAnalysis(null)} className="text-xs text-[#A0A0A0] hover:text-white">Close</button>
+            <h2 className="font-serif-title text-3xl font-bold text-[#1D1D1D]">Personalized Intelligence</h2>
+            {!isUuidBook && (
+              <p className="text-xs text-[#777777] mt-1">Import this book into your library to unlock database-grounded AI analysis.</p>
+            )}
           </div>
-          <div className="text-xs sm:text-sm leading-relaxed text-[#E0E1DD] whitespace-pre-wrap font-sans">
-            {aiAnalysis}
+          <button
+            onClick={ai.retry}
+            disabled={!isUuidBook || ai.loading}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#E5E0D8] text-xs font-bold text-[#1D1D1D] hover:bg-[#F8F6F1] disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${ai.loading ? 'animate-spin' : ''}`} />
+            <span>Retry</span>
+          </button>
+        </div>
+
+        {isUuidBook && ai.error && (
+          <div className="mb-4 text-xs text-red-600 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">{ai.error}</div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
+            <h3 className="font-serif-title text-xl font-bold text-[#1D1D1D] mb-3">AI Summary</h3>
+            {ai.summary.loading ? (
+              <div className="space-y-2">
+                <div className="h-3 bg-[#EFE8DD] rounded animate-pulse" />
+                <div className="h-3 bg-[#EFE8DD] rounded animate-pulse w-5/6" />
+                <div className="h-3 bg-[#EFE8DD] rounded animate-pulse w-2/3" />
+              </div>
+            ) : (
+              <p className="text-xs text-[#555555] leading-relaxed whitespace-pre-wrap">{ai.summary.data?.summary ?? 'No AI summary yet.'}</p>
+            )}
+          </div>
+
+          <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
+            <h3 className="font-serif-title text-xl font-bold text-[#1D1D1D] mb-3">Book DNA</h3>
+            {ai.dna.loading ? (
+              <div className="h-32 bg-[#EFE8DD] rounded-xl animate-pulse" />
+            ) : (
+              <div className="space-y-3">
+                {dnaMetrics.map(([label, value]) => (
+                  <div key={label}>
+                    <div className="flex justify-between text-xs text-[#1D1D1D] mb-1">
+                      <span>{label}</span>
+                      <span>{value}/5</span>
+                    </div>
+                    <div className="h-2 bg-[#EFE8DD] rounded-full overflow-hidden">
+                      <div className="h-full bg-[#A0522D]" style={{ width: `${(Number(value) / 5) * 100}%` }} />
+                    </div>
+                  </div>
+                ))}
+                <p className="text-xs text-[#777777] pt-2">{ai.dna.data?.explanation}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
+            <h3 className="font-serif-title text-xl font-bold text-[#1D1D1D] mb-3">Theme Analysis</h3>
+            <div className="flex flex-wrap gap-2">
+              {(ai.dna.data?.dna.themes ?? []).map((theme) => (
+                <span key={theme.name} className="px-3 py-1 rounded-full bg-[#EFE8DD] text-[#1D1D1D] text-xs font-semibold">
+                  {theme.name} {Math.round(theme.weight * 100)}%
+                </span>
+              ))}
+            </div>
+            <p className="text-xs text-[#777777] mt-4">{ai.dna.data?.dna.philosophy ?? 'Theme signals will appear after AI analysis loads.'}</p>
+          </div>
+
+          <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
+            <h3 className="font-serif-title text-xl font-bold text-[#1D1D1D] mb-3">Smart Planner</h3>
+            <p className="text-xs text-[#555555]">
+              {ai.planner.data
+                ? `${ai.planner.data.plan.dailyPages} pages/day, ${ai.planner.data.plan.weeklyGoal} pages/week. Estimated finish: ${ai.planner.data.plan.estimatedFinishDate}.`
+                : 'Planner will use your measured reading speed and current page.'}
+            </p>
+            <p className="text-xs text-[#777777] mt-3">{ai.planner.data?.plan.adaptiveNotes}</p>
           </div>
         </div>
-      )}
+
+        <div className="mt-6 bg-[#1D1D1D] text-[#F8F6F1] rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <MessageSquare className="w-4 h-4 text-[#E0A96D]" />
+            <h3 className="font-serif-title text-xl font-bold">Chat With This Book</h3>
+          </div>
+          <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
+            {chatMessages.length === 0 ? (
+              <p className="text-xs text-[#A0A0A0]">Ask for chapter help, theme comparisons, character analysis, vocabulary, quotes, or spoiler-safe ending context.</p>
+            ) : (
+              chatMessages.map((message, index) => (
+                <div key={index} className={`text-xs rounded-xl px-3 py-2 ${message.role === 'user' ? 'bg-white/10 ml-8' : 'bg-[#E0A96D]/15 mr-8'}`}>
+                  {message.content}
+                </div>
+              ))
+            )}
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={chatInput}
+              onChange={(event) => setChatInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') sendChat();
+              }}
+              disabled={!isUuidBook}
+              placeholder="Explain this chapter without spoilers..."
+              className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-white/40 focus:outline-none focus:border-[#E0A96D]"
+            />
+            <button
+              onClick={sendChat}
+              disabled={!isUuidBook || !chatInput.trim()}
+              className="p-2.5 rounded-xl bg-[#E0A96D] text-[#1D1D1D] disabled:opacity-50"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </section>
 
       {/* Trailer Modal */}
       {showTrailerModal && (

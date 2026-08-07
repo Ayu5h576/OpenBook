@@ -1,4 +1,3 @@
-import { env } from '../config/env';
 import { prisma } from '../config/prisma';
 import { NotFoundError, ServerError } from '../utils/errors';
 
@@ -76,8 +75,10 @@ function mapVolume(v: GoogleVolume): GoogleBookResult {
 }
 
 async function fetchGoogle(path: string): Promise<any> {
-  const key = env.gemini.apiKey ? `&key=${env.gemini.apiKey}` : '';
-  const url = `${GOOGLE_BOOKS_API}${path}${key ? key : ''}`;
+  // Use '?' when path has no query string yet, '&' when it already does
+  const apiKey = process.env.GOOGLE_BOOKS_API_KEY;
+  const key = apiKey ? `${path.includes('?') ? '&' : '?'}key=${apiKey}` : '';
+  const url = `${GOOGLE_BOOKS_API}${path}${key}`;
   const res = await fetch(url);
   if (!res.ok) throw new ServerError(`Google Books API error: ${res.status}`);
   return res.json();

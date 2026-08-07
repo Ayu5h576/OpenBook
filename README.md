@@ -15,8 +15,9 @@ The platform combines stunning visual design with intelligent algorithms to prov
 
 ## ✨ Key Features
 
+- **Gemini AI Reading Companion**: Authenticated, database-grounded recommendations, insights, summaries, chat, and planning
 - **Interactive 3D Bookshelf**: Immersive 3D visualization of your book collection
-- **Reading Compass**: AI-powered book recommendations based on your preferences
+- **Reading Compass**: Personalized recommendations from library, wishlist, reviews, sessions, collections, and goals
 - **Wishlist Galaxy**: Visual wishlist with interactive constellation-style UI
 - **Book DNA**: Detailed analysis and visualization of book characteristics
 - **Reading Room**: Distraction-free reading environment
@@ -43,10 +44,30 @@ The platform combines stunning visual design with intelligent algorithms to prov
 ### Backend & Runtime
 - **Node.js**: JavaScript runtime
 - **Express.js**: Web application framework
+- **PostgreSQL + Prisma**: Relational persistence and type-safe data access
 - **esbuild**: Ultra-fast JavaScript bundler
 
 ### APIs & Services
 - **Google Gemini AI**: AI-powered features and recommendations
+- **Google Books API**: Book search and metadata import
+
+## AI Reading Companion
+
+Phase 4 turns OpenBook into a personal reading assistant. The AI layer is built around real authenticated user data rather than generic prompts.
+
+- Reading Compass recommendations with explicit match reasoning
+- Book DNA analysis for themes, tone, pacing, complexity, philosophy, adventure, romance, and mystery
+- Smart summaries with spoiler controls
+- Chat with Book with short-lived conversation history
+- Personal insights for genre taste, speed, trends, mood patterns, and next likely reads
+- Smart Planner with daily pages, weekly targets, and estimated finish date
+- Personalized offline fallbacks when Gemini is unavailable
+
+Detailed docs:
+
+- [AI Architecture](./docs/ai-architecture.md)
+- [AI API](./docs/ai-api.md)
+- [AI Prompt Policy](./docs/ai-prompts.md)
 
 ### Development Tools
 - **TSX**: TypeScript execution and transpilation
@@ -306,37 +327,37 @@ We welcome contributions from the community! Here's how you can help:
 
 ## 🗺️ Future Roadmap
 
-### Phase 1: Core Infrastructure (Current)
-- [ ] Backend API development
-- [ ] Database setup (Firebase/PostgreSQL)
-- [ ] Authentication system
-- [ ] User profile management
+### Phase 1: Foundation
+- [x] React, TypeScript, Vite, Tailwind, and core UI scaffolding
 
-### Phase 2: Book Management & Reading
-- [ ] Real book database integration
-- [ ] PDF reader implementation
-- [ ] Highlighting and notes system
-- [ ] Reading progress sync
+### Phase 2: Authentication & User System
+- [x] JWT auth, refresh token rotation, profile management, Prisma migration
 
-### Phase 3: AI & Intelligence
-- [ ] Advanced recommendation engine
-- [ ] Book analysis and categorization
-- [ ] Personalized reading suggestions
-- [ ] AI-powered insights and analytics
+### Phase 3: Book Management & Reading System
+- [x] Google Books import, library, wishlist, collections, notes, highlights, reviews, analytics
 
-### Phase 4: Social & Community
+### Phase 4: AI Reading Companion & Personalized Intelligence
+- [x] Gemini AI service, prompt builder, response formatter, cache, rate limiter, token usage hook
+- [x] Reading Compass, Book DNA, summaries, chat, insights, planner, similar-book APIs
+- [x] HomeView, BookDetailView, Reader, ReadingCompass, BookDNA, SmartPlanner integrations
+- [x] Personalized offline fallbacks from authenticated user data
+
+### Phase 5: Social & Community
 - [ ] User profiles and followers
 - [ ] Social sharing features
 - [ ] Book club functionality
 - [ ] Leaderboards and challenges
 
-### Phase 5: Mobile & Expansion
+### Phase 6: Performance & Launch
+- [ ] Redis-backed caching and distributed rate limiting
+- [ ] Unit, integration, and E2E tests
+- [ ] CI/CD and production deployment
+
+### Future Expansion
 - [ ] Mobile app (React Native)
 - [ ] Offline reading support
 - [ ] Audio book support
 - [ ] E-book format support
-
-### Phase 6: Advanced Features
 - [ ] Advanced search and filters
 - [ ] Custom themes and personalization
 - [ ] Monetization features

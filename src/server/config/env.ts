@@ -31,7 +31,7 @@ export const env = {
 
   // Application Configuration
   app: {
-    port: parseInt(getEnvVar('API_PORT', '3000'), 10),
+    port: parseInt(getEnvVar('API_PORT', '5173'), 10),
     nodeEnv: getEnvVar('NODE_ENV', 'development'),
     appUrl: getEnvVar('APP_URL', 'http://localhost:5173'),
   },

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Book, ReaderSettings, Chapter } from '../types';
+import { AIApiService } from '../services/api';
 import {
   ArrowLeft,
   Settings,
@@ -96,19 +97,19 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ book, onExit }) => {
   // AI Assistant Call
   const handleAskAi = async () => {
     if (!aiPrompt.trim()) return;
+    const isUuidBook = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(book.id);
+    if (!isUuidBook) {
+      setAiResponse('Import this book into your library first so OpenBook can answer from your real reading data.');
+      return;
+    }
     setLoadingAi(true);
     try {
-      const res = await fetch('/api/ai/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: aiPrompt,
-          context: `Book: ${book.title} by ${book.author}\nChapter: ${activeChapter.title}\nContent: ${activeChapter.content}`,
-          type: 'ask'
-        }),
+      const response = await AIApiService.chat({
+        bookId: book.id,
+        message: aiPrompt,
+        context: `Chapter: ${activeChapter.title}\nReader excerpt: ${activeChapter.content.slice(0, 4000)}`,
       });
-      const data = await res.json();
-      setAiResponse(data.response);
+      setAiResponse(response.data?.response ?? response.error ?? 'Failed to generate AI response.');
     } catch (err) {
       setAiResponse("Failed to generate AI response.");
     } finally {
