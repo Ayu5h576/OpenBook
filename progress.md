@@ -1,8 +1,8 @@
 # OpenBook - Project Progress
 
-**Last Updated**: August 7, 2026  
-**Project Phase**: Foundation Complete -> Authentication Complete -> DB Migration Complete -> Book Management Complete -> AI Reading Companion Complete  
-**Overall Progress**: ~78% Complete (Phases 1-4 complete with live data integration, Phases 5-6 upcoming)
+**Last Updated**: August 8, 2026  
+**Project Phase**: Foundation Complete -> Authentication Complete -> DB Migration Complete -> Book Management Complete -> AI Reading Companion Complete -> Book Catalog Integration Complete  
+**Overall Progress**: ~82% Complete (Phases 1-4 complete + real book catalog integration, Phases 5-6 upcoming)
 
 ---
 
@@ -18,6 +18,8 @@
 | Book Management | Complete | Google Books API, library, wishlist, collections, reviews, notes |
 | Reading Analytics | Complete | Stats, streaks, heatmap, genre distribution, reading goals |
 | AI Features | Complete | Gemini reading companion using authenticated user data |
+| Book Catalog | Complete | Google Books API integration, real-time search, import to library |
+| Session Persistence | Complete | Login session survives page refresh via refresh token rotation |
 | Community | Not Started | Phase 5 |
 | Deployment | Not Started | Phase 6 |
 
@@ -152,7 +154,38 @@ API_PORT=3002
 NODE_ENV=development
 APP_URL=http://localhost:3002
 GEMINI_API_KEY=<optional, enables Gemini AI features>
+GOOGLE_BOOKS_API_KEY=<get from Google Cloud Console, enables real book catalog>
 ```
+
+### Phase 4.5: Book Catalog Integration & Session Persistence (August 8, 2026)
+
+#### Google Books API Integration
+- Added `GOOGLE_BOOKS_API_KEY` environment configuration to `src/server/config/env.ts`
+- Updated `.env.example` with Google Books API setup instructions
+- Modified `App.tsx` to fetch featured fiction books on user authentication instead of using mock data
+- Created `googleBookToApp()` converter function to map Google Books API format → App Book type
+- BookApiService already fully implemented with search, import, and detail endpoints
+- ExploreView dual-mode: browse local books or search Google Books API in real-time
+- Book import functionality allows users to add Google Books to their personal library
+
+#### Session Persistence Fix
+- Fixed critical login issue where refreshing after login returned user to login screen
+- Updated `AuthContext.tsx` error handling to properly log session restoration attempts
+- Added `useEffect` in `App.tsx` to sync currentView with authentication state
+- Refresh token cookie properly sent on page reload → backend validates → auto-navigate to home
+- Session now persists across page refreshes via httpOnly refresh token rotation
+
+#### Views Completion & Verification
+- **HomeView**: Displays featured fiction books fetched from Google Books API
+- **ExploreView**: Dual-mode search (browse local OR search Google Books API with real-time results)
+- **LibraryView**: Fetches user library from backend with status filtering (READING/COMPLETED/PAUSED/OWNED)
+- **WishlistView**: Fetches wishlist with priority badges and removal functionality
+
+#### Testing & Validation
+- Created test user account: test@openbook.app
+- Verified login/refresh flow works correctly
+- Verified Google Books API integration (confirmed with successful API calls)
+- TypeScript compilation passes with no errors
 
 ---
 
@@ -180,6 +213,7 @@ GEMINI_API_KEY=<optional, enables Gemini AI features>
 
 | Commit | Message | Date |
 |--------|---------|------|
+| [TODAY] | feat(catalog): integrate Google Books API + fix session persistence | Aug 8, 2026 |
 | a08b659 | feat(phase3): complete book management system with live data | Aug 7, 2026 |
 | 08e13df | feat(auth): real-time signup validation + Prisma migration | Aug 6, 2026 |
 | 25cbe77 | your commit message | Aug 6, 2026 |
@@ -191,4 +225,32 @@ GEMINI_API_KEY=<optional, enables Gemini AI features>
 
 ---
 
-**Next Action**: Phase 5 - social and community features
+---
+
+## Quick Start Guide
+
+```bash
+# Install dependencies
+npm install
+
+# Set up environment
+cp .env.example .env
+# Edit .env to add your credentials:
+# - DATABASE_URL: PostgreSQL connection
+# - JWT_SECRET: openssl rand -base64 32
+# - GEMINI_API_KEY: https://ai.google.dev (optional)
+# - GOOGLE_BOOKS_API_KEY: https://console.cloud.google.com (optional but recommended)
+
+# Set up database
+npm run db:migrate
+npm run db:generate
+
+# Start dev server
+npm run dev
+
+# App will be available at http://localhost:3002
+```
+
+---
+
+**Next Action**: Phase 5 - social and community features (followers, book clubs, activity feed) or Phase 6 - deployment and scaling

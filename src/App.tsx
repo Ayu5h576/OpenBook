@@ -1,7 +1,8 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { ViewMode, Book } from './types';
-import { sampleBooks, sampleQuotes, sampleAuthors, currentUser } from './data/mockData';
+import { sampleQuotes, sampleAuthors, currentUser } from './data/mockData';
 import { AuthContext } from './context/AuthContext';
+import { BookApiService } from './services/api';
 
 // Layout Components
 import { Navbar } from './components/Navbar';
@@ -32,6 +33,36 @@ import { StatisticsView } from './views/StatisticsView';
 import { AchievementsView } from './views/AchievementsView';
 import { SettingsView } from './views/SettingsView';
 
+function googleBookToApp(gb: any): Book {
+  return {
+    id: gb.googleBooksId || `book-${Date.now()}`,
+    title: gb.title || 'Untitled',
+    author: gb.authors?.[0] || 'Unknown Author',
+    authorId: `auth-${gb.googleBooksId}`,
+    cover: gb.coverImage || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+    spineColor: '#1D1D1D',
+    thickness: Math.max(20, Math.min(60, (gb.pageCount || 300) / 10)),
+    pages: gb.pageCount || 300,
+    pagesRead: 0,
+    publisher: gb.publisher || 'Independent',
+    publishedYear: gb.publishedDate ? parseInt(gb.publishedDate.substring(0, 4)) : 2024,
+    language: gb.language || 'English',
+    isbn: gb.isbn13 || gb.isbn10 || `978-${Math.floor(Math.random() * 1000000000)}`,
+    rating: gb.averageRating || 4.0,
+    reviewCount: gb.ratingsCount || 0,
+    genres: gb.categories || ['Fiction'],
+    description: gb.description || '',
+    status: 'owned' as const,
+    favorite: false,
+    progress: 0,
+    lastOpened: new Date().toISOString().split('T')[0],
+    chapters: [{ id: 1, title: 'Chapter 1', content: '' }],
+    notes: [],
+    highlights: [],
+    comments: [],
+  };
+}
+
 export function App() {
   const auth = useContext(AuthContext);
 
@@ -41,14 +72,47 @@ export function App() {
 
   const { isAuthenticated, isLoading: authLoading } = auth;
 
-  const [currentView, setCurrentView] = useState<ViewMode>(isAuthenticated ? 'home' : 'auth');
-  const [books, setBooks] = useState<Book[]>(sampleBooks);
+  const [currentView, setCurrentView] = useState<ViewMode>('auth');
+  const [books, setBooks] = useState<Book[]>([]);
   const [quotes] = useState(sampleQuotes);
-  const [selectedBook, setSelectedBook] = useState<Book>(sampleBooks[0]);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [readerBook, setReaderBook] = useState<Book | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Sync currentView when auth state changes
+  useEffect(() => {
+    if (!authLoading) {
+      if (isAuthenticated && currentView === 'auth') {
+        setCurrentView('home');
+      } else if (!isAuthenticated && currentView !== 'auth' && currentView !== 'landing') {
+        setCurrentView('auth');
+      }
+    }
+  }, [isAuthenticated, authLoading, currentView]);
+
+  // Fetch featured books on mount
+  useEffect(() => {
+    const fetchFeaturedBooks = async () => {
+      try {
+        const res = await BookApiService.search('fiction', 'category', 0, 12);
+        if (res.data?.items) {
+          const appBooks = res.data.items.map(googleBookToApp);
+          setBooks(appBooks);
+          if (appBooks.length > 0) {
+            setSelectedBook(appBooks[0]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch featured books:', err);
+      }
+    };
+
+    if (isAuthenticated && books.length === 0) {
+      fetchFeaturedBooks();
+    }
+  }, [isAuthenticated]);
 
   // Show loading while auth is initializing
   if (authLoading) {
@@ -222,7 +286,7 @@ export function App() {
             />
           )}
 
-          {currentView === 'book-detail' && (
+          {currentView === 'book-detail' && selectedBook && (
             <BookDetailView
               book={selectedBook}
               onNavigate={handleNavigate}

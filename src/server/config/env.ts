@@ -40,6 +40,11 @@ export const env = {
   gemini: {
     apiKey: getOptionalEnvVar('GEMINI_API_KEY'),
   },
+
+  // Google Books API Configuration (Optional)
+  googleBooks: {
+    apiKey: getOptionalEnvVar('GOOGLE_BOOKS_API_KEY'),
+  },
 };
 
 // Validate required configuration on startup
