@@ -7,6 +7,7 @@ export type ViewMode =
   | 'library'
   | 'wishlist'
   | 'collections'
+  | 'collection-detail'
   | 'reader'
   | 'community'
   | 'author'

@@ -76,7 +76,12 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
   const [importingId, setImportingId] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
-  const { results: apiResults, totalItems, loading: searchLoading, error: searchError } = useBookSearch();
+  const { query, setQuery, results: apiResults, totalItems, loading: searchLoading, error: searchError } = useBookSearch();
+
+  // Sync the prop searchQuery with the hook's internal query state
+  React.useEffect(() => {
+    setQuery(searchQuery);
+  }, [searchQuery, setQuery]);
 
   // When there is a live search query, show Google Books results.
   // When empty, fall back to local browsing of the mock/library books.

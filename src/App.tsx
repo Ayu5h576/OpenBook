@@ -26,6 +26,7 @@ import { ExploreView } from './views/ExploreView';
 import { LibraryView } from './views/LibraryView';
 import { WishlistView } from './views/WishlistView';
 import { CollectionsView } from './views/CollectionsView';
+import { CollectionDetailView } from './views/CollectionDetailView';
 import { ReaderView } from './views/ReaderView';
 import { CommunityView } from './views/CommunityView';
 import { AuthorView } from './views/AuthorView';
@@ -76,6 +77,7 @@ export function App() {
   const [books, setBooks] = useState<Book[]>([]);
   const [quotes] = useState(sampleQuotes);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   const [readerBook, setReaderBook] = useState<Book | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -330,6 +332,18 @@ export function App() {
           {currentView === 'collections' && (
             <CollectionsView
               onNavigate={setCurrentView}
+              onSelectCollection={(id) => {
+                setSelectedCollectionId(id);
+                setCurrentView('collection-detail');
+              }}
+            />
+          )}
+
+          {currentView === 'collection-detail' && selectedCollectionId && (
+            <CollectionDetailView
+              collectionId={selectedCollectionId}
+              onNavigate={setCurrentView}
+              onBack={() => setCurrentView('collections')}
             />
           )}
 

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Book, ViewMode } from '../types';
 import { BookDetailSkeleton } from '../components/Skeleton';
 import { useAIBookDetail } from '../hooks/useAI';
-import { BookOpen, Heart, Bookmark, Share2, Star, ArrowLeft, Play, Sparkles, MessageSquare, Send, RefreshCw } from 'lucide-react';
+import { useCollections } from '../hooks/useCollections';
+import { BookOpen, Heart, Bookmark, Share2, Star, ArrowLeft, Play, Sparkles, MessageSquare, Send, RefreshCw, FolderHeart, Check, X } from 'lucide-react';
 
 interface BookDetailViewProps {
   book: Book;
@@ -25,11 +26,16 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'comments' | 'ai-insights'>('overview');
   const [showTrailerModal, setShowTrailerModal] = useState(false);
+  const [showCollectionModal, setShowCollectionModal] = useState(false);
+  const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
+  const [addingToCollection, setAddingToCollection] = useState(false);
+  const [collectionError, setCollectionError] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
   const isUuidBook = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(book.id);
   const ai = useAIBookDetail(isUuidBook ? book.id : undefined);
+  const { collections, loading: collectionsLoading, addBook: addBookToCollection } = useCollections();
 
   if (isLoading) {
     return (
@@ -55,6 +61,23 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
     if (response) {
       setConversationId(response.conversationId);
       setChatMessages((messages) => [...messages, { role: 'assistant', content: response.response }]);
+    }
+  };
+
+  const handleAddToCollections = async () => {
+    if (selectedCollections.size === 0) return;
+    setAddingToCollection(true);
+    setCollectionError(null);
+    try {
+      for (const collectionId of selectedCollections) {
+        await addBookToCollection(collectionId, book.id);
+      }
+      setShowCollectionModal(false);
+      setSelectedCollections(new Set());
+    } catch (err: any) {
+      setCollectionError(err.message ?? 'Failed to add book to collection');
+    } finally {
+      setAddingToCollection(false);
     }
   };
 
@@ -182,6 +205,14 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
             >
               <Play className="w-4 h-4 fill-current text-[#A0522D]" />
               <span>Book Trailer</span>
+            </button>
+
+            <button
+              onClick={() => setShowCollectionModal(true)}
+              className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#FFFFFF] border border-[#E5E0D8] text-[#1D1D1D] font-bold text-sm hover:bg-[#EFE8DD] transition-all shadow-warm-sm"
+            >
+              <FolderHeart className="w-4 h-4 text-[#A0522D]" />
+              <span>Add to Collection</span>
             </button>
 
             <button
@@ -355,6 +386,95 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
             >
               Close Trailer
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add to Collection Modal */}
+      {showCollectionModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#FFFFFF] rounded-3xl p-6 max-w-md w-full border border-[#E5E0D8] shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-serif-title text-2xl font-bold text-[#1D1D1D]">Add to Collection</h3>
+              <button
+                onClick={() => {
+                  setShowCollectionModal(false);
+                  setSelectedCollections(new Set());
+                  setCollectionError(null);
+                }}
+                className="p-1.5 rounded-full text-[#777777] hover:bg-[#EFE8DD] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {collectionError && (
+              <div className="mb-4 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {collectionError}
+              </div>
+            )}
+
+            {collectionsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-10 bg-[#EFE8DD] rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : collections.length === 0 ? (
+              <div className="text-center py-8">
+                <FolderHeart className="w-8 h-8 text-[#E5E0D8] mx-auto mb-2" />
+                <p className="text-xs text-[#777777]">No collections yet. Create one from the Collections view.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-64 overflow-y-auto mb-6">
+                {collections.map((collection) => (
+                  <label
+                    key={collection.id}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-[#E5E0D8] hover:bg-[#F8F6F1] cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedCollections.has(collection.id)}
+                      onChange={(e) => {
+                        const newSelected = new Set(selectedCollections);
+                        if (e.target.checked) {
+                          newSelected.add(collection.id);
+                        } else {
+                          newSelected.delete(collection.id);
+                        }
+                        setSelectedCollections(newSelected);
+                      }}
+                      className="w-4 h-4 rounded cursor-pointer"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-xs text-[#1D1D1D]">{collection.name}</p>
+                      <p className="text-[10px] text-[#777777]">{collection.books?.length ?? 0} books</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowCollectionModal(false);
+                  setSelectedCollections(new Set());
+                  setCollectionError(null);
+                }}
+                className="px-4 py-2.5 rounded-full border border-[#E5E0D8] text-xs font-semibold text-[#1D1D1D] hover:bg-[#F8F6F1] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddToCollections}
+                disabled={addingToCollection || selectedCollections.size === 0}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#1D1D1D] text-[#F8F6F1] text-xs font-bold hover:bg-[#333333] disabled:opacity-50 transition-all"
+              >
+                <Check className="w-3.5 h-3.5" />
+                {addingToCollection ? 'Adding...' : 'Add'}
+              </button>
+            </div>
           </div>
         </div>
       )}

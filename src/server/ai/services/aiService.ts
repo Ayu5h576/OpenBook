@@ -10,7 +10,7 @@ import type { AIUsageLog } from '../../types/ai';
 export class AIService {
   private static instance: AIService;
   private client: GoogleGenAI | null = null;
-  private model = 'gemini-2.5-flash';
+  private model = 'gemini-2.0-flash';
 
   private constructor() {
     const apiKey = env.gemini.apiKey;

@@ -15,6 +15,7 @@ server.cjs
 .env.local
 .env.*.local
 !.env.example
+.claude/settings.local.json
 
 # Logs
 *.log

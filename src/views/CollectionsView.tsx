@@ -6,9 +6,10 @@ import { ApiCollection } from '../services/api';
 
 interface CollectionsViewProps {
   onNavigate: (view: ViewMode) => void;
+  onSelectCollection?: (collectionId: string) => void;
 }
 
-export const CollectionsView: React.FC<CollectionsViewProps> = ({ onNavigate }) => {
+export const CollectionsView: React.FC<CollectionsViewProps> = ({ onNavigate, onSelectCollection }) => {
   const { collections, loading, createCollection, deleteCollection } = useCollections();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
@@ -105,14 +106,20 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({ onNavigate }) 
       {!loading && collections.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {collections.map((col: ApiCollection) => (
-            <div key={col.id}
-              className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 shadow-warm-sm hover:shadow-warm-md transition-all flex flex-col justify-between">
+            <div
+              key={col.id}
+              onClick={() => onSelectCollection?.(col.id)}
+              className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 shadow-warm-sm hover:shadow-warm-md transition-all flex flex-col justify-between cursor-pointer hover:border-[#A0522D]">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#EFE8DD] text-[#A0522D]">
                     {col.books.length} Volumes
                   </span>
-                  <button onClick={() => deleteCollection(col.id)}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteCollection(col.id);
+                    }}
                     className="p-1.5 rounded-full text-[#C53030] hover:bg-[#FEE5E5] transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
