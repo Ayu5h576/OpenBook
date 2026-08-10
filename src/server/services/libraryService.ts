@@ -1,6 +1,7 @@
 import { LibraryStatus } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { ConflictError, NotFoundError, mapPrismaError } from '../utils/errors';
+import { recordActivity } from './socialService';
 import type { AddToLibraryInput, UpdateLibraryEntryInput, LogSessionInput } from '../validators/books';
 
 export class LibraryService {
@@ -50,11 +51,22 @@ export class LibraryService {
       data.lastReadAt = new Date();
     }
 
-    return prisma.libraryEntry.update({
+    const updated = await prisma.libraryEntry.update({
       where: { id: entryId },
       data,
       include: { book: true },
     });
+
+    // Surface finishing a book to the community feed. Only fires on the
+    // transition into COMPLETED so re-saving a finished book stays quiet.
+    if (input.status === 'COMPLETED' && entry.status !== 'COMPLETED') {
+      await recordActivity(userId, 'FINISHED_BOOK', {
+        bookId: updated.bookId,
+        metadata: { bookTitle: updated.book.title, authors: updated.book.authors },
+      });
+    }
+
+    return updated;
   }
 
   async removeFromLibrary(userId: string, entryId: string) {

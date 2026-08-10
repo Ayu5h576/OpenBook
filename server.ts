@@ -14,6 +14,9 @@ import reviewRoutes from './src/server/routes/reviewRoutes';
 import wishlistRoutes from './src/server/routes/wishlistRoutes';
 import analyticsRoutes from './src/server/routes/analyticsRoutes';
 import aiRoutes from './src/server/routes/aiRoutes';
+import socialRoutes from './src/server/routes/socialRoutes';
+import bookClubRoutes from './src/server/routes/bookClubRoutes';
+import achievementRoutes from './src/server/routes/achievementRoutes';
 import { errorHandlerMiddleware } from './src/server/middlewares/errorHandler';
 
 // Validate environment on startup
@@ -65,6 +68,11 @@ app.use('/api/analytics', analyticsRoutes);
 
 // Phase 4: AI Reading Companion
 app.use('/api/ai', aiRoutes);
+
+// Phase 5: Social & Community
+app.use('/api/social', socialRoutes);
+app.use('/api/clubs', bookClubRoutes);
+app.use('/api/achievements', achievementRoutes);
 
 // Legacy AI endpoints (deprecated - kept for backward compatibility)
 app.post('/api/ai/analyze-legacy', async (req, res) => {

@@ -24,6 +24,24 @@ enum WishlistPriority {
   LOW
 }
 
+enum ClubRole {
+  OWNER
+  MODERATOR
+  MEMBER
+}
+
+enum ActivityType {
+  FINISHED_BOOK
+  STARTED_BOOK
+  ADDED_TO_LIBRARY
+  WROTE_REVIEW
+  FOLLOWED_USER
+  CREATED_CLUB
+  JOINED_CLUB
+  POSTED_DISCUSSION
+  UNLOCKED_ACHIEVEMENT
+}
+
 // ─── Auth Models ──────────────────────────────────────────────────────────────
 
 model User {
@@ -41,6 +59,16 @@ model User {
   reviews       Review[]
   quotes        UserQuote[]
   readingGoals  ReadingGoal[]
+
+  // Phase 5: Social & Community
+  following          Follow[]            @relation("follower")
+  followers          Follow[]            @relation("following")
+  activities         Activity[]
+  ownedClubs         BookClub[]
+  clubMemberships    BookClubMember[]
+  discussions        Discussion[]
+  discussionComments DiscussionComment[]
+  achievements       UserAchievement[]
 
   @@map("users")
 }
@@ -99,6 +127,10 @@ model Book {
   collectionBooks CollectionBook[]
   reviews         Review[]
   quotes          UserQuote[]
+
+  // Phase 5: Social & Community
+  bookClubs       BookClub[]
+  activities      Activity[]
 
   @@index([title])
   @@index([authors])
@@ -280,4 +312,123 @@ model ReadingGoal {
   @@unique([userId, year])
   @@index([userId])
   @@map("reading_goals")
+}
+
+// ─── Phase 5: Social Graph ──────────────────────────────────────────────────────
+
+model Follow {
+  id          String   @id @default(uuid()) @db.Uuid
+  followerId  String   @map("follower_id") @db.Uuid
+  follower    User     @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String   @map("following_id") @db.Uuid
+  following   User     @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("follows")
+}
+
+// ─── Phase 5: Activity Feed ─────────────────────────────────────────────────────
+
+model Activity {
+  id           String       @id @default(uuid()) @db.Uuid
+  userId       String       @map("user_id") @db.Uuid
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         ActivityType
+  bookId       String?      @map("book_id") @db.Uuid
+  book         Book?        @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  // Denormalized display payload (usernames, titles, club names) so the feed
+  // renders without extra joins and survives deletion of the referenced entity.
+  metadata     Json?
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt])
+  @@map("activities")
+}
+
+// ─── Phase 5: Book Clubs ────────────────────────────────────────────────────────
+
+model BookClub {
+  id            String           @id @default(uuid()) @db.Uuid
+  ownerId       String           @map("owner_id") @db.Uuid
+  owner         User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  coverImage    String?          @map("cover_image")
+  currentBookId String?          @map("current_book_id") @db.Uuid
+  currentBook   Book?            @relation(fields: [currentBookId], references: [id], onDelete: SetNull)
+  isPrivate     Boolean          @default(false) @map("is_private")
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  members     BookClubMember[]
+  discussions Discussion[]
+
+  @@index([ownerId])
+  @@map("book_clubs")
+}
+
+model BookClubMember {
+  id       String   @id @default(uuid()) @db.Uuid
+  clubId   String   @map("club_id") @db.Uuid
+  club     BookClub @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  userId   String   @map("user_id") @db.Uuid
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     ClubRole @default(MEMBER)
+  joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz(6)
+
+  @@unique([clubId, userId])
+  @@index([clubId])
+  @@index([userId])
+  @@map("book_club_members")
+}
+
+// ─── Phase 5: Discussions & Comments ────────────────────────────────────────────
+
+model Discussion {
+  id        String   @id @default(uuid()) @db.Uuid
+  clubId    String   @map("club_id") @db.Uuid
+  club      BookClub @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  comments DiscussionComment[]
+
+  @@index([clubId, createdAt])
+  @@map("discussions")
+}
+
+model DiscussionComment {
+  id           String     @id @default(uuid()) @db.Uuid
+  discussionId String     @map("discussion_id") @db.Uuid
+  discussion   Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  userId       String     @map("user_id") @db.Uuid
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body         String     @db.Text
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([discussionId, createdAt])
+  @@map("discussion_comments")
+}
+
+// ─── Phase 5: Achievements ──────────────────────────────────────────────────────
+
+// Achievement definitions live in code (achievementService catalog); only a
+// user's unlocks are persisted so the unlock date stays stable once earned.
+model UserAchievement {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementKey String   @map("achievement_key")
+  unlockedAt     DateTime @default(now()) @map("unlocked_at") @db.Timestamptz(6)
+
+  @@unique([userId, achievementKey])
+  @@index([userId])
+  @@map("user_achievements")
 }

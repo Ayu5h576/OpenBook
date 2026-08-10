@@ -1,8 +1,8 @@
 # OpenBook - Project Progress
 
-**Last Updated**: August 8, 2026  
-**Project Phase**: Foundation Complete -> Authentication Complete -> DB Migration Complete -> Book Management Complete -> AI Reading Companion Complete -> Book Catalog Integration Complete  
-**Overall Progress**: ~82% Complete (Phases 1-4 complete + real book catalog integration, Phases 5-6 upcoming)
+**Last Updated**: August 10, 2026  
+**Project Phase**: Foundation Complete -> Authentication Complete -> DB Migration Complete -> Book Management Complete -> AI Reading Companion Complete -> Book Catalog Integration Complete -> Social & Community Complete  
+**Overall Progress**: ~90% Complete (Phases 1-5 complete, Phase 6 deployment/scaling upcoming)
 
 ---
 
@@ -20,7 +20,7 @@
 | AI Features | Complete | Gemini reading companion using authenticated user data |
 | Book Catalog | Complete | Google Books API integration, real-time search, import to library |
 | Session Persistence | Complete | Login session survives page refresh via refresh token rotation |
-| Community | Not Started | Phase 5 |
+| Community | Complete | Phase 5 - followers, book clubs, discussions, activity feed, achievements |
 | Deployment | Not Started | Phase 6 |
 
 ---
@@ -102,6 +102,37 @@
 - `npm run lint` passes
 - `npm run build` passes
 - No package-level test script exists yet; automated tests remain a Phase 6 task
+
+### Phase 5: Social & Community
+
+#### Data Model (Prisma migration `phase5_social_community`)
+
+- `Follow`: directed follow graph with a unique `(followerId, followingId)` pair and self-relations on `User`
+- `Activity`: denormalized feed events (`ActivityType` enum, optional `bookId`, `metadata` jsonb), indexed on `(userId, createdAt)`
+- `BookClub` / `BookClubMember`: clubs with an owner, optional current book, privacy flag, and `ClubRole` membership (OWNER/MODERATOR/MEMBER)
+- `Discussion` / `DiscussionComment`: threaded club discussions
+- `UserAchievement`: persisted first-time unlocks, unique on `(userId, achievementKey)`
+
+#### Backend Services & API
+
+- `socialService`: follow/unfollow, followers/following lists, social stats, cursor-paginated activity feed (`following` / `me` / `global` scopes); exports a best-effort `recordActivity()` helper used across the app
+- `bookClubService`: list/get/create/update/delete clubs, join/leave with role enforcement, discussions and comments with visibility checks
+- `achievementService`: 13-achievement catalog computed from live reading/social data (books, pages, hours, genres, streaks, reviews, follows, clubs); persists unlocks and pushes them to the feed on read
+- Activity hooks wired into existing flows: finishing a book (`libraryService`), writing a public review (`reviewService`), following, club create/join, posting discussions, unlocking achievements
+- Zod validators in `src/server/validators/social.ts`
+- Routes: `/api/social`, `/api/clubs`, `/api/achievements` (all auth-protected)
+
+#### Frontend Integration
+
+- `SocialApiService`, `BookClubApiService`, `AchievementApiService` typed clients in `src/services/api.ts`
+- Hooks: `useBookClubs`, `useActivityFeed` (scoped + paginated), `useAchievements`
+- `CommunityView`: live book clubs with join/leave/create (modal), plus a scoped activity feed (Following / Everyone / You) with load-more
+- `AchievementsView`: live achievements with progress bars, unlock dates, and completion ring; string icon names mapped to lucide-react components
+
+#### Verification
+
+- `npm run lint` passes
+- `npm run build` passes
 
 ---
 
@@ -191,13 +222,13 @@ GOOGLE_BOOKS_API_KEY=<get from Google Cloud Console, enables real book catalog>
 
 ## Upcoming Work
 
-### Phase 5: Social & Community
+### Phase 5: Social & Community — Complete
 
-- [ ] User profiles and followers
-- [ ] Comments and discussions
-- [ ] Book clubs
-- [ ] Activity feed
-- [ ] Achievements and gamification
+- [x] User profiles and followers
+- [x] Comments and discussions
+- [x] Book clubs
+- [x] Activity feed
+- [x] Achievements and gamification
 
 ### Phase 6: Performance & Launch
 
@@ -213,7 +244,8 @@ GOOGLE_BOOKS_API_KEY=<get from Google Cloud Console, enables real book catalog>
 
 | Commit | Message | Date |
 |--------|---------|------|
-| [TODAY] | feat(catalog): integrate Google Books API + fix session persistence | Aug 8, 2026 |
+| [TODAY] | feat(phase5): social & community - clubs, feed, achievements | Aug 10, 2026 |
+| [prev] | feat(catalog): integrate Google Books API + fix session persistence | Aug 8, 2026 |
 | a08b659 | feat(phase3): complete book management system with live data | Aug 7, 2026 |
 | 08e13df | feat(auth): real-time signup validation + Prisma migration | Aug 6, 2026 |
 | 25cbe77 | your commit message | Aug 6, 2026 |
@@ -253,4 +285,4 @@ npm run dev
 
 ---
 
-**Next Action**: Phase 5 - social and community features (followers, book clubs, activity feed) or Phase 6 - deployment and scaling
+**Next Action**: Phase 6 - performance & launch (Redis caching, distributed rate limiting, test suite, CI/CD, production deployment, security audit)

@@ -700,4 +700,205 @@ export const AIApiService = {
   },
 };
 
+// ─── Phase 5: Social & Community ────────────────────────────────────────────────
+
+export interface UserSummary {
+  id: string;
+  username: string;
+  avatar?: string | null;
+  bio?: string | null;
+}
+
+export type ActivityType =
+  | 'FINISHED_BOOK'
+  | 'STARTED_BOOK'
+  | 'ADDED_TO_LIBRARY'
+  | 'WROTE_REVIEW'
+  | 'FOLLOWED_USER'
+  | 'CREATED_CLUB'
+  | 'JOINED_CLUB'
+  | 'POSTED_DISCUSSION'
+  | 'UNLOCKED_ACHIEVEMENT';
+
+export interface ActivityItem {
+  id: string;
+  type: ActivityType;
+  actor: { id: string; username: string; avatar?: string | null };
+  book?: { id: string; title: string; authors: string[]; coverImage?: string | null } | null;
+  metadata: Record<string, any>;
+  createdAt: string;
+}
+
+export interface ActivityFeed {
+  activities: ActivityItem[];
+  nextCursor: string | null;
+}
+
+export const SocialApiService = {
+  getFeed(scope: 'following' | 'me' | 'global' = 'following', limit = 20, cursor?: string) {
+    const params = new URLSearchParams({ scope, limit: String(limit) });
+    if (cursor) params.set('cursor', cursor);
+    return apiClient.get<ActivityFeed>(`/api/social/feed?${params}`);
+  },
+
+  getStats(userId?: string) {
+    const path = userId ? `/api/social/${userId}/stats` : '/api/social/stats';
+    return apiClient.get<{ stats: { followers: number; following: number } }>(path);
+  },
+
+  getFollowers(userId?: string) {
+    const path = userId ? `/api/social/${userId}/followers` : '/api/social/followers';
+    return apiClient.get<{ users: UserSummary[] }>(path);
+  },
+
+  getFollowing(userId?: string) {
+    const path = userId ? `/api/social/${userId}/following` : '/api/social/following';
+    return apiClient.get<{ users: UserSummary[] }>(path);
+  },
+
+  follow(userId: string) {
+    return apiClient.post<{ following: boolean }>(`/api/social/${userId}/follow`, {});
+  },
+
+  unfollow(userId: string) {
+    return apiClient.delete<{ following: boolean }>(`/api/social/${userId}/follow`);
+  },
+};
+
+// ─── Book Clubs ─────────────────────────────────────────────────────────────────
+
+export type ClubRole = 'OWNER' | 'MODERATOR' | 'MEMBER';
+
+export interface ClubBook {
+  id: string;
+  title: string;
+  authors: string[];
+  coverImage?: string | null;
+}
+
+export interface BookClub {
+  id: string;
+  name: string;
+  description?: string | null;
+  coverImage?: string | null;
+  isPrivate: boolean;
+  owner: { id: string; username: string; avatar?: string | null };
+  currentBook?: ClubBook | null;
+  memberCount: number;
+  discussionCount: number;
+  viewerRole: ClubRole | null;
+  isMember: boolean;
+  createdAt: string;
+}
+
+export interface ClubMember {
+  id: string;
+  username: string;
+  avatar?: string | null;
+  role: ClubRole;
+  joinedAt: string;
+}
+
+export interface BookClubDetail extends BookClub {
+  members: ClubMember[];
+}
+
+export interface Discussion {
+  id: string;
+  clubId: string;
+  title: string;
+  body: string;
+  author: { id: string; username: string; avatar?: string | null };
+  commentCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DiscussionComment {
+  id: string;
+  body: string;
+  author: { id: string; username: string; avatar?: string | null };
+  createdAt: string;
+}
+
+export interface DiscussionDetail extends Discussion {
+  comments: DiscussionComment[];
+}
+
+export const BookClubApiService = {
+  getClubs() {
+    return apiClient.get<{ clubs: BookClub[] }>('/api/clubs');
+  },
+
+  getClub(clubId: string) {
+    return apiClient.get<{ club: BookClubDetail }>(`/api/clubs/${clubId}`);
+  },
+
+  createClub(data: { name: string; description?: string; coverImage?: string; currentBookId?: string; isPrivate?: boolean }) {
+    return apiClient.post<{ club: BookClub }>('/api/clubs', data);
+  },
+
+  updateClub(clubId: string, data: { name?: string; description?: string; coverImage?: string; currentBookId?: string | null; isPrivate?: boolean }) {
+    return apiClient.put<{ club: BookClub }>(`/api/clubs/${clubId}`, data);
+  },
+
+  deleteClub(clubId: string) {
+    return apiClient.delete(`/api/clubs/${clubId}`);
+  },
+
+  joinClub(clubId: string) {
+    return apiClient.post<{ club: BookClubDetail }>(`/api/clubs/${clubId}/join`, {});
+  },
+
+  leaveClub(clubId: string) {
+    return apiClient.delete<{ left: boolean }>(`/api/clubs/${clubId}/leave`);
+  },
+
+  getDiscussions(clubId: string) {
+    return apiClient.get<{ discussions: Discussion[] }>(`/api/clubs/${clubId}/discussions`);
+  },
+
+  createDiscussion(clubId: string, data: { title: string; body: string }) {
+    return apiClient.post<{ discussion: Discussion }>(`/api/clubs/${clubId}/discussions`, data);
+  },
+
+  getDiscussion(clubId: string, discussionId: string) {
+    return apiClient.get<{ discussion: DiscussionDetail }>(`/api/clubs/${clubId}/discussions/${discussionId}`);
+  },
+
+  addComment(clubId: string, discussionId: string, body: string) {
+    return apiClient.post<{ comment: DiscussionComment }>(
+      `/api/clubs/${clubId}/discussions/${discussionId}/comments`,
+      { body }
+    );
+  },
+};
+
+// ─── Achievements ───────────────────────────────────────────────────────────────
+
+export interface Achievement {
+  key: string;
+  title: string;
+  description: string;
+  icon: string;
+  category: 'reading' | 'consistency' | 'social' | 'collection';
+  unit: string;
+  threshold: number;
+  progress: number;
+  progressPercent: number;
+  unlocked: boolean;
+  unlockedAt: string | null;
+}
+
+export interface AchievementsResponse {
+  achievements: Achievement[];
+  summary: { unlocked: number; total: number };
+}
+
+export const AchievementApiService = {
+  getAchievements() {
+    return apiClient.get<AchievementsResponse>('/api/achievements');
+  },
+};
+
 export default apiClient;

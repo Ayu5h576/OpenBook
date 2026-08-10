@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma';
 import { NotFoundError, mapPrismaError } from '../utils/errors';
+import { recordActivity } from './socialService';
 import type { UpsertReviewInput } from '../validators/books';
 
 export class ReviewService {
@@ -17,11 +18,35 @@ export class ReviewService {
 
   async upsertReview(userId: string, bookId: string, input: UpsertReviewInput) {
     try {
-      return await prisma.review.upsert({
+      // Detect first-time creation before upserting so the feed event fires once
+      // per review, not on every subsequent edit.
+      const existing = await prisma.review.findUnique({
+        where: { userId_bookId: { userId, bookId } },
+        select: { id: true },
+      });
+
+      const review = await prisma.review.upsert({
         where: { userId_bookId: { userId, bookId } },
         create: { userId, bookId, ...input } as any,
         update: input,
       });
+
+      if (!existing && !input.isPrivate) {
+        const book = await prisma.book.findUnique({
+          where: { id: bookId },
+          select: { title: true, authors: true },
+        });
+        await recordActivity(userId, 'WROTE_REVIEW', {
+          bookId,
+          metadata: {
+            bookTitle: book?.title ?? 'a book',
+            authors: book?.authors ?? [],
+            rating: Number(input.rating),
+          },
+        });
+      }
+
+      return review;
     } catch (e) {
       throw mapPrismaError(e);
     }

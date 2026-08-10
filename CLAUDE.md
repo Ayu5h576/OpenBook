@@ -2,7 +2,7 @@
 
 **Project**: OpenBook - AI-powered reading platform with immersive 3D visualizations and intelligent recommendations
 **Tech Stack**: React 19 + Express + Prisma + PostgreSQL + TypeScript 5.8 + Vite 6
-**Current Phase**: Phase 3 - Book Management System with Live Data
+**Current Phase**: Phase 5 Complete - Social & Community (followers, book clubs, discussions, activity feed, achievements)
 
 ## Architecture Overview
 
@@ -22,10 +22,13 @@
 - **Routes**: Modular route files in `src/server/routes/`
   - `authRoutes`: User signup/login/token refresh
   - `bookRoutes`, `libraryRoutes`, `collectionRoutes`, `reviewRoutes`, `analyticsRoutes`, `wishlistRoutes`
+  - `aiRoutes`: Gemini reading companion endpoints
+  - `socialRoutes`, `bookClubRoutes`, `achievementRoutes`: Phase 5 social & community
 - **Controllers**: Business logic in `src/server/controllers/`
 - **Services**: Data layer in `src/server/services/`
   - `authService`: Auth logic, password hashing (bcrypt), JWT tokens (jose)
   - `libraryService`, `bookService`, `profileService`, `collectionService`, etc.
+  - `socialService` (follow graph + activity feed + `recordActivity` helper), `bookClubService`, `achievementService`
 - **Middleware**: Auth verification, error handling
 - **Validators**: Zod schemas for request validation
 
@@ -40,6 +43,9 @@
 6. **Reviews**: `Review` (per book, unique per user)
 7. **Quotes**: `UserQuote` (tracked per book)
 8. **Goals**: `ReadingGoal` (yearly targets)
+9. **Social** (Phase 5): `Follow` (directed follow graph), `Activity` (feed events, `ActivityType` enum + `metadata` jsonb)
+10. **Book Clubs** (Phase 5): `BookClub`, `BookClubMember` (`ClubRole`: OWNER/MODERATOR/MEMBER), `Discussion`, `DiscussionComment`
+11. **Achievements** (Phase 5): `UserAchievement` (persisted unlocks; catalog defined in code)
 
 **Key Patterns**:
 - UUIDs as primary keys (`@db.Uuid`)
@@ -74,11 +80,11 @@ Optional:
 
 ## Recent Completed Work (Latest Commits)
 
-1. **Phase 3 Complete**: Book management system with live data (a08b659)
-2. **Auth Validation**: Real-time signup validation + Prisma migration (08e13df)
-3. **Auth UI Integration**: AuthContext wiring with UI (d80cc84)
-4. **Dev Setup**: Added nodemon auto-restart, fixed .env.example security (ca97dd5)
-5. **Auth System**: Complete Supabase integration (fd7df2c)
+1. **Phase 5 Complete**: Social & community - book clubs, activity feed, achievements (latest)
+2. **Phase 4.5**: Google Books catalog integration + session persistence fix
+3. **Phase 4 Complete**: AI reading companion (Gemini) using authenticated user data
+4. **Phase 3 Complete**: Book management system with live data (a08b659)
+5. **Auth System**: Complete auth (JWT + refresh rotation), validation, AuthContext wiring
 
 ### Key Auth Implementation Details
 - JWT tokens (access + refresh) via `jose` library
@@ -94,32 +100,32 @@ Optional:
 - **Types**: Centralized in `src/types.ts` and `src/server/types/index.ts`
 - **Mock Data**: `src/data/mockData.ts` (development placeholder)
 - **API Calls**: Centralized in `src/services/api.ts` with auth token attachment
-- **Hooks**: Custom hooks for data fetching (useLibrary, useBookSearch, useCollections, useAnalytics, useWishlist)
+- **Hooks**: Custom hooks for data fetching (useLibrary, useBookSearch, useCollections, useAnalytics, useWishlist, useBookClubs, useActivityFeed, useAchievements)
 
 ## Next Steps & Opportunities
 
 ### Immediate Priorities
-- [ ] Book catalog integration (Google Books API or similar)
 - [ ] Reading room (distraction-free reader) implementation
+- [ ] Club detail UI (discussions + comments threads) — backend ready at `/api/clubs/:id/discussions`
+- [ ] User profile pages with follow buttons + follower/following lists (backend ready at `/api/social`)
 - [ ] Live data streaming for analytics dashboard
-- [ ] Collection management UI completion
 
 ### Technical Debt / Blockers
 - Mock data needs replacement with real API calls
 - PDF reader not yet implemented (reading room)
 - Audio synthesis utility exists but not integrated with UI
-- Community features (followers, book clubs) are views only, no backend
+- Club discussions/comments have backend + API client but no dedicated view yet
 
 ### Performance Considerations
 - 3D visualizations may need optimization for large libraries
-- Pagination needed for book listings (library entries, collections)
+- Pagination needed for book listings (library entries, collections); activity feed is already cursor-paginated
 - Consider caching for book metadata and recommendations
 
 ## Project Goals (From README Roadmap)
 
-**Phase 1** (Current): Core infrastructure → 95% complete
-**Phase 2**: Book management & reading features
-**Phase 3**: AI & intelligence layer
-**Phase 4**: Social & community
-**Phase 5**: Mobile app
-**Phase 6**: Advanced features (search, themes, monetization)
+**Phase 1**: Core infrastructure → Complete
+**Phase 2**: Authentication & user system → Complete
+**Phase 3**: Book management & reading features → Complete
+**Phase 4**: AI & intelligence layer (+ Google Books catalog) → Complete
+**Phase 5**: Social & community → Complete
+**Phase 6**: Performance & launch (caching, tests, CI/CD, deployment) → Upcoming
