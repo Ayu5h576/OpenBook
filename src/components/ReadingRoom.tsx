@@ -20,6 +20,13 @@ export const ReadingRoom: React.FC<ReadingRoomProps> = ({ books, onOpenReader })
   const [isLampOn, setIsLampOn] = useState<boolean>(true);
   const [activeBook, setActiveBook] = useState<Book>(books[0] || books[1]);
 
+  // Keep a valid active book once the library loads (books arrive async after mount).
+  useEffect(() => {
+    if (!activeBook && books.length > 0) {
+      setActiveBook(books[0]);
+    }
+  }, [books, activeBook]);
+
   useEffect(() => {
     ambientEngine.setSound(settings.ambientSound, 0.5);
     return () => {
@@ -46,6 +53,27 @@ export const ReadingRoom: React.FC<ReadingRoomProps> = ({ books, onOpenReader })
         return 'bg-[#28231D] text-[#F8F6F1]';
     }
   };
+
+  // No book to showcase yet — render a calm empty state instead of crashing on
+  // activeBook.* dereferences (an empty library reaches here with no active book).
+  if (!activeBook) {
+    return (
+      <div className={`w-full min-h-[85vh] rounded-3xl p-6 md:p-10 transition-colors duration-700 relative overflow-hidden flex flex-col items-center justify-center text-center ${getLightingClass()}`}>
+        {isLampOn && (
+          <div className="absolute -top-20 right-1/4 w-[500px] h-[600px] bg-gradient-to-b from-[#FFF2A3]/25 via-[#FFF2A3]/10 to-transparent blur-2xl rounded-full pointer-events-none transform -rotate-12" />
+        )}
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-[#A0522D] text-white flex items-center justify-center">
+            <Coffee className="w-7 h-7" />
+          </div>
+          <h2 className="font-serif-title text-3xl md:text-4xl font-bold text-white">Your Reading Haven awaits</h2>
+          <p className="text-sm text-white/70 max-w-md">
+            Add a book to your library to settle into the reading room with ambient sound and cozy lighting.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`w-full min-h-[85vh] rounded-3xl p-6 md:p-10 transition-colors duration-700 relative overflow-hidden flex flex-col justify-between ${getLightingClass()}`}>

@@ -4,7 +4,7 @@ import { BookOpen, Sparkles, ArrowRight, Star, ShieldCheck, Heart, Coffee, Libra
 
 interface LandingViewProps {
   onNavigate: (view: ViewMode) => void;
-  featuredBook: Book;
+  featuredBook?: Book;
   trendingBooks: Book[];
 }
 
@@ -13,6 +13,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
   featuredBook,
   trendingBooks,
 }) => {
+  // The featured spotlight dereferences featuredBook.* directly; guard against an
+  // empty library (books[0] === undefined) so the landing page never crashes.
+  if (!featuredBook) return null;
+
   return (
     <div className="w-full bg-[#F8F6F1] text-[#1D1D1D] min-h-screen">
       

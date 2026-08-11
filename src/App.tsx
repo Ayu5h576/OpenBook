@@ -163,7 +163,7 @@ export function App() {
     setBooks((prev) =>
       prev.map((b) =>
         b.id === bookId
-          ? { ...b, status: b.status === 'wishlist' ? 'unread' : 'wishlist' }
+          ? { ...b, status: b.status === 'wishlist' ? 'owned' : 'wishlist' }
           : b
       )
     );
