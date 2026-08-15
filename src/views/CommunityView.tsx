@@ -5,7 +5,10 @@ import {
 } from 'lucide-react';
 import { useBookClubs } from '../hooks/useBookClubs';
 import { useActivityFeed, FeedScope } from '../hooks/useActivityFeed';
-import type { ActivityItem, ActivityType } from '../services/api';
+import type { ActivityItem, ActivityType, UserSummary } from '../services/api';
+import { ClubCardSkeleton, ActivityItemSkeleton } from '../components/Skeleton';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorBanner } from '../components/ErrorBanner';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -34,8 +37,15 @@ const ACTIVITY_ICON: Record<ActivityType, React.ComponentType<{ className?: stri
   UNLOCKED_ACHIEVEMENT: Award,
 };
 
-function activityText(a: ActivityItem): React.ReactNode {
-  const who = <span className="font-semibold text-[#1D1D1D]">{a.actor.username}</span>;
+function activityText(a: ActivityItem, onOpenProfile: (u: UserSummary) => void): React.ReactNode {
+  const who = (
+    <button
+      onClick={() => onOpenProfile(a.actor)}
+      className="font-semibold text-[var(--ink)] hover:text-[#A0522D] transition-colors"
+    >
+      {a.actor.username}
+    </button>
+  );
   const book = a.book ? <span className="italic">{a.book.title}</span> : null;
   const meta = a.metadata || {};
   switch (a.type) {
@@ -57,15 +67,15 @@ function activityText(a: ActivityItem): React.ReactNode {
         </>
       );
     case 'FOLLOWED_USER':
-      return <>{who} followed {meta.targetUsername ? <span className="font-semibold text-[#1D1D1D]">{meta.targetUsername}</span> : 'a new reader'}</>;
+      return <>{who} followed {meta.targetUsername ? <span className="font-semibold text-[var(--ink)]">{meta.targetUsername}</span> : 'a new reader'}</>;
     case 'CREATED_CLUB':
-      return <>{who} created the club {meta.clubName ? <span className="font-semibold text-[#1D1D1D]">{meta.clubName}</span> : ''}</>;
+      return <>{who} created the club {meta.clubName ? <span className="font-semibold text-[var(--ink)]">{meta.clubName}</span> : ''}</>;
     case 'JOINED_CLUB':
-      return <>{who} joined {meta.clubName ? <span className="font-semibold text-[#1D1D1D]">{meta.clubName}</span> : 'a book club'}</>;
+      return <>{who} joined {meta.clubName ? <span className="font-semibold text-[var(--ink)]">{meta.clubName}</span> : 'a book club'}</>;
     case 'POSTED_DISCUSSION':
       return <>{who} started a discussion{meta.discussionTitle ? <>: <span className="italic">{meta.discussionTitle}</span></> : ''}</>;
     case 'UNLOCKED_ACHIEVEMENT':
-      return <>{who} unlocked {meta.achievementTitle ? <span className="font-semibold text-[#1D1D1D]">{meta.achievementTitle}</span> : 'an achievement'}</>;
+      return <>{who} unlocked {meta.achievementTitle ? <span className="font-semibold text-[var(--ink)]">{meta.achievementTitle}</span> : 'an achievement'}</>;
     default:
       return <>{who} did something noteworthy</>;
   }
@@ -105,39 +115,39 @@ const CreateClubModal: React.FC<{
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-md w-full max-w-lg"
+        className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md w-full max-w-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="font-serif-title text-2xl font-bold text-[#1D1D1D]">Start a Book Club</h2>
-          <button onClick={onClose} className="text-[#777777] hover:text-[#1D1D1D]">
+          <h2 className="font-serif-title text-2xl font-bold text-[var(--ink)]">Start a Book Club</h2>
+          <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--ink)]">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[#1D1D1D] mb-1.5">Club Name</label>
+            <label className="block text-xs font-semibold text-[var(--ink)] mb-1.5">Club Name</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Nordic Solitude & Timber Architecture"
-              className="w-full px-4 py-2.5 rounded-2xl border border-[#E5E0D8] bg-[#F8F6F1] text-sm text-[#1D1D1D] focus:outline-none focus:border-[#A0522D]"
+              className="w-full px-4 py-2.5 rounded-2xl border border-[var(--border-light)] bg-[var(--bg-ivory)] text-sm text-[var(--ink)] focus:outline-none focus:border-[#A0522D]"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-[#1D1D1D] mb-1.5">Description</label>
+            <label className="block text-xs font-semibold text-[var(--ink)] mb-1.5">Description</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               placeholder="What will your club read and discuss?"
-              className="w-full px-4 py-2.5 rounded-2xl border border-[#E5E0D8] bg-[#F8F6F1] text-sm text-[#1D1D1D] focus:outline-none focus:border-[#A0522D] resize-none"
+              className="w-full px-4 py-2.5 rounded-2xl border border-[var(--border-light)] bg-[var(--bg-ivory)] text-sm text-[var(--ink)] focus:outline-none focus:border-[#A0522D] resize-none"
             />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} className="accent-[#A0522D]" />
-            <span className="text-xs text-[#777777] flex items-center gap-1">
+            <span className="text-xs text-[var(--muted)] flex items-center gap-1">
               <Lock className="w-3.5 h-3.5" /> Private club (invite / join only, hidden from discovery)
             </span>
           </label>
@@ -148,12 +158,12 @@ const CreateClubModal: React.FC<{
             <button
               onClick={submit}
               disabled={submitting}
-              className="flex-1 px-4 py-2.5 rounded-full bg-[#1D1D1D] text-[#F8F6F1] font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+              className="flex-1 px-4 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
             >
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               Create Club
             </button>
-            <button onClick={onClose} className="px-4 py-2.5 rounded-full border border-[#E5E0D8] text-[#777777] font-semibold text-sm">
+            <button onClick={onClose} className="px-4 py-2.5 rounded-full border border-[var(--border-light)] text-[var(--muted)] font-semibold text-sm">
               Cancel
             </button>
           </div>
@@ -165,7 +175,12 @@ const CreateClubModal: React.FC<{
 
 // ─── Main View ───────────────────────────────────────────────────────────────
 
-export const CommunityView: React.FC = () => {
+interface CommunityViewProps {
+  onOpenClub: (id: string) => void;
+  onOpenProfile: (u: UserSummary) => void;
+}
+
+export const CommunityView: React.FC<CommunityViewProps> = ({ onOpenClub, onOpenProfile }) => {
   const { clubs, loading: clubsLoading, error: clubsError, createClub, joinClub, leaveClub } = useBookClubs();
   const [scope, setScope] = useState<FeedScope>('following');
   const { activities, loading: feedLoading, hasMore, loadMore, loadingMore } = useActivityFeed(scope);
@@ -191,18 +206,18 @@ export const CommunityView: React.FC = () => {
     <div className="space-y-8 pb-12">
 
       {/* Header */}
-      <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+      <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFE8DD] text-[#1D1D1D] text-xs font-semibold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-2">
             <Users className="w-3.5 h-3.5 text-[#A0522D]" />
             <span>Bibliophile Network</span>
           </div>
-          <h1 className="font-serif-title text-4xl font-bold text-[#1D1D1D]">Reader Community</h1>
-          <p className="text-xs text-[#777777] mt-1">Join reading clubs, engage in thoughtful chapter discussions, and follow fellow readers.</p>
+          <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">Reader Community</h1>
+          <p className="text-xs text-[var(--muted)] mt-1">Join reading clubs, engage in thoughtful chapter discussions, and follow fellow readers.</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="px-5 py-2.5 rounded-full bg-[#1D1D1D] text-[#F8F6F1] font-bold text-sm flex items-center gap-2 shrink-0"
+          className="px-5 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-sm flex items-center gap-2 shrink-0"
         >
           <Plus className="w-4 h-4" /> New Club
         </button>
@@ -214,44 +229,46 @@ export const CommunityView: React.FC = () => {
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-[#A0522D]" />
-            <h2 className="font-serif-title text-xl font-bold text-[#1D1D1D]">Book Clubs</h2>
+            <h2 className="font-serif-title text-xl font-bold text-[var(--ink)]">Book Clubs</h2>
           </div>
 
           {clubsLoading ? (
-            <div className="flex items-center justify-center py-16 text-[#777777]">
-              <Loader2 className="w-6 h-6 animate-spin" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {Array.from({ length: 4 }).map((_, i) => <ClubCardSkeleton key={i} />)}
             </div>
           ) : clubsError ? (
-            <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-8 text-center text-sm text-[#B23B3B]">{clubsError}</div>
+            <ErrorBanner message={clubsError} />
           ) : clubs.length === 0 ? (
-            <div className="bg-[#FFFFFF] border border-dashed border-[#E5E0D8] rounded-3xl p-10 text-center">
-              <Sparkles className="w-8 h-8 text-[#A0522D] mx-auto mb-3" />
-              <h3 className="font-serif-title text-xl font-bold text-[#1D1D1D] mb-1">No clubs yet</h3>
-              <p className="text-xs text-[#777777] mb-4">Be the first to start a reading club and gather fellow bibliophiles.</p>
-              <button onClick={() => setShowCreate(true)} className="px-4 py-2 rounded-full bg-[#1D1D1D] text-[#F8F6F1] font-bold text-xs inline-flex items-center gap-2">
-                <Plus className="w-3.5 h-3.5" /> Create the first club
-              </button>
-            </div>
+            <EmptyState
+              preset="community"
+              title="No clubs yet"
+              description="Be the first to start a reading club and gather fellow bibliophiles."
+              action={{ label: 'Create the first club', onClick: () => setShowCreate(true) }}
+            />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {clubs.map((club) => {
                 const roleBadge = club.viewerRole ? ROLE_BADGE[club.viewerRole] : null;
                 const RoleIcon = roleBadge?.icon;
                 return (
-                  <div key={club.id} className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 shadow-warm-sm flex flex-col">
+                  <div
+                    key={club.id}
+                    onClick={() => onOpenClub(club.id)}
+                    className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 shadow-warm-sm hover:shadow-warm-md transition-shadow cursor-pointer flex flex-col"
+                  >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[10px] font-bold uppercase text-[#A0522D] tracking-wider">Book Club</span>
-                      {club.isPrivate && <Lock className="w-3.5 h-3.5 text-[#777777]" />}
+                      {club.isPrivate && <Lock className="w-3.5 h-3.5 text-[var(--muted)]" />}
                     </div>
-                    <h3 className="font-serif-title text-2xl font-bold text-[#1D1D1D] my-1">{club.name}</h3>
-                    {club.description && <p className="text-xs text-[#777777] mb-3 line-clamp-2">{club.description}</p>}
+                    <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)] my-1">{club.name}</h3>
+                    {club.description && <p className="text-xs text-[var(--muted)] mb-3 line-clamp-2">{club.description}</p>}
                     {club.currentBook && (
-                      <p className="text-xs text-[#777777] mb-4">
+                      <p className="text-xs text-[var(--muted)] mb-4">
                         Reading <span className="italic">{club.currentBook.title}</span>
                       </p>
                     )}
-                    <div className="mt-auto flex items-center justify-between pt-3 border-t border-[#E5E0D8] text-xs">
-                      <span className="text-[#777777] flex items-center gap-3">
+                    <div className="mt-auto flex items-center justify-between pt-3 border-t border-[var(--border-light)] text-xs">
+                      <span className="text-[var(--muted)] flex items-center gap-3">
                         <span>{club.memberCount} {club.memberCount === 1 ? 'Member' : 'Members'}</span>
                         <span className="flex items-center gap-1"><MessageSquare className="w-3 h-3" />{club.discussionCount}</span>
                       </span>
@@ -262,18 +279,18 @@ export const CommunityView: React.FC = () => {
                           </span>
                         ) : (
                           <button
-                            onClick={() => handleLeave(club.id)}
+                            onClick={(e) => { e.stopPropagation(); handleLeave(club.id); }}
                             disabled={busyClub === club.id}
-                            className="px-4 py-1.5 rounded-full border border-[#E5E0D8] text-[#777777] font-bold disabled:opacity-60 flex items-center gap-1"
+                            className="px-4 py-1.5 rounded-full border border-[var(--border-light)] text-[var(--muted)] font-bold disabled:opacity-60 flex items-center gap-1"
                           >
                             {busyClub === club.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Leave
                           </button>
                         )
                       ) : (
                         <button
-                          onClick={() => handleJoin(club.id)}
+                          onClick={(e) => { e.stopPropagation(); handleJoin(club.id); }}
                           disabled={busyClub === club.id}
-                          className="px-4 py-1.5 rounded-full bg-[#1D1D1D] text-[#F8F6F1] font-bold disabled:opacity-60 flex items-center gap-1"
+                          className="px-4 py-1.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold disabled:opacity-60 flex items-center gap-1"
                         >
                           {busyClub === club.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Join Club
                         </button>
@@ -290,16 +307,16 @@ export const CommunityView: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Rss className="w-4 h-4 text-[#A0522D]" />
-            <h2 className="font-serif-title text-xl font-bold text-[#1D1D1D]">Activity</h2>
+            <h2 className="font-serif-title text-xl font-bold text-[var(--ink)]">Activity</h2>
           </div>
 
-          <div className="flex gap-1 bg-[#EFE8DD] p-1 rounded-full">
+          <div className="flex gap-1 bg-[var(--bg-beige)] p-1 rounded-full">
             {scopes.map((s) => (
               <button
                 key={s.key}
                 onClick={() => setScope(s.key)}
                 className={`flex-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                  scope === s.key ? 'bg-[#FFFFFF] text-[#1D1D1D] shadow-warm-sm' : 'text-[#777777]'
+                  scope === s.key ? 'bg-[var(--white)] text-[var(--ink)] shadow-warm-sm' : 'text-[var(--muted)]'
                 }`}
               >
                 {s.label}
@@ -307,31 +324,31 @@ export const CommunityView: React.FC = () => {
             ))}
           </div>
 
-          <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-2 shadow-warm-sm">
+          <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-2 shadow-warm-sm">
             {feedLoading ? (
-              <div className="flex items-center justify-center py-12 text-[#777777]">
-                <Loader2 className="w-5 h-5 animate-spin" />
+              <div className="p-3 space-y-1">
+                {Array.from({ length: 5 }).map((_, i) => <ActivityItemSkeleton key={i} />)}
               </div>
             ) : activities.length === 0 ? (
               <div className="text-center py-12 px-4">
                 <MessageSquare className="w-7 h-7 text-[#A0522D] mx-auto mb-2" />
-                <p className="text-xs text-[#777777]">
+                <p className="text-xs text-[var(--muted)]">
                   {scope === 'following'
                     ? 'No activity yet. Follow readers to see what they’re reading.'
                     : 'No activity yet. Finish a book or write a review to get started.'}
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-[#E5E0D8]">
+              <div className="divide-y divide-[var(--border-light)]">
                 {activities.map((a) => {
                   const Icon = ACTIVITY_ICON[a.type] ?? Sparkles;
                   return (
                     <div key={a.id} className="flex items-start gap-3 p-3">
-                      <div className="w-8 h-8 rounded-xl bg-[#EFE8DD] flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-xl bg-[var(--bg-beige)] flex items-center justify-center shrink-0">
                         <Icon className="w-4 h-4 text-[#A0522D]" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs text-[#777777] leading-relaxed">{activityText(a)}</p>
+                        <p className="text-xs text-[var(--muted)] leading-relaxed">{activityText(a, onOpenProfile)}</p>
                         <span className="text-[10px] text-[#A0A0A0]">{timeAgo(a.createdAt)}</span>
                       </div>
                     </div>
@@ -345,7 +362,7 @@ export const CommunityView: React.FC = () => {
                 <button
                   onClick={loadMore}
                   disabled={loadingMore}
-                  className="w-full py-2 rounded-2xl text-xs font-semibold text-[#A0522D] hover:bg-[#F8F6F1] flex items-center justify-center gap-2 disabled:opacity-60"
+                  className="w-full py-2 rounded-2xl text-xs font-semibold text-[#A0522D] hover:bg-[var(--bg-ivory)] flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   {loadingMore ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null} Load more
                 </button>

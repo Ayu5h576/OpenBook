@@ -1,8 +1,16 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { ViewMode, Book } from './types';
-import { sampleQuotes, sampleAuthors, currentUser } from './data/mockData';
+import { sampleQuotes } from './data/mockData';
 import { AuthContext } from './context/AuthContext';
 import { BookApiService } from './services/api';
+import type { UserSummary } from './services/api';
+import { useAnalytics } from './hooks/useAnalytics';
+import { useActivityFeed } from './hooks/useActivityFeed';
+import { useTheme } from './hooks/useTheme';
+import { useLibrary } from './hooks/useLibrary';
+import { useWishlist } from './hooks/useWishlist';
+import { useToast } from './context/ToastContext';
+import { OnboardingModal, isOnboarded } from './components/OnboardingModal';
 
 // Layout Components
 import { Navbar } from './components/Navbar';
@@ -16,23 +24,26 @@ import { ReadingCompass } from './components/ReadingCompass';
 import { BookMemories } from './components/BookMemories';
 import { QuoteWall } from './components/QuoteWall';
 import { SmartPlanner } from './components/SmartPlanner';
+import { PageLoader } from './components/PageLoader';
 
-// View Pages
-import { LandingView } from './views/LandingView';
-import { AuthView } from './views/AuthView';
-import { HomeView } from './views/HomeView';
-import { BookDetailView } from './views/BookDetailView';
-import { ExploreView } from './views/ExploreView';
-import { LibraryView } from './views/LibraryView';
-import { WishlistView } from './views/WishlistView';
-import { CollectionsView } from './views/CollectionsView';
-import { CollectionDetailView } from './views/CollectionDetailView';
-import { ReaderView } from './views/ReaderView';
-import { CommunityView } from './views/CommunityView';
-import { AuthorView } from './views/AuthorView';
-import { StatisticsView } from './views/StatisticsView';
-import { AchievementsView } from './views/AchievementsView';
-import { SettingsView } from './views/SettingsView';
+// View Pages (Lazy Loaded)
+const LandingView = React.lazy(() => import('./views/LandingView').then(m => ({ default: m.LandingView })));
+const AuthView = React.lazy(() => import('./views/AuthView').then(m => ({ default: m.AuthView })));
+const HomeView = React.lazy(() => import('./views/HomeView').then(m => ({ default: m.HomeView })));
+const BookDetailView = React.lazy(() => import('./views/BookDetailView').then(m => ({ default: m.BookDetailView })));
+const ExploreView = React.lazy(() => import('./views/ExploreView').then(m => ({ default: m.ExploreView })));
+const LibraryView = React.lazy(() => import('./views/LibraryView').then(m => ({ default: m.LibraryView })));
+const WishlistView = React.lazy(() => import('./views/WishlistView').then(m => ({ default: m.WishlistView })));
+const CollectionsView = React.lazy(() => import('./views/CollectionsView').then(m => ({ default: m.CollectionsView })));
+const CollectionDetailView = React.lazy(() => import('./views/CollectionDetailView').then(m => ({ default: m.CollectionDetailView })));
+const ClubDetailView = React.lazy(() => import('./views/ClubDetailView').then(m => ({ default: m.ClubDetailView })));
+const ProfileView = React.lazy(() => import('./views/ProfileView').then(m => ({ default: m.ProfileView })));
+const ReaderView = React.lazy(() => import('./views/ReaderView').then(m => ({ default: m.ReaderView })));
+const CommunityView = React.lazy(() => import('./views/CommunityView').then(m => ({ default: m.CommunityView })));
+const AuthorView = React.lazy(() => import('./views/AuthorView').then(m => ({ default: m.AuthorView })));
+const StatisticsView = React.lazy(() => import('./views/StatisticsView').then(m => ({ default: m.StatisticsView })));
+const AchievementsView = React.lazy(() => import('./views/AchievementsView').then(m => ({ default: m.AchievementsView })));
+const SettingsView = React.lazy(() => import('./views/SettingsView').then(m => ({ default: m.SettingsView })));
 
 function googleBookToApp(gb: any): Book {
   return {
@@ -74,14 +85,58 @@ export function App() {
   const { isAuthenticated, isLoading: authLoading } = auth;
 
   const [currentView, setCurrentView] = useState<ViewMode>('auth');
+  const [viewKey, setViewKey] = useState(0);
   const [books, setBooks] = useState<Book[]>([]);
   const [quotes] = useState(sampleQuotes);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+  const [selectedClubId, setSelectedClubId] = useState<string | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null);
+  const [profileReturnView, setProfileReturnView] = useState<ViewMode>('community');
   const [readerBook, setReaderBook] = useState<Book | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  useTheme(); // Initialize theme from localStorage on mount
+  const toast = useToast();
+
+  const { entries: libEntries, addBook: addLib, updateEntry: updateLib, refetch: refetchLib } = useLibrary();
+  const { entries: wishEntries, addBook: addWish, removeBook: removeWish, refetch: refetchWish } = useWishlist();
+
+  // Live analytics and activity feed for RightSidebar
+  const { stats: analyticsStats, goal: readingGoal } = useAnalytics();
+  const { activities: feedActivities } = useActivityFeed('following', 5);
+
+  // Sync Google Books feed with persistent library state
+  useEffect(() => {
+    if (books.length > 0 && (libEntries.length > 0 || wishEntries.length > 0)) {
+      let changed = false;
+      const synced = books.map(book => {
+        const libEntry = libEntries.find(e => e.book.googleBooksId === book.id || e.book.id === book.id);
+        const wishEntry = wishEntries.find(e => e.book.googleBooksId === book.id || e.book.id === book.id);
+        
+        const isFav = libEntry?.isFavorite || false;
+        let newStatus = book.status;
+        if (wishEntry) newStatus = 'wishlist';
+        else if (libEntry) newStatus = 'owned';
+
+        if (book.favorite !== isFav || book.status !== newStatus) {
+          changed = true;
+          return { ...book, favorite: isFav, status: newStatus };
+        }
+        return book;
+      });
+
+      if (changed) {
+        setBooks(synced);
+        if (selectedBook) {
+          const syncedSelected = synced.find(b => b.id === selectedBook.id);
+          if (syncedSelected) setSelectedBook(syncedSelected);
+        }
+      }
+    }
+  }, [libEntries, wishEntries]);
 
   // Sync currentView when auth state changes
   useEffect(() => {
@@ -119,10 +174,10 @@ export function App() {
   // Show loading while auth is initializing
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#F8F6F1] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg-ivory)] flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#1D1D1D] mb-4"></div>
-          <p className="text-[#1D1D1D] font-serif text-lg">Loading OpenBook...</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--ink)] mb-4"></div>
+          <p className="text-[var(--ink)] font-serif text-lg">Loading OpenBook...</p>
         </div>
       </div>
     );
@@ -141,6 +196,7 @@ export function App() {
   const handleNavigate = (view: ViewMode) => {
     setIsLoading(true);
     setCurrentView(view);
+    setViewKey((k) => k + 1);
     setTimeout(() => {
       setIsLoading(false);
     }, 300);
@@ -153,20 +209,77 @@ export function App() {
     }, 500);
   };
 
-  const handleToggleFavorite = (bookId: string) => {
-    setBooks((prev) =>
-      prev.map((b) => (b.id === bookId ? { ...b, favorite: !b.favorite } : b))
-    );
+  const handleToggleFavorite = async (bookId: string) => {
+    if (!isAuthenticated) return toast.info('Please log in to save favorites');
+    
+    // 1. Optimistic UI update
+    const currentlyFavorite = books.find(b => b.id === bookId)?.favorite || false;
+    const targetFavorite = !currentlyFavorite;
+    
+    setBooks(prev => prev.map(b => (b.id === bookId ? { ...b, favorite: targetFavorite } : b)));
+    if (selectedBook && selectedBook.id === bookId) {
+      setSelectedBook({ ...selectedBook, favorite: targetFavorite });
+    }
+
+    try {
+      const importRes = await BookApiService.importBook(bookId);
+      if (importRes.error || !importRes.data) throw new Error(importRes.error);
+      const localBookId = importRes.data.book.id;
+
+      const existingEntry = libEntries.find(e => e.bookId === localBookId);
+      if (existingEntry) {
+        await updateLib(existingEntry.id, { isFavorite: targetFavorite });
+      } else {
+        const newEntry = await addLib(localBookId, 'OWNED');
+        await updateLib(newEntry.id, { isFavorite: targetFavorite });
+      }
+      toast.success(targetFavorite ? 'Added to Favorites' : 'Removed from Favorites');
+      refetchLib();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update favorite');
+      setBooks(prev => prev.map(b => (b.id === bookId ? { ...b, favorite: currentlyFavorite } : b)));
+      if (selectedBook && selectedBook.id === bookId) {
+        setSelectedBook({ ...selectedBook, favorite: currentlyFavorite });
+      }
+    }
   };
 
-  const handleToggleWishlist = (bookId: string) => {
-    setBooks((prev) =>
-      prev.map((b) =>
-        b.id === bookId
-          ? { ...b, status: b.status === 'wishlist' ? 'owned' : 'wishlist' }
-          : b
-      )
-    );
+  const handleToggleWishlist = async (bookId: string) => {
+    if (!isAuthenticated) return toast.info('Please log in to use wishlist');
+    
+    const book = books.find(b => b.id === bookId);
+    if (!book) return;
+    const isCurrentlyWishlist = book.status === 'wishlist';
+    
+    // 1. Optimistic UI update
+    setBooks(prev => prev.map(b => b.id === bookId ? { ...b, status: isCurrentlyWishlist ? 'owned' : 'wishlist' } : b));
+    if (selectedBook && selectedBook.id === bookId) {
+      setSelectedBook({ ...selectedBook, status: isCurrentlyWishlist ? 'owned' : 'wishlist' });
+    }
+
+    try {
+      const importRes = await BookApiService.importBook(bookId);
+      if (importRes.error || !importRes.data) throw new Error(importRes.error);
+      const localBookId = importRes.data.book.id;
+
+      const existingEntry = wishEntries.find(e => e.bookId === localBookId);
+      if (existingEntry && isCurrentlyWishlist) {
+        await removeWish(existingEntry.id);
+        toast.info('Removed from Wishlist');
+      } else if (!existingEntry && !isCurrentlyWishlist) {
+        await addWish(localBookId, 'MEDIUM');
+        toast.success('Added to Wishlist');
+      }
+      refetchWish();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to update wishlist');
+      setBooks(prev => prev.map(b => b.id === bookId ? { ...b, status: isCurrentlyWishlist ? 'wishlist' : 'owned' } : b));
+      if (selectedBook && selectedBook.id === bookId) {
+        setSelectedBook({ ...selectedBook, status: isCurrentlyWishlist ? 'wishlist' : 'owned' });
+      }
+    }
   };
 
   const handleAddBookToWishlist = (newBook: Partial<Book>) => {
@@ -216,46 +329,67 @@ export function App() {
     setCurrentView('reader');
   };
 
+  const handleOpenProfile = (user: UserSummary) => {
+    // Remember where we came from so Back returns there (but don't overwrite it
+    // when hopping profile → profile via a followers/following list).
+    if (currentView !== 'profile') setProfileReturnView(currentView);
+    setSelectedUser(user);
+    setCurrentView('profile');
+  };
+
   // Full screen standalone views without standard layout shell
   if (currentView === 'landing') {
     return (
-      <LandingView
-        onNavigate={setCurrentView}
-        featuredBook={books[0]}
-        trendingBooks={books}
-      />
+      <React.Suspense fallback={<PageLoader />}>
+        <LandingView
+          onNavigate={setCurrentView}
+          featuredBook={books[0]}
+          trendingBooks={books}
+        />
+      </React.Suspense>
     );
   }
 
   if (currentView === 'auth') {
     return (
-      <AuthView
-        onNavigate={setCurrentView}
-        onLoginSuccess={() => setCurrentView('home')}
-      />
+      <React.Suspense fallback={<PageLoader />}>
+        <AuthView
+          onNavigate={setCurrentView}
+          onLoginSuccess={() => {
+            setCurrentView('home');
+            if (!isOnboarded()) setShowOnboarding(true);
+          }}
+        />
+      </React.Suspense>
     );
   }
 
   if (currentView === 'reader' && readerBook) {
     return (
-      <ReaderView
-        book={readerBook}
-        onExit={() => setCurrentView('home')}
-      />
+      <React.Suspense fallback={<PageLoader />}>
+        <ReaderView
+          book={readerBook}
+          onExit={() => setCurrentView('home')}
+        />
+      </React.Suspense>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F8F6F1] text-[#1D1D1D] font-sans antialiased selection:bg-[#EFE8DD] selection:text-[#1D1D1D]">
+    <div className="min-h-screen bg-[var(--bg-ivory)] text-[var(--ink)] font-sans antialiased selection:bg-[var(--bg-beige)] selection:text-[var(--ink)] transition-colors">
       
       {/* Top Navbar */}
       <Navbar
         currentView={currentView}
         onNavigate={handleNavigate}
-        user={currentUser}
+        authUser={auth.user ? { username: auth.user.username, avatar: auth.user.avatar } : null}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onOpenCompass={() => handleNavigate('reading-compass')}
+        onOpenProfile={() => {
+          const u = auth.user;
+          if (u) handleOpenProfile({ id: u.id, username: u.username, avatar: u.avatar, bio: u.bio });
+        }}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         onRefresh={handleRefresh}
         isLoading={isLoading}
@@ -264,7 +398,7 @@ export function App() {
       />
 
       {/* Main Layout Container */}
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12 flex gap-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-24 md:pb-12 flex gap-8">
         
         {/* Left Navigation Sidebar */}
         <Sidebar
@@ -275,7 +409,8 @@ export function App() {
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 min-w-0">
+        <main key={viewKey} className="flex-1 min-w-0 animate-fade-up">
+          <React.Suspense fallback={<PageLoader />}>
           
           {currentView === 'home' && (
             <HomeView
@@ -295,6 +430,7 @@ export function App() {
               onOpenReader={handleOpenReader}
               onToggleFavorite={handleToggleFavorite}
               onToggleWishlist={handleToggleWishlist}
+              onSelectBook={handleSelectBook}
               relatedBooks={books.filter((b) => b.id !== selectedBook.id).slice(0, 3)}
               isLoading={isLoading}
             />
@@ -388,13 +524,37 @@ export function App() {
           )}
 
           {currentView === 'community' && (
-            <CommunityView />
+            <CommunityView
+              onOpenClub={(id) => {
+                setSelectedClubId(id);
+                setCurrentView('club-detail');
+              }}
+              onOpenProfile={handleOpenProfile}
+            />
+          )}
+
+          {currentView === 'club-detail' && selectedClubId && (
+            <ClubDetailView
+              clubId={selectedClubId}
+              onBack={() => setCurrentView('community')}
+              onOpenProfile={handleOpenProfile}
+            />
+          )}
+
+          {currentView === 'profile' && selectedUser && (
+            <ProfileView
+              key={selectedUser.id}
+              user={selectedUser}
+              viewerId={auth.user?.id}
+              onBack={() => setCurrentView(profileReturnView)}
+              onOpenProfile={handleOpenProfile}
+            />
           )}
 
           {currentView === 'author' && (
             <AuthorView
-              author={sampleAuthors[0]}
-              authorBooks={books.filter((b) => b.author === sampleAuthors[0].name || b.author.includes('Elena'))}
+              author={{ id: 'placeholder', name: 'Author', portrait: '', bio: 'Author details coming soon.', born: '', location: '', notableWorks: [], achievements: [], timeline: [], relatedAuthorNames: [] }}
+              authorBooks={[]}
               onSelectBook={handleSelectBook}
             />
           )}
@@ -410,24 +570,36 @@ export function App() {
           {currentView === 'settings' && (
             <SettingsView />
           )}
-
+          </React.Suspense>
         </main>
 
-        {/* Right Dashboard Sidebar (Visible on main view screens) */}
+        {/* Right Dashboard Sidebar (hidden on mobile, visible on large screens) */}
         {(currentView === 'home' || currentView === 'explore' || currentView === 'library') && (
-          <RightSidebar
-            user={currentUser}
-            quoteOfDay={quotes[0]}
-            currentlyReadingBook={books.find((b) => b.status === 'reading')}
-            quotes={quotes}
-            onOpenReader={handleOpenReader}
-            onNavigate={setCurrentView}
-            onOpenPlanner={() => setCurrentView('smart-planner')}
-            onOpenCommunity={() => setCurrentView('community')}
-          />
+          <div className="hidden lg:block">
+            <RightSidebar
+              authUser={auth.user}
+              stats={analyticsStats}
+              goal={readingGoal}
+              activities={feedActivities}
+              quoteOfDay={quotes[0]}
+              onNavigate={setCurrentView}
+              onOpenPlanner={() => setCurrentView('smart-planner')}
+              onOpenCommunity={() => setCurrentView('community')}
+            />
+          </div>
         )}
 
       </div>
+
+      {/* Onboarding modal — shown once on first login */}
+      {showOnboarding && (
+        <OnboardingModal
+          username={auth.user?.username}
+          onClose={() => setShowOnboarding(false)}
+          onNavigate={(view) => handleNavigate(view as ViewMode)}
+        />
+      )}
+
     </div>
   );
 }

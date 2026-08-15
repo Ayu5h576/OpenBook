@@ -383,4 +383,56 @@ The MIT License is a permissive open-source license that allows you to freely us
 
 ---
 
+## 🚀 Deploy
+
+OpenBook ships with a [`railway.toml`](file:///c:/Users/ayush/Downloads/openbook/railway.toml) and a [`Dockerfile`](file:///c:/Users/ayush/Downloads/openbook/Dockerfile) for one-command deployment.
+
+### Railway (recommended)
+
+1. Push your code to GitHub
+2. Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**
+3. Add a **PostgreSQL** plugin from the Railway dashboard
+4. Set the required environment variables (see table below)
+5. Railway will build, run migrations, and deploy automatically
+
+### Docker
+
+```bash
+# Build
+docker build -t openbook .
+
+# Run (replace values with your own)
+docker run -p 3000:3000 \
+  -e DATABASE_URL="postgresql://..." \
+  -e JWT_SECRET="$(openssl rand -base64 32)" \
+  -e ACCESS_TOKEN_TTL=15m \
+  -e REFRESH_TOKEN_TTL_DAYS=30 \
+  -e NODE_ENV=production \
+  -e APP_URL=https://your-domain.com \
+  -e API_PORT=3000 \
+  openbook
+```
+
+### Required Environment Variables
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `JWT_SECRET` | Long random secret for signing tokens (`openssl rand -base64 32`) |
+| `ACCESS_TOKEN_TTL` | Access token lifetime (e.g. `15m`) |
+| `REFRESH_TOKEN_TTL_DAYS` | Refresh token lifetime in days (e.g. `30`) |
+| `APP_URL` | Public URL of the app (e.g. `https://openbook.up.railway.app`) |
+| `NODE_ENV` | Set to `production` |
+| `API_PORT` | Port the server listens on (Railway injects `PORT` automatically) |
+
+### Optional Environment Variables
+
+| Variable | Description |
+|---|---|
+| `GEMINI_API_KEY` | Enables all AI features (get from [ai.google.dev](https://ai.google.dev)) |
+| `GOOGLE_BOOKS_API_KEY` | Enables real book catalog search |
+| `REDIS_URL` | Enables Redis caching (falls back to file cache if not set) |
+
+---
+
 **Made with 📚 by the OpenBook Team**

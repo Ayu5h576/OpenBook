@@ -10,7 +10,18 @@ import type { AIUsageLog } from '../../types/ai';
 export class AIService {
   private static instance: AIService;
   private client: GoogleGenAI | null = null;
-  private model = 'gemini-2.0-flash';
+
+  /**
+   * Model priority list — first available model wins.
+   * Full "models/" prefix is REQUIRED by @google/genai v2 SDK.
+   * Update by running: npx tsx scripts/list-gemini-models.ts
+   */
+  private readonly modelFallbacks = [
+    'models/gemini-2.5-flash',      // Stable, fast — primary choice
+    'models/gemini-flash-latest',   // Alias always points to latest flash
+    'models/gemini-2.5-flash-lite', // Lighter, cheaper backup
+  ];
+  private model = this.modelFallbacks[0];
 
   private constructor() {
     const apiKey = env.gemini.apiKey;
@@ -47,42 +58,56 @@ export class AIService {
       throw new Error('Gemini API not configured');
     }
 
-    try {
-      const config: any = {};
+    const config: any = {};
 
-      if (options.systemInstruction) {
-        config.systemInstruction = options.systemInstruction;
-      }
-
-      if (options.responseFormat === 'json') {
-        config.responseMimeType = 'application/json';
-      }
-
-      if (options.temperature !== undefined) {
-        config.temperature = options.temperature;
-      }
-
-      const response = await this.client.models.generateContent({
-        model: this.model,
-        contents: options.prompt,
-        config,
-      });
-
-      const text = response.text || '';
-
-      // Token counting (estimated - Gemini API may not return exact counts in all SDKs)
-      const inputTokens = this.estimateTokens(options.prompt);
-      const outputTokens = this.estimateTokens(text);
-
-      return {
-        text,
-        inputTokens,
-        outputTokens,
-      };
-    } catch (error) {
-      console.error('[AIService] Gemini Error:', error);
-      throw error;
+    if (options.systemInstruction) {
+      config.systemInstruction = options.systemInstruction;
     }
+    if (options.responseFormat === 'json') {
+      config.responseMimeType = 'application/json';
+    }
+    if (options.temperature !== undefined) {
+      config.temperature = options.temperature;
+    }
+
+    // Try each model in order — auto-downgrade if one is unavailable.
+    let lastError: unknown;
+    for (const model of this.modelFallbacks) {
+      try {
+        const response = await this.client.models.generateContent({
+          model,
+          contents: options.prompt,
+          config,
+        });
+
+        // Remember the first model that worked for future calls.
+        if (model !== this.model) {
+          console.log(`[AIService] Primary model unavailable — using ${model}`);
+          this.model = model;
+        }
+
+        const text = response.text || '';
+        return {
+          text,
+          inputTokens: this.estimateTokens(options.prompt),
+          outputTokens: this.estimateTokens(text),
+        };
+      } catch (error: any) {
+        const status: number | undefined = error?.status ?? error?.response?.status;
+        const isModelError = status === 404 || error?.message?.includes('not found') || error?.message?.includes('not available');
+        if (isModelError) {
+          console.warn(`[AIService] Model ${model} unavailable, trying next fallback…`);
+          lastError = error;
+          continue;
+        }
+        // Non-model error — throw immediately.
+        console.error('[AIService] Gemini Error:', error);
+        throw error;
+      }
+    }
+
+    console.error('[AIService] All model fallbacks exhausted.');
+    throw lastError;
   }
 
   private estimateTokens(text: string): number {

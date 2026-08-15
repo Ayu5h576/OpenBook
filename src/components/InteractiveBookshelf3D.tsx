@@ -58,11 +58,11 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
   const renderShelf = (shelfTitle: string, shelfBooks: Book[], shelfId: string) => (
     <div key={shelfId} className="mb-14 relative">
       <div className="flex items-center justify-between mb-4 px-4">
-        <h3 className="font-serif-title text-2xl font-bold text-[#1D1D1D] flex items-center gap-2">
+        <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)] flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#A0522D]" />
           {shelfTitle}
         </h3>
-        <span className="text-xs font-semibold text-[#777777]">{shelfBooks.length} Volumes</span>
+        <span className="text-xs font-semibold text-[var(--muted)]">{shelfBooks.length} Volumes</span>
       </div>
 
       {/* Wooden Plank Shelf & Books */}
@@ -114,11 +114,11 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
                 </div>
 
                 {/* Top Book Page Edge Texture */}
-                <div className="absolute -top-[6px] left-0 right-0 h-[6px] bg-[#EFE8DD] border-b border-[#DCD3C5] rounded-t-xs" />
+                <div className="absolute -top-[6px] left-0 right-0 h-[6px] bg-[var(--bg-beige)] border-b border-[#DCD3C5] rounded-t-xs" />
 
                 {/* Hover Pull Indicator */}
                 {!isCameraZooming && (
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#1D1D1D] text-[#F8F6F1] text-[10px] px-2.5 py-1 rounded-full opacity-0 group-hover/book:opacity-100 transition-opacity whitespace-nowrap shadow-warm-md pointer-events-none flex items-center gap-1">
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[var(--ink)] text-[var(--bg-ivory)] text-[10px] px-2.5 py-1 rounded-full opacity-0 group-hover/book:opacity-100 transition-opacity whitespace-nowrap shadow-warm-md pointer-events-none flex items-center gap-1">
                     <Sparkles className="w-2.5 h-2.5 text-[#E0A96D]" />
                     <span>Pull Off Shelf</span>
                   </div>
@@ -147,11 +147,11 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
     <div
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className="w-full min-h-[80vh] bg-[#F8F6F1] p-4 md:p-8 rounded-3xl border border-[#E5E0D8] relative overflow-hidden perspective-1000"
+      className="w-full min-h-[80vh] bg-[var(--bg-ivory)] p-4 md:p-8 rounded-3xl border border-[var(--border-light)] relative overflow-hidden perspective-1000"
     >
       {/* 3D Camera Focus Indicator Banner when Zooming */}
       {isCameraZooming && (
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-40 bg-[#1D1D1D]/90 text-[#F8F6F1] backdrop-blur-md px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 shadow-warm-lg animate-pulse">
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-40 bg-[var(--ink)]/90 text-[var(--bg-ivory)] backdrop-blur-md px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-2 shadow-warm-lg animate-pulse">
           <Sparkles className="w-3.5 h-3.5 text-[#E0A96D]" />
           <span>3D Camera Zoom • Pulling volume from shelf...</span>
         </div>
@@ -168,14 +168,14 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
       >
         {/* Header */}
         <div className="max-w-4xl mx-auto text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFE8DD] text-[#A0522D] text-xs font-semibold mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-xs font-semibold mb-3">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Interactive Grand Library</span>
           </div>
-          <h2 className="font-serif-title text-4xl md:text-5xl font-bold text-[#1D1D1D] mb-3">
+          <h2 className="font-serif-title text-4xl md:text-5xl font-bold text-[var(--ink)] mb-3">
             The Wooden Bookshelf
           </h2>
-          <p className="text-sm text-[#777777] max-w-xl mx-auto">
+          <p className="text-sm text-[var(--muted)] max-w-xl mx-auto">
             Move your cursor to experience interactive 3D parallax. Click any volume to trigger a smooth camera zoom and pull the book directly off the shelf.
           </p>
         </div>
@@ -191,48 +191,48 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
       {/* Cinematic 3D Book Inspection Overlay Modal */}
       {selectedBookId && (
         <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-500">
-          <div className={`bg-[#F8F6F1] rounded-3xl p-8 max-w-2xl w-full border border-[#E5E0D8] shadow-2xl text-center transform transition-all duration-700 ${isOpenCinematic ? 'scale-100 opacity-100 translate-y-0' : 'scale-85 opacity-0 translate-y-12'}`}>
+          <div className={`bg-[var(--bg-ivory)] rounded-3xl p-8 max-w-2xl w-full border border-[var(--border-light)] shadow-2xl text-center transform transition-all duration-700 ${isOpenCinematic ? 'scale-100 opacity-100 translate-y-0' : 'scale-85 opacity-0 translate-y-12'}`}>
             {(() => {
               const book = books.find((b) => b.id === selectedBookId);
               if (!book) return null;
               return (
                 <div className="flex flex-col items-center">
                   <div className="relative group/cover mb-6">
-                    <div className="w-44 h-64 rounded-xl overflow-hidden shadow-2xl transform hover:rotate-3 hover:scale-105 transition-all duration-300 border-4 border-[#FFFFFF]">
+                    <div className="w-44 h-64 rounded-xl overflow-hidden shadow-2xl transform hover:rotate-3 hover:scale-105 transition-all duration-300 border-4 border-[var(--white)]">
                       <img src={book.cover} alt={book.title} className="w-full h-full object-cover" />
                     </div>
-                    <div className="absolute top-2 right-2 bg-[#1D1D1D]/80 backdrop-blur-md text-[#F8F6F1] text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                    <div className="absolute top-2 right-2 bg-[var(--ink)]/80 backdrop-blur-md text-[var(--bg-ivory)] text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
                       <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
                       <span>{book.rating}</span>
                     </div>
                   </div>
 
                   <span className="text-xs uppercase font-bold text-[#A0522D] tracking-widest mb-1.5">{book.genres.join(' • ')}</span>
-                  <h3 className="font-serif-title text-3xl md:text-4xl font-bold text-[#1D1D1D] mb-1">{book.title}</h3>
-                  <p className="text-sm font-medium text-[#777777] mb-4">by {book.author}</p>
+                  <h3 className="font-serif-title text-3xl md:text-4xl font-bold text-[var(--ink)] mb-1">{book.title}</h3>
+                  <p className="text-sm font-medium text-[var(--muted)] mb-4">by {book.author}</p>
                   
-                  <p className="text-xs text-[#555555] max-w-lg mb-6 line-clamp-3 leading-relaxed bg-[#EFE8DD]/50 p-3 rounded-2xl border border-[#E5E0D8]">
+                  <p className="text-xs text-[#555555] max-w-lg mb-6 line-clamp-3 leading-relaxed bg-[var(--bg-beige)]/50 p-3 rounded-2xl border border-[var(--border-light)]">
                     {book.description || "A captivating volume held in your private collection. Open in reader mode or view complete details and highlights."}
                   </p>
 
                   <div className="flex flex-wrap items-center justify-center gap-3">
                     <button
                       onClick={() => onOpenReader(book)}
-                      className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#1D1D1D] text-[#F8F6F1] font-semibold text-sm hover:bg-[#333333] transition-all shadow-warm-md"
+                      className="flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-semibold text-sm hover:bg-[#333333] transition-all shadow-warm-md"
                     >
                       <BookOpen className="w-4 h-4" />
                       <span>Enter Reader Mode</span>
                     </button>
                     <button
                       onClick={() => onSelectBook(book)}
-                      className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#FFFFFF] border border-[#E5E0D8] text-[#1D1D1D] font-semibold text-sm hover:bg-[#EFE8DD] transition-all shadow-warm-sm"
+                      className="flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--white)] border border-[var(--border-light)] text-[var(--ink)] font-semibold text-sm hover:bg-[var(--bg-beige)] transition-all shadow-warm-sm"
                     >
                       <span>Volume Details</span>
                       <MoveRight className="w-4 h-4" />
                     </button>
                     <button
                       onClick={handleCloseCinematic}
-                      className="px-5 py-3 rounded-full bg-[#EFE8DD] text-[#777777] hover:text-[#1D1D1D] font-semibold text-sm hover:bg-[#E5DCCF] transition-all"
+                      className="px-5 py-3 rounded-full bg-[var(--bg-beige)] text-[var(--muted)] hover:text-[var(--ink)] font-semibold text-sm hover:bg-[#E5DCCF] transition-all"
                     >
                       Return to Shelf
                     </button>

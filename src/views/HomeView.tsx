@@ -36,7 +36,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <div className="space-y-10 pb-12">
         <HeroSkeleton />
         <section className="space-y-4">
-          <div className="w-48 h-6 bg-[#EFE8DD] rounded-md animate-pulse" />
+          <div className="w-48 h-6 bg-[var(--bg-beige)] rounded-md animate-pulse" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <BookCardSkeleton />
             <BookCardSkeleton />
@@ -45,7 +45,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </section>
         <section className="space-y-4">
-          <div className="w-56 h-6 bg-[#EFE8DD] rounded-md animate-pulse" />
+          <div className="w-56 h-6 bg-[var(--bg-beige)] rounded-md animate-pulse" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <BookCardSkeleton />
             <BookCardSkeleton />
@@ -62,41 +62,41 @@ export const HomeView: React.FC<HomeViewProps> = ({
       
       {/* Hero: Continue Reading Highlight (Apple Books Style) */}
       {continueReadingBook && (
-        <section className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-md relative overflow-hidden flex flex-col md:flex-row items-center gap-8">
+        <section className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md relative overflow-hidden flex flex-col md:flex-row items-center gap-8">
           
-          <div className="w-40 sm:w-48 h-60 sm:h-72 rounded-2xl overflow-hidden shadow-book flex-shrink-0 bg-[#EFE8DD] relative group cursor-pointer" onClick={() => onSelectBook(continueReadingBook)}>
+          <div className="w-40 sm:w-48 h-60 sm:h-72 rounded-2xl overflow-hidden shadow-book flex-shrink-0 bg-[var(--bg-beige)] relative group cursor-pointer" onClick={() => onSelectBook(continueReadingBook)}>
             <img src={continueReadingBook.cover} alt={continueReadingBook.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-            <div className="absolute top-3 left-3 bg-[#1D1D1D]/90 text-[#F8F6F1] text-[10px] font-semibold px-2.5 py-1 rounded-full">
+            <div className="absolute top-3 left-3 bg-[var(--ink)]/90 text-[var(--bg-ivory)] text-[10px] font-semibold px-2.5 py-1 rounded-full">
               {continueReadingBook.progress}% Read
             </div>
           </div>
 
           <div className="flex-1 space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFE8DD] text-[#A0522D] text-xs font-semibold">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Resume Reading Session</span>
             </div>
 
             <div>
-              <h2 className="font-serif-title text-3xl sm:text-4xl font-bold text-[#1D1D1D] mb-1">
+              <h2 className="font-serif-title text-3xl sm:text-4xl font-bold text-[var(--ink)] mb-1">
                 {continueReadingBook.title}
               </h2>
-              <p className="text-sm text-[#777777]">by {continueReadingBook.author} • {continueReadingBook.publisher}</p>
+              <p className="text-sm text-[var(--muted)]">by {continueReadingBook.author} • {continueReadingBook.publisher}</p>
             </div>
 
-            <p className="text-xs text-[#777777] line-clamp-2 max-w-xl font-normal leading-relaxed">
+            <p className="text-xs text-[var(--muted)] line-clamp-2 max-w-xl font-normal leading-relaxed">
               {continueReadingBook.description}
             </p>
 
             {/* Reading Progress Bar */}
             <div className="max-w-md pt-2">
-              <div className="flex justify-between text-xs text-[#777777] mb-1">
+              <div className="flex justify-between text-xs text-[var(--muted)] mb-1">
                 <span>Page {continueReadingBook.pagesRead} of {continueReadingBook.pages}</span>
                 <span>{continueReadingBook.progress}% Complete</span>
               </div>
-              <div className="w-full bg-[#EFE8DD] h-2.5 rounded-full overflow-hidden">
+              <div className="w-full bg-[var(--bg-beige)] h-2.5 rounded-full overflow-hidden">
                 <div
-                  className="bg-[#1D1D1D] h-full rounded-full transition-all duration-500"
+                  className="bg-[var(--ink)] h-full rounded-full transition-all duration-500"
                   style={{ width: `${continueReadingBook.progress}%` }}
                 />
               </div>
@@ -105,7 +105,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="pt-2 flex items-center gap-4">
               <button
                 onClick={() => onOpenReader(continueReadingBook)}
-                className="flex items-center gap-2 px-6 py-3 rounded-full bg-[#1D1D1D] text-[#F8F6F1] font-bold text-xs hover:bg-[#333333] transition-all shadow-warm-md"
+                className="flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-xs hover:bg-[#333333] transition-all shadow-warm-md"
               >
                 <BookOpen className="w-4 h-4" />
                 <span>Continue Reading</span>
@@ -113,7 +113,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
               <button
                 onClick={() => onSelectBook(continueReadingBook)}
-                className="px-5 py-3 rounded-full bg-[#EFE8DD] text-[#1D1D1D] font-bold text-xs hover:bg-[#E5DCCF] transition-all"
+                className="px-5 py-3 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] font-bold text-xs hover:bg-[#E5DCCF] transition-all"
               >
                 Book Details
               </button>
@@ -124,24 +124,24 @@ export const HomeView: React.FC<HomeViewProps> = ({
       )}
 
       {/* Live AI Reading Brief */}
-      <section className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-md">
+      <section className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFE8DD] text-[#A0522D] text-xs font-semibold mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-xs font-semibold mb-3">
               <Sparkles className="w-3.5 h-3.5" />
               <span>AI Reading Companion</span>
             </div>
-            <h3 className="font-serif-title text-3xl font-bold text-[#1D1D1D]">
+            <h3 className="font-serif-title text-3xl font-bold text-[var(--ink)]">
               {user?.username ? `Good to see you, ${user.username}` : 'Your Reading Brief'}
             </h3>
-            <p className="text-xs text-[#777777] mt-1">
+            <p className="text-xs text-[var(--muted)] mt-1">
               Personalized from your library, wishlist, reviews, reading sessions, and goals.
             </p>
           </div>
           <button
             onClick={aiHome.retry}
             disabled={aiHome.loading}
-            className="self-start inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#E5E0D8] text-xs font-bold text-[#1D1D1D] hover:bg-[#F8F6F1] disabled:opacity-50"
+            className="self-start inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--border-light)] text-xs font-bold text-[var(--ink)] hover:bg-[var(--bg-ivory)] disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${aiHome.loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -151,42 +151,42 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {aiHome.loading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-36 bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl animate-pulse" />
+              <div key={i} className="h-36 bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl animate-pulse" />
             ))}
           </div>
         ) : aiHome.error ? (
           <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">{aiHome.error}</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
+            <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-5">
               <div className="flex items-center gap-2 text-[#A0522D] text-[10px] font-bold uppercase mb-2">
                 <Compass className="w-4 h-4" />
                 <span>Current Recommendation</span>
               </div>
-              <h4 className="font-serif-title text-xl font-bold text-[#1D1D1D]">{aiHome.recommendation?.title ?? 'Build your reading signal'}</h4>
-              <p className="text-xs text-[#777777] mt-2 line-clamp-4">
+              <h4 className="font-serif-title text-xl font-bold text-[var(--ink)]">{aiHome.recommendation?.title ?? 'Build your reading signal'}</h4>
+              <p className="text-xs text-[var(--muted)] mt-2 line-clamp-4">
                 {aiHome.recommendation?.reasoning ?? 'Add books, ratings, wishlist entries, and sessions to get a grounded recommendation.'}
               </p>
             </div>
-            <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
+            <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-5">
               <div className="flex items-center gap-2 text-[#B8860B] text-[10px] font-bold uppercase mb-2">
                 <Star className="w-4 h-4" />
                 <span>Insight of the Day</span>
               </div>
-              <h4 className="font-serif-title text-xl font-bold text-[#1D1D1D]">{insight?.readingTrend ?? 'stable'} trend</h4>
-              <p className="text-xs text-[#777777] mt-2 line-clamp-4">
+              <h4 className="font-serif-title text-xl font-bold text-[var(--ink)]">{insight?.readingTrend ?? 'stable'} trend</h4>
+              <p className="text-xs text-[var(--muted)] mt-2 line-clamp-4">
                 {insight?.moodPattern ?? 'OpenBook is waiting for more reading history before making a strong pattern call.'}
               </p>
             </div>
-            <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
+            <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-5">
               <div className="flex items-center gap-2 text-[#2D4030] text-[10px] font-bold uppercase mb-2">
                 <Flame className="w-4 h-4" />
                 <span>Personal Goal</span>
               </div>
-              <h4 className="font-serif-title text-xl font-bold text-[#1D1D1D]">
+              <h4 className="font-serif-title text-xl font-bold text-[var(--ink)]">
                 {insight ? `${insight.totalBooksRead} books, ${insight.totalPagesRead} pages` : 'Start with one session'}
               </h4>
-              <p className="text-xs text-[#777777] mt-2 line-clamp-4">
+              <p className="text-xs text-[var(--muted)] mt-2 line-clamp-4">
                 {insight?.nextLikelyBook?.reasoning ?? 'Daily motivation and smart tips become sharper as your sessions accumulate.'}
               </p>
             </div>
@@ -203,8 +203,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* Recently Opened Volumes */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-serif-title text-2xl font-bold text-[#1D1D1D]">Recently Opened</h3>
-          <button onClick={() => onNavigate('library')} className="text-xs font-semibold text-[#1D1D1D] hover:underline flex items-center gap-1">
+          <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">Recently Opened</h3>
+          <button onClick={() => onNavigate('library')} className="text-xs font-semibold text-[var(--ink)] hover:underline flex items-center gap-1">
             <span>Library</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
@@ -220,7 +220,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       {/* New Releases Banner */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-serif-title text-2xl font-bold text-[#1D1D1D]">New Releases</h3>
+          <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">New Releases</h3>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

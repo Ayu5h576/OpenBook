@@ -14,7 +14,7 @@ export const WishlistGalaxy: React.FC<WishlistGalaxyProps> = ({
   const [hoveredBook, setHoveredBook] = useState<Book | null>(null);
 
   return (
-    <div className="w-full min-h-[80vh] bg-[#12141D] text-[#F8F6F1] rounded-3xl p-6 md:p-10 relative overflow-hidden flex flex-col justify-between border border-[#2A2E3D]">
+    <div className="w-full min-h-[80vh] bg-[#12141D] text-[var(--bg-ivory)] rounded-3xl p-6 md:p-10 relative overflow-hidden flex flex-col justify-between border border-[#2A2E3D]">
       
       {/* Background Starfield Particles */}
       <div className="absolute inset-0 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:24px_24px] opacity-15 pointer-events-none" />

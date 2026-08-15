@@ -48,7 +48,7 @@ export const ReadingCompass: React.FC<ReadingCompassProps> = ({ onSelectBook, al
   };
 
   return (
-    <div className="w-full bg-[#1D1D1D] text-[#F8F6F1] rounded-3xl p-6 md:p-10 shadow-warm-lg relative overflow-hidden">
+    <div className="w-full bg-[var(--ink)] text-[var(--bg-ivory)] rounded-3xl p-6 md:p-10 shadow-warm-lg relative overflow-hidden">
       <div className="absolute top-0 right-0 w-96 h-96 bg-[#E0A96D]/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Header */}
@@ -76,7 +76,7 @@ export const ReadingCompass: React.FC<ReadingCompassProps> = ({ onSelectBook, al
           <button
             onClick={() => handleSeekRecommendations(moodInput)}
             disabled={loading || !moodInput.trim()}
-            className="px-6 py-3 rounded-2xl bg-[#E0A96D] text-[#1D1D1D] font-bold text-xs hover:bg-[#D49A5B] transition-all flex items-center gap-2 disabled:opacity-50"
+            className="px-6 py-3 rounded-2xl bg-[#E0A96D] text-[var(--ink)] font-bold text-xs hover:bg-[#D49A5B] transition-all flex items-center gap-2 disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Compass className="w-4 h-4" />}
             <span>Consult AI</span>

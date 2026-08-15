@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Book, ViewMode } from '../types';
 import { BookDetailSkeleton } from '../components/Skeleton';
 import { useAIBookDetail } from '../hooks/useAI';
 import { useCollections } from '../hooks/useCollections';
+import { useToast } from '../context/ToastContext';
 import { BookOpen, Heart, Bookmark, Share2, Star, ArrowLeft, Play, Sparkles, MessageSquare, Send, RefreshCw, FolderHeart, Check, X } from 'lucide-react';
 
 interface BookDetailViewProps {
@@ -11,6 +12,7 @@ interface BookDetailViewProps {
   onOpenReader: (book: Book) => void;
   onToggleFavorite: (id: string) => void;
   onToggleWishlist: (id: string) => void;
+  onSelectBook: (book: Book) => void;
   relatedBooks: Book[];
   isLoading?: boolean;
 }
@@ -21,13 +23,16 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
   onOpenReader,
   onToggleFavorite,
   onToggleWishlist,
+  onSelectBook,
   relatedBooks,
   isLoading = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'comments' | 'ai-insights'>('overview');
   const [showTrailerModal, setShowTrailerModal] = useState(false);
   const [showCollectionModal, setShowCollectionModal] = useState(false);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
+  const toast = useToast();
   const [addingToCollection, setAddingToCollection] = useState(false);
   const [collectionError, setCollectionError] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
@@ -37,12 +42,20 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
   const ai = useAIBookDetail(isUuidBook ? book.id : undefined);
   const { collections, loading: collectionsLoading, addBook: addBookToCollection } = useCollections();
 
+  const [isFavorite, setIsFavorite] = useState(book.favorite);
+  const [isWishlist, setIsWishlist] = useState(book.status === 'wishlist');
+
+  useEffect(() => {
+    setIsFavorite(book.favorite);
+    setIsWishlist(book.status === 'wishlist');
+  }, [book.id, book.favorite, book.status]);
+
   if (isLoading) {
     return (
       <div className="space-y-8 pb-12">
         <button
           onClick={() => onNavigate('home')}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-[#777777] hover:text-[#1D1D1D] transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Dashboard</span>
@@ -99,18 +112,18 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
       {/* Back Button */}
       <button
         onClick={() => onNavigate('home')}
-        className="inline-flex items-center gap-2 text-xs font-semibold text-[#777777] hover:text-[#1D1D1D] transition-colors"
+        className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Back to Dashboard</span>
       </button>
 
       {/* Main Bookstore Showcase Card */}
-      <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-10 shadow-warm-lg grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12">
+      <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-10 shadow-warm-lg grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12">
         
         {/* Large 3D Cover */}
         <div className="lg:col-span-4 flex flex-col items-center">
-          <div className="w-56 sm:w-64 h-80 sm:h-96 rounded-2xl overflow-hidden shadow-book border border-[#E5E0D8] bg-[#EFE8DD] relative group transform hover:rotate-y-3 transition-transform duration-500">
+          <div className="w-56 sm:w-64 h-80 sm:h-96 rounded-2xl overflow-hidden shadow-book border border-[var(--border-light)] bg-[var(--bg-beige)] relative group transform hover:rotate-y-3 transition-transform duration-500">
             <img src={book.cover} alt={book.title} className="w-full h-full object-cover" />
             <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-black/20 to-transparent" />
           </div>
@@ -118,19 +131,23 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
           {/* Quick Actions Under Cover */}
           <div className="flex items-center gap-3 mt-6">
             <button
-              onClick={() => onToggleFavorite(book.id)}
-              className={`p-3 rounded-2xl border transition-all ${
-                book.favorite ? 'bg-red-50 border-red-200 text-red-600' : 'border-[#E5E0D8] text-[#1D1D1D] hover:bg-[#F8F6F1]'
+              onClick={() => {
+                onToggleFavorite(book.id);
+              }}
+              className={`p-3 rounded-2xl border transition-all active:scale-95 ${
+                isFavorite ? 'bg-red-50 border-red-200 text-red-600' : 'border-[var(--border-light)] text-[var(--ink)] hover:bg-[var(--bg-ivory)]'
               }`}
               title="Favorite Volume"
             >
-              <Heart className={`w-5 h-5 ${book.favorite ? 'fill-current' : ''}`} />
+              <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
             </button>
 
             <button
-              onClick={() => onToggleWishlist(book.id)}
-              className={`p-3 rounded-2xl border transition-all ${
-                book.status === 'wishlist' ? 'bg-[#1D1D1D] text-[#F8F6F1]' : 'border-[#E5E0D8] text-[#1D1D1D] hover:bg-[#F8F6F1]'
+              onClick={() => {
+                onToggleWishlist(book.id);
+              }}
+              className={`p-3 rounded-2xl border transition-all active:scale-95 ${
+                isWishlist ? 'bg-[var(--ink)] text-[var(--bg-ivory)]' : 'border-[var(--border-light)] text-[var(--ink)] hover:bg-[var(--bg-ivory)]'
               }`}
               title="Save to Wishlist"
             >
@@ -142,7 +159,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
                 navigator.clipboard.writeText(window.location.href);
                 alert("Book link copied to clipboard!");
               }}
-              className="p-3 rounded-2xl border border-[#E5E0D8] text-[#1D1D1D] hover:bg-[#F8F6F1] transition-all"
+              className="p-3 rounded-2xl border border-[var(--border-light)] text-[var(--ink)] hover:bg-[var(--bg-ivory)] transition-all"
               title="Share Volume"
             >
               <Share2 className="w-5 h-5" />
@@ -156,18 +173,18 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-3">
               {book.genres.map((g) => (
-                <span key={g} className="text-[11px] font-bold uppercase tracking-wider bg-[#EFE8DD] text-[#A0522D] px-3 py-1 rounded-full">
+                <span key={g} className="text-[11px] font-bold uppercase tracking-wider bg-[var(--bg-beige)] text-[#A0522D] px-3 py-1 rounded-full">
                   {g}
                 </span>
               ))}
             </div>
 
-            <h1 className="font-serif-title text-4xl sm:text-5xl font-bold text-[#1D1D1D] mb-2">
+            <h1 className="font-serif-title text-4xl sm:text-5xl font-bold text-[var(--ink)] mb-2">
               {book.title}
             </h1>
 
-            <p className="text-base text-[#777777] font-medium">
-              by <span className="text-[#1D1D1D] font-bold underline cursor-pointer" onClick={() => onNavigate('author')}>{book.author}</span>
+            <p className="text-base text-[var(--muted)] font-medium">
+              by <span className="text-[var(--ink)] font-bold underline cursor-pointer" onClick={() => onNavigate('author')}>{book.author}</span>
             </p>
 
             {/* Rating Stars & Metadata Grid */}
@@ -175,25 +192,25 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
               <div className="flex items-center gap-1.5 text-[#B8860B] font-bold bg-[#FFF8E7] px-3 py-1 rounded-full">
                 <Star className="w-4 h-4 fill-current" />
                 <span>{book.rating}</span>
-                <span className="text-[#777777] font-normal">({book.reviewCount} reviews)</span>
+                <span className="text-[var(--muted)] font-normal">({book.reviewCount} reviews)</span>
               </div>
-              <span className="text-[#777777]">•</span>
-              <span className="text-[#777777]">{book.pages} pages</span>
-              <span className="text-[#777777]">•</span>
-              <span className="text-[#777777]">{book.language}</span>
+              <span className="text-[var(--muted)]">•</span>
+              <span className="text-[var(--muted)]">{book.pages} pages</span>
+              <span className="text-[var(--muted)]">•</span>
+              <span className="text-[var(--muted)]">{book.language}</span>
             </div>
 
             {/* Description */}
-            <p className="text-sm text-[#777777] leading-relaxed font-normal my-4">
+            <p className="text-sm text-[var(--muted)] leading-relaxed font-normal my-4">
               {book.description}
             </p>
           </div>
 
           {/* Action Buttons Row */}
-          <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-[#E5E0D8]">
+          <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-[var(--border-light)]">
             <button
-              onClick={() => onOpenReader(book)}
-              className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#1D1D1D] text-[#F8F6F1] font-bold text-sm hover:bg-[#333333] transition-all shadow-warm-md"
+              onClick={() => setShowSummaryModal(true)}
+              className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-sm hover:bg-[#333333] transition-all shadow-warm-md active:scale-95"
             >
               <BookOpen className="w-4 h-4" />
               <span>Read Now</span>
@@ -201,7 +218,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
 
             <button
               onClick={() => setShowTrailerModal(true)}
-              className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#EFE8DD] text-[#1D1D1D] font-bold text-sm hover:bg-[#E5DCCF] transition-all"
+              className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] font-bold text-sm hover:bg-[#E5DCCF] transition-all"
             >
               <Play className="w-4 h-4 fill-current text-[#A0522D]" />
               <span>Book Trailer</span>
@@ -209,7 +226,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
 
             <button
               onClick={() => setShowCollectionModal(true)}
-              className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#FFFFFF] border border-[#E5E0D8] text-[#1D1D1D] font-bold text-sm hover:bg-[#EFE8DD] transition-all shadow-warm-sm"
+              className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[var(--white)] border border-[var(--border-light)] text-[var(--ink)] font-bold text-sm hover:bg-[var(--bg-beige)] transition-all shadow-warm-sm"
             >
               <FolderHeart className="w-4 h-4 text-[#A0522D]" />
               <span>Add to Collection</span>
@@ -217,7 +234,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
 
             <button
               onClick={() => setActiveTab('ai-insights')}
-              className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[#FFFFFF] border border-[#E5E0D8] text-[#1D1D1D] font-bold text-sm hover:bg-[#EFE8DD] transition-all shadow-warm-sm"
+              className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[var(--white)] border border-[var(--border-light)] text-[var(--ink)] font-bold text-sm hover:bg-[var(--bg-beige)] transition-all shadow-warm-sm"
             >
               <Sparkles className="w-4 h-4 text-[#B8860B]" />
               <span>AI Literary Summary</span>
@@ -225,22 +242,22 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
           </div>
 
           {/* Metadata Table */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-[#F8F6F1] rounded-2xl border border-[#E5E0D8] text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-[var(--bg-ivory)] rounded-2xl border border-[var(--border-light)] text-xs">
             <div>
-              <span className="text-[#777777] block text-[10px] uppercase font-semibold">Publisher</span>
-              <span className="font-bold text-[#1D1D1D]">{book.publisher}</span>
+              <span className="text-[var(--muted)] block text-[10px] uppercase font-semibold">Publisher</span>
+              <span className="font-bold text-[var(--ink)]">{book.publisher}</span>
             </div>
             <div>
-              <span className="text-[#777777] block text-[10px] uppercase font-semibold">Published</span>
-              <span className="font-bold text-[#1D1D1D]">{book.publishedYear}</span>
+              <span className="text-[var(--muted)] block text-[10px] uppercase font-semibold">Published</span>
+              <span className="font-bold text-[var(--ink)]">{book.publishedYear}</span>
             </div>
             <div>
-              <span className="text-[#777777] block text-[10px] uppercase font-semibold">ISBN</span>
-              <span className="font-bold text-[#1D1D1D] font-mono">{book.isbn}</span>
+              <span className="text-[var(--muted)] block text-[10px] uppercase font-semibold">ISBN</span>
+              <span className="font-bold text-[var(--ink)] font-mono">{book.isbn}</span>
             </div>
             <div>
-              <span className="text-[#777777] block text-[10px] uppercase font-semibold">Format</span>
-              <span className="font-bold text-[#1D1D1D]">Digital E-Book</span>
+              <span className="text-[var(--muted)] block text-[10px] uppercase font-semibold">Format</span>
+              <span className="font-bold text-[var(--ink)]">Digital E-Book</span>
             </div>
           </div>
 
@@ -248,22 +265,22 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
       </div>
 
       {/* AI Detail Surface */}
-      <section className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-md">
+      <section className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFE8DD] text-[#A0522D] text-xs font-semibold mb-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-xs font-semibold mb-2">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Gemini Reading Companion</span>
             </div>
-            <h2 className="font-serif-title text-3xl font-bold text-[#1D1D1D]">Personalized Intelligence</h2>
+            <h2 className="font-serif-title text-3xl font-bold text-[var(--ink)]">Personalized Intelligence</h2>
             {!isUuidBook && (
-              <p className="text-xs text-[#777777] mt-1">Import this book into your library to unlock database-grounded AI analysis.</p>
+              <p className="text-xs text-[var(--muted)] mt-1">Import this book into your library to unlock database-grounded AI analysis.</p>
             )}
           </div>
           <button
             onClick={ai.retry}
             disabled={!isUuidBook || ai.loading}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#E5E0D8] text-xs font-bold text-[#1D1D1D] hover:bg-[#F8F6F1] disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--border-light)] text-xs font-bold text-[var(--ink)] hover:bg-[var(--bg-ivory)] disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${ai.loading ? 'animate-spin' : ''}`} />
             <span>Retry</span>
@@ -275,65 +292,65 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
-            <h3 className="font-serif-title text-xl font-bold text-[#1D1D1D] mb-3">AI Summary</h3>
+          <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-5">
+            <h3 className="font-serif-title text-xl font-bold text-[var(--ink)] mb-3">AI Summary</h3>
             {ai.summary.loading ? (
               <div className="space-y-2">
-                <div className="h-3 bg-[#EFE8DD] rounded animate-pulse" />
-                <div className="h-3 bg-[#EFE8DD] rounded animate-pulse w-5/6" />
-                <div className="h-3 bg-[#EFE8DD] rounded animate-pulse w-2/3" />
+                <div className="h-3 bg-[var(--bg-beige)] rounded animate-pulse" />
+                <div className="h-3 bg-[var(--bg-beige)] rounded animate-pulse w-5/6" />
+                <div className="h-3 bg-[var(--bg-beige)] rounded animate-pulse w-2/3" />
               </div>
             ) : (
               <p className="text-xs text-[#555555] leading-relaxed whitespace-pre-wrap">{ai.summary.data?.summary ?? 'No AI summary yet.'}</p>
             )}
           </div>
 
-          <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
-            <h3 className="font-serif-title text-xl font-bold text-[#1D1D1D] mb-3">Book DNA</h3>
+          <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-5">
+            <h3 className="font-serif-title text-xl font-bold text-[var(--ink)] mb-3">Book DNA</h3>
             {ai.dna.loading ? (
-              <div className="h-32 bg-[#EFE8DD] rounded-xl animate-pulse" />
+              <div className="h-32 bg-[var(--bg-beige)] rounded-xl animate-pulse" />
             ) : (
               <div className="space-y-3">
                 {dnaMetrics.map(([label, value]) => (
                   <div key={label}>
-                    <div className="flex justify-between text-xs text-[#1D1D1D] mb-1">
+                    <div className="flex justify-between text-xs text-[var(--ink)] mb-1">
                       <span>{label}</span>
                       <span>{value}/5</span>
                     </div>
-                    <div className="h-2 bg-[#EFE8DD] rounded-full overflow-hidden">
+                    <div className="h-2 bg-[var(--bg-beige)] rounded-full overflow-hidden">
                       <div className="h-full bg-[#A0522D]" style={{ width: `${(Number(value) / 5) * 100}%` }} />
                     </div>
                   </div>
                 ))}
-                <p className="text-xs text-[#777777] pt-2">{ai.dna.data?.explanation}</p>
+                <p className="text-xs text-[var(--muted)] pt-2">{ai.dna.data?.explanation}</p>
               </div>
             )}
           </div>
 
-          <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
-            <h3 className="font-serif-title text-xl font-bold text-[#1D1D1D] mb-3">Theme Analysis</h3>
+          <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-5">
+            <h3 className="font-serif-title text-xl font-bold text-[var(--ink)] mb-3">Theme Analysis</h3>
             <div className="flex flex-wrap gap-2">
               {(ai.dna.data?.dna.themes ?? []).map((theme) => (
-                <span key={theme.name} className="px-3 py-1 rounded-full bg-[#EFE8DD] text-[#1D1D1D] text-xs font-semibold">
+                <span key={theme.name} className="px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold">
                   {theme.name} {Math.round(theme.weight * 100)}%
                 </span>
               ))}
             </div>
-            <p className="text-xs text-[#777777] mt-4">{ai.dna.data?.dna.philosophy ?? 'Theme signals will appear after AI analysis loads.'}</p>
+            <p className="text-xs text-[var(--muted)] mt-4">{ai.dna.data?.dna.philosophy ?? 'Theme signals will appear after AI analysis loads.'}</p>
           </div>
 
-          <div className="bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl p-5">
-            <h3 className="font-serif-title text-xl font-bold text-[#1D1D1D] mb-3">Smart Planner</h3>
+          <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-5">
+            <h3 className="font-serif-title text-xl font-bold text-[var(--ink)] mb-3">Smart Planner</h3>
             <p className="text-xs text-[#555555]">
               {ai.planner.data
                 ? `${ai.planner.data.plan.dailyPages} pages/day, ${ai.planner.data.plan.weeklyGoal} pages/week. Estimated finish: ${ai.planner.data.plan.estimatedFinishDate}.`
                 : 'Planner will use your measured reading speed and current page.'}
             </p>
-            <p className="text-xs text-[#777777] mt-3">{ai.planner.data?.plan.adaptiveNotes}</p>
+            <p className="text-xs text-[var(--muted)] mt-3">{ai.planner.data?.plan.adaptiveNotes}</p>
           </div>
         </div>
 
-        <div className="mt-6 bg-[#1D1D1D] text-[#F8F6F1] rounded-2xl p-5">
+        <div className="mt-6 bg-[var(--ink)] text-[var(--bg-ivory)] rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <MessageSquare className="w-4 h-4 text-[#E0A96D]" />
             <h3 className="font-serif-title text-xl font-bold">Chat With This Book</h3>
@@ -363,7 +380,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
             <button
               onClick={sendChat}
               disabled={!isUuidBook || !chatInput.trim()}
-              className="p-2.5 rounded-xl bg-[#E0A96D] text-[#1D1D1D] disabled:opacity-50"
+              className="p-2.5 rounded-xl bg-[#E0A96D] text-[var(--ink)] disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
             </button>
@@ -371,10 +388,51 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
         </div>
       </section>
 
+      {/* Next Step Recommendations */}
+      {relatedBooks && relatedBooks.length > 0 && (
+        <section className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md mt-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-xs font-semibold mb-2">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Next Step Recommendation</span>
+              </div>
+              <h2 className="font-serif-title text-2xl font-bold text-[var(--ink)]">What to Read Next</h2>
+            </div>
+            <button
+              onClick={() => onNavigate('explore')}
+              className="hidden sm:block text-xs font-bold text-[var(--ink)] border border-[var(--border-light)] px-4 py-2 rounded-full hover:bg-[var(--bg-ivory)] transition-colors"
+            >
+              Explore Library →
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {relatedBooks.map((related) => (
+              <div 
+                key={related.id} 
+                onClick={() => onSelectBook(related)}
+                className="group cursor-pointer flex flex-col gap-3"
+              >
+                <div className="aspect-[2/3] rounded-xl overflow-hidden border border-[var(--border-light)] shadow-sm bg-[var(--bg-beige)] relative">
+                  <img src={related.cover} alt={related.title} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <span className="text-[var(--white)] font-bold text-xs uppercase tracking-widest bg-[var(--ink)]/80 px-4 py-2 rounded-full backdrop-blur-md">View Book</span>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-bold text-[var(--ink)] text-sm line-clamp-1 group-hover:text-[#A0522D] transition-colors">{related.title}</h4>
+                  <p className="text-xs text-[var(--muted)]">{related.author}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Trailer Modal */}
       {showTrailerModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#1D1D1D] text-white rounded-3xl p-6 max-w-xl w-full border border-white/20 shadow-2xl text-center">
+          <div className="bg-[var(--ink)] text-white rounded-3xl p-6 max-w-xl w-full border border-white/20 shadow-2xl text-center">
             <h3 className="font-serif-title text-2xl font-bold mb-2">Atmospheric Book Trailer</h3>
             <p className="text-xs text-[#A0A0A0] mb-6">Visual and acoustic mood showcase for {book.title}</p>
             <div className="aspect-video bg-black/60 rounded-2xl flex items-center justify-center border border-white/10 mb-6">
@@ -382,7 +440,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
             </div>
             <button
               onClick={() => setShowTrailerModal(false)}
-              className="px-6 py-2.5 rounded-full bg-[#E0A96D] text-[#1D1D1D] font-bold text-xs"
+              className="px-6 py-2.5 rounded-full bg-[#E0A96D] text-[var(--ink)] font-bold text-xs"
             >
               Close Trailer
             </button>
@@ -393,16 +451,16 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
       {/* Add to Collection Modal */}
       {showCollectionModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#FFFFFF] rounded-3xl p-6 max-w-md w-full border border-[#E5E0D8] shadow-2xl">
+          <div className="bg-[var(--white)] rounded-3xl p-6 max-w-md w-full border border-[var(--border-light)] shadow-2xl">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="font-serif-title text-2xl font-bold text-[#1D1D1D]">Add to Collection</h3>
+              <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">Add to Collection</h3>
               <button
                 onClick={() => {
                   setShowCollectionModal(false);
                   setSelectedCollections(new Set());
                   setCollectionError(null);
                 }}
-                className="p-1.5 rounded-full text-[#777777] hover:bg-[#EFE8DD] transition-colors"
+                className="p-1.5 rounded-full text-[var(--muted)] hover:bg-[var(--bg-beige)] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -417,20 +475,20 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
             {collectionsLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-10 bg-[#EFE8DD] rounded-lg animate-pulse" />
+                  <div key={i} className="h-10 bg-[var(--bg-beige)] rounded-lg animate-pulse" />
                 ))}
               </div>
             ) : collections.length === 0 ? (
               <div className="text-center py-8">
-                <FolderHeart className="w-8 h-8 text-[#E5E0D8] mx-auto mb-2" />
-                <p className="text-xs text-[#777777]">No collections yet. Create one from the Collections view.</p>
+                <FolderHeart className="w-8 h-8 text-[var(--border-light)] mx-auto mb-2" />
+                <p className="text-xs text-[var(--muted)]">No collections yet. Create one from the Collections view.</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto mb-6">
                 {collections.map((collection) => (
                   <label
                     key={collection.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-[#E5E0D8] hover:bg-[#F8F6F1] cursor-pointer transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-lg border border-[var(--border-light)] hover:bg-[var(--bg-ivory)] cursor-pointer transition-colors"
                   >
                     <input
                       type="checkbox"
@@ -447,8 +505,8 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
                       className="w-4 h-4 rounded cursor-pointer"
                     />
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-xs text-[#1D1D1D]">{collection.name}</p>
-                      <p className="text-[10px] text-[#777777]">{collection.books?.length ?? 0} books</p>
+                      <p className="font-semibold text-xs text-[var(--ink)]">{collection.name}</p>
+                      <p className="text-[10px] text-[var(--muted)]">{collection.books?.length ?? 0} books</p>
                     </div>
                   </label>
                 ))}
@@ -462,17 +520,51 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
                   setSelectedCollections(new Set());
                   setCollectionError(null);
                 }}
-                className="px-4 py-2.5 rounded-full border border-[#E5E0D8] text-xs font-semibold text-[#1D1D1D] hover:bg-[#F8F6F1] transition-colors"
+                className="px-4 py-2.5 rounded-full border border-[var(--border-light)] text-xs font-semibold text-[var(--ink)] hover:bg-[var(--bg-ivory)] transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddToCollections}
                 disabled={addingToCollection || selectedCollections.size === 0}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#1D1D1D] text-[#F8F6F1] text-xs font-bold hover:bg-[#333333] disabled:opacity-50 transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[#333333] disabled:opacity-50 transition-all"
               >
                 <Check className="w-3.5 h-3.5" />
                 {addingToCollection ? 'Adding...' : 'Add'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Summary Modal */}
+      {showSummaryModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[var(--white)] rounded-3xl p-6 md:p-8 max-w-2xl w-full border border-[var(--border-light)] shadow-2xl relative animate-scale-in">
+            <button
+              onClick={() => setShowSummaryModal(false)}
+              className="absolute top-6 right-6 p-2 rounded-full text-[var(--muted)] hover:bg-[var(--bg-beige)] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="flex items-center gap-3 mb-6">
+              <BookOpen className="w-6 h-6 text-[#A0522D]" />
+              <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">Book Summary</h3>
+            </div>
+            
+            <div className="prose prose-sm text-[#444444] leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
+              {book.description ? (
+                <p>{book.description}</p>
+              ) : (
+                <p className="italic text-[var(--muted)]">No summary available for this book.</p>
+              )}
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-[var(--border-light)] flex justify-end">
+              <button
+                onClick={() => setShowSummaryModal(false)}
+                className="px-6 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-xs hover:bg-[#333333] transition-colors"
+              >
+                Close Summary
               </button>
             </div>
           </div>

@@ -25,6 +25,8 @@ import {
 interface SidebarProps {
   currentView: ViewMode;
   onNavigate: (view: ViewMode) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
@@ -55,7 +57,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
 
   const renderNavGroup = (title: string, items: typeof mainNavItems) => (
     <div className="mb-6">
-      <h3 className="text-[11px] font-semibold text-[#777777] uppercase tracking-wider px-3 mb-2">
+      <h3 className="text-[11px] font-semibold text-[var(--muted)] uppercase tracking-wider px-3 mb-2">
         {title}
       </h3>
       <div className="space-y-1">
@@ -66,13 +68,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-2xl text-xs font-medium transition-all ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-2xl text-xs font-medium transition-all active:scale-95 ${
                 isActive
-                  ? 'bg-[#1D1D1D] text-[#F8F6F1] shadow-warm-sm font-semibold'
-                  : 'text-[#1D1D1D] hover:bg-[#EFE8DD] hover:text-[#1D1D1D]'
+                  ? 'bg-[var(--ink)] text-[var(--bg-ivory)] shadow-warm-sm font-semibold'
+                  : 'text-[var(--ink)] hover:bg-[var(--bg-beige)] hover:text-[var(--ink)]'
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-[#F8F6F1]' : 'text-[#777777]'}`} />
+              <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-[var(--bg-ivory)]' : 'text-[var(--muted)]'}`} />
               <span>{item.label}</span>
             </button>
           );
@@ -81,19 +83,57 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
     </div>
   );
 
-  return (
-    <aside className="w-64 bg-[#F8F6F1] border-r border-[#E5E0D8] p-4 flex flex-col justify-between hidden md:flex min-h-[calc(100vh-65px)]">
-      <div className="overflow-y-auto pr-1">
-        {renderNavGroup('Main Navigation', mainNavItems)}
-        {renderNavGroup('Library Experiences', studioItems)}
-        {renderNavGroup('Insights & Account', analyticsItems)}
-      </div>
+  /* Mobile bottom navigation — 5 primary icons */
+  const mobileNavItems = [
+    { id: 'home' as ViewMode, icon: Home, label: 'Home' },
+    { id: 'explore' as ViewMode, icon: Compass, label: 'Explore' },
+    { id: 'library' as ViewMode, icon: Library, label: 'Library' },
+    { id: 'community' as ViewMode, icon: Users, label: 'Community' },
+    { id: 'settings' as ViewMode, icon: SettingsIcon, label: 'Settings' },
+  ];
 
-      {/* Footer subtle brand badge */}
-      <div className="pt-4 border-t border-[#E5E0D8] px-2 text-[11px] text-[#777777]">
-        <p className="font-serif-title italic font-medium text-[#1D1D1D] text-sm mb-0.5">"A room without books is like a body without a soul."</p>
-        <p className="text-[10px]">— Marcus Tullius Cicero</p>
-      </div>
-    </aside>
+  return (
+    <>
+      {/* ── Desktop sidebar ── */}
+      <aside className="w-64 bg-[var(--bg-ivory)] border-r border-[var(--border-light)] p-4 flex-col justify-between hidden md:flex min-h-[calc(100vh-65px)] flex-shrink-0">
+        <div className="overflow-y-auto pr-1">
+          {renderNavGroup('Main Navigation', mainNavItems)}
+          {renderNavGroup('Library Experiences', studioItems)}
+          {renderNavGroup('Insights & Account', analyticsItems)}
+        </div>
+
+        {/* Footer subtle brand badge */}
+        <div className="pt-4 border-t border-[var(--border-light)] px-2 text-[11px] text-[var(--muted)]">
+          <p className="font-serif-title italic font-medium text-[var(--ink)] text-sm mb-0.5">"A room without books is like a body without a soul."</p>
+          <p className="text-[10px]">— Marcus Tullius Cicero</p>
+        </div>
+      </aside>
+
+      {/* ── Mobile bottom navigation bar ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--bg-ivory)]/95 backdrop-blur-md border-t border-[var(--border-light)] flex items-center justify-around px-2 py-2 shadow-warm-lg">
+        {mobileNavItems.map(({ id, icon: Icon, label }) => {
+          const isActive = currentView === id;
+          return (
+            <button
+              key={id}
+              onClick={() => onNavigate(id)}
+              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition-all active:scale-90 ${
+                isActive ? 'text-[var(--ink)]' : 'text-[#999999]'
+              }`}
+              aria-label={label}
+            >
+              <div className={`w-9 h-9 flex items-center justify-center rounded-2xl transition-all ${
+                isActive ? 'bg-[var(--ink)] text-[var(--bg-ivory)]' : 'text-[#999999]'
+              }`}>
+                <Icon className="w-4.5 h-4.5" />
+              </div>
+              <span className={`text-[9px] font-semibold ${isActive ? 'text-[var(--ink)]' : 'text-[#999999]'}`}>
+                {label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+    </>
   );
 };

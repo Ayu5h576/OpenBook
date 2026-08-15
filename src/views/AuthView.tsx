@@ -43,7 +43,7 @@ function fieldStatus(touched: boolean, error: string | null): FieldStatus {
 function inputBorder(status: FieldStatus) {
   if (status === 'valid') return 'border-[#22863a]';
   if (status === 'invalid') return 'border-[#C53030]';
-  return 'border-[#E5E0D8]';
+  return 'border-[var(--border-light)]';
 }
 
 function FieldIcon({ status }: { status: FieldStatus }) {
@@ -107,11 +107,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F6F1] flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl overflow-hidden shadow-warm-lg grid grid-cols-1 md:grid-cols-12">
+    <div className="min-h-screen bg-[var(--bg-ivory)] flex items-center justify-center p-4">
+      <div className="max-w-4xl w-full bg-[var(--white)] border border-[var(--border-light)] rounded-3xl overflow-hidden shadow-warm-lg grid grid-cols-1 md:grid-cols-12">
 
         {/* Left panel */}
-        <div className="md:col-span-5 bg-[#1D1D1D] text-[#F8F6F1] p-8 flex flex-col justify-between relative overflow-hidden">
+        <div className="md:col-span-5 bg-[var(--ink)] text-[var(--bg-ivory)] p-8 flex flex-col justify-between relative overflow-hidden">
           <div className="relative z-10">
             <button
               onClick={() => onNavigate('landing')}
@@ -121,7 +121,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
               <span>Back to Library</span>
             </button>
 
-            <div className="w-10 h-10 rounded-2xl bg-[#F8F6F1] text-[#1D1D1D] flex items-center justify-center mb-6 shadow-warm-md">
+            <div className="w-10 h-10 rounded-2xl bg-[var(--bg-ivory)] text-[var(--ink)] flex items-center justify-center mb-6 shadow-warm-md">
               <BookOpen className="w-5 h-5" />
             </div>
 
@@ -143,12 +143,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
         <div className="md:col-span-7 p-8 md:p-12 flex flex-col justify-center">
 
           <div className="mb-6">
-            <h3 className="font-serif-title text-3xl font-bold text-[#1D1D1D]">
+            <h3 className="font-serif-title text-3xl font-bold text-[var(--ink)]">
               {mode === 'login' && 'Sign in to your Library'}
               {mode === 'signup' && 'Create your Reader Profile'}
               {mode === 'forgot' && 'Reset your Password'}
             </h3>
-            <p className="text-xs text-[#777777] mt-1">
+            <p className="text-xs text-[var(--muted)] mt-1">
               {mode === 'login' && 'Enter your credentials to access your personal shelf.'}
               {mode === 'signup' && 'Join thousands of bibliophiles in an elegant digital sanctuary.'}
               {mode === 'forgot' && 'Enter your registered email to receive a recovery link.'}
@@ -169,7 +169,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                   key={provider}
                   type="button"
                   disabled={auth.isLoading}
-                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-[#E5E0D8] text-xs font-semibold text-[#1D1D1D] hover:bg-[#F8F6F1] transition-all disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-[var(--border-light)] text-xs font-semibold text-[var(--ink)] hover:bg-[var(--bg-ivory)] transition-all disabled:opacity-50"
                 >
                   {provider}
                 </button>
@@ -178,9 +178,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
           )}
 
           <div className="relative flex items-center my-4">
-            <div className="grow border-t border-[#E5E0D8]" />
-            <span className="shrink mx-3 text-[11px] text-[#777777] uppercase font-semibold">Or with Email</span>
-            <div className="grow border-t border-[#E5E0D8]" />
+            <div className="grow border-t border-[var(--border-light)]" />
+            <span className="shrink mx-3 text-[11px] text-[var(--muted)] uppercase font-semibold">Or with Email</span>
+            <div className="grow border-t border-[var(--border-light)]" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -188,9 +188,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             {/* Username — signup only */}
             {mode === 'signup' && (
               <div>
-                <label className="block text-xs font-semibold text-[#1D1D1D] mb-1">Username</label>
+                <label className="block text-xs font-semibold text-[var(--ink)] mb-1">Username</label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-[#777777] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <User className="w-4 h-4 text-[var(--muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     required
@@ -199,7 +199,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     onBlur={() => touch('username')}
-                    className={`w-full bg-[#F8F6F1] border ${inputBorder(usernameStatus)} rounded-2xl pl-10 pr-9 py-2.5 text-sm text-[#1D1D1D] focus:outline-none transition-colors`}
+                    className={`w-full bg-[var(--bg-ivory)] border ${inputBorder(usernameStatus)} rounded-2xl pl-10 pr-9 py-2.5 text-sm text-[var(--ink)] focus:outline-none transition-colors`}
                   />
                   {usernameStatus !== 'idle' && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -210,16 +210,16 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                 {usernameStatus === 'invalid' ? (
                   <p className="text-[10px] text-[#C53030] mt-1">{usernameError}</p>
                 ) : (
-                  <p className="text-[10px] text-[#777777] mt-1">3–30 chars. Letters, numbers, _ and - only.</p>
+                  <p className="text-[10px] text-[var(--muted)] mt-1">3–30 chars. Letters, numbers, _ and - only.</p>
                 )}
               </div>
             )}
 
             {/* Email */}
             <div>
-              <label className="block text-xs font-semibold text-[#1D1D1D] mb-1">Email Address</label>
+              <label className="block text-xs font-semibold text-[var(--ink)] mb-1">Email Address</label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-[#777777] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Mail className="w-4 h-4 text-[var(--muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="email"
                   required
@@ -227,7 +227,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onBlur={() => touch('email')}
-                  className={`w-full bg-[#F8F6F1] border ${mode === 'signup' ? inputBorder(emailStatus) : 'border-[#E5E0D8] focus:border-[#1D1D1D]'} rounded-2xl pl-10 pr-9 py-2.5 text-sm text-[#1D1D1D] focus:outline-none transition-colors`}
+                  className={`w-full bg-[var(--bg-ivory)] border ${mode === 'signup' ? inputBorder(emailStatus) : 'border-[var(--border-light)] focus:border-[var(--ink)]'} rounded-2xl pl-10 pr-9 py-2.5 text-sm text-[var(--ink)] focus:outline-none transition-colors`}
                 />
                 {mode === 'signup' && emailStatus !== 'idle' && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -243,9 +243,9 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             {/* Password */}
             {mode !== 'forgot' && (
               <div>
-                <label className="block text-xs font-semibold text-[#1D1D1D] mb-1">Password</label>
+                <label className="block text-xs font-semibold text-[var(--ink)] mb-1">Password</label>
                 <div className="relative">
-                  <Lock className="w-4 h-4 text-[#777777] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <Lock className="w-4 h-4 text-[var(--muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="password"
                     required
@@ -253,7 +253,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     onBlur={() => touch('password')}
-                    className={`w-full bg-[#F8F6F1] border ${mode === 'signup' ? inputBorder(passwordStatus) : 'border-[#E5E0D8] focus:border-[#1D1D1D]'} rounded-2xl pl-10 pr-9 py-2.5 text-sm text-[#1D1D1D] focus:outline-none transition-colors`}
+                    className={`w-full bg-[var(--bg-ivory)] border ${mode === 'signup' ? inputBorder(passwordStatus) : 'border-[var(--border-light)] focus:border-[var(--ink)]'} rounded-2xl pl-10 pr-9 py-2.5 text-sm text-[var(--ink)] focus:outline-none transition-colors`}
                   />
                   {mode === 'signup' && passwordStatus !== 'idle' && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -282,7 +282,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             <button
               type="submit"
               disabled={auth.isLoading}
-              className="w-full py-3 rounded-2xl bg-[#1D1D1D] text-[#F8F6F1] font-bold text-xs hover:bg-[#333333] transition-all shadow-warm-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 rounded-2xl bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-xs hover:bg-[#333333] transition-all shadow-warm-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {auth.isLoading ? 'Loading...' : (
                 <>
@@ -294,11 +294,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             </button>
           </form>
 
-          <div className="mt-6 text-center text-xs text-[#777777]">
+          <div className="mt-6 text-center text-xs text-[var(--muted)]">
             {mode === 'login' && (
               <p>
                 Don't have an account?{' '}
-                <button onClick={() => switchMode('signup')} className="font-bold text-[#1D1D1D] underline">
+                <button onClick={() => switchMode('signup')} className="font-bold text-[var(--ink)] underline">
                   Sign up
                 </button>
               </p>
@@ -306,7 +306,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             {mode === 'signup' && (
               <p>
                 Already have an account?{' '}
-                <button onClick={() => switchMode('login')} className="font-bold text-[#1D1D1D] underline">
+                <button onClick={() => switchMode('login')} className="font-bold text-[var(--ink)] underline">
                   Sign in
                 </button>
               </p>

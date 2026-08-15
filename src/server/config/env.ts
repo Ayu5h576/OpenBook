@@ -45,6 +45,11 @@ export const env = {
   googleBooks: {
     apiKey: getOptionalEnvVar('GOOGLE_BOOKS_API_KEY'),
   },
+
+  // Redis Configuration (Optional — enables distributed caching)
+  redis: {
+    url: getOptionalEnvVar('REDIS_URL'),
+  },
 };
 
 // Validate required configuration on startup

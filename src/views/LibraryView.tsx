@@ -22,7 +22,7 @@ const statusBadge = (status: LibraryStatus) => {
   if (status === 'READING') return { label, cls: 'bg-green-100 text-green-700' };
   if (status === 'COMPLETED') return { label, cls: 'bg-blue-100 text-blue-700' };
   if (status === 'PAUSED') return { label, cls: 'bg-yellow-100 text-yellow-700' };
-  return { label, cls: 'bg-[#EFE8DD] text-[#1D1D1D]' };
+  return { label, cls: 'bg-[var(--bg-beige)] text-[var(--ink)]' };
 };
 
 export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
@@ -41,22 +41,22 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
     <div className="space-y-8 pb-12">
 
       {/* Header */}
-      <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFE8DD] text-[#1D1D1D] text-xs font-semibold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-2">
             <Library className="w-3.5 h-3.5 text-[#A0522D]" />
             <span>Personal Sanctuary Shelf</span>
           </div>
-          <h1 className="font-serif-title text-4xl font-bold text-[#1D1D1D]">My Personal Library</h1>
-          <p className="text-xs text-[#777777] mt-1">{entries.length} Total Volumes Curated</p>
+          <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">My Personal Library</h1>
+          <p className="text-xs text-[var(--muted)] mt-1">{entries.length} Total Volumes Curated</p>
         </div>
-        <div className="flex items-center bg-[#F8F6F1] p-1 rounded-2xl border border-[#E5E0D8]">
+        <div className="flex items-center bg-[var(--bg-ivory)] p-1 rounded-2xl border border-[var(--border-light)]">
           {(['grid', 'list'] as const).map((m) => (
             <button
               key={m}
               onClick={() => setViewMode(m)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                viewMode === m ? 'bg-[#1D1D1D] text-[#F8F6F1]' : 'text-[#777777] hover:text-[#1D1D1D]'
+                viewMode === m ? 'bg-[var(--ink)] text-[var(--bg-ivory)]' : 'text-[var(--muted)] hover:text-[var(--ink)]'
               }`}
             >
               {m === 'grid' ? <LayoutGrid className="w-3.5 h-3.5" /> : <List className="w-3.5 h-3.5" />}
@@ -67,15 +67,15 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
       </div>
 
       {/* Status Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-[#E5E0D8] pb-4">
+      <div className="flex flex-wrap gap-2 border-b border-[var(--border-light)] pb-4">
         {STATUS_TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-full text-xs font-semibold transition-all ${
               activeTab === tab.id
-                ? 'bg-[#1D1D1D] text-[#F8F6F1]'
-                : 'bg-[#FFFFFF] border border-[#E5E0D8] text-[#1D1D1D] hover:bg-[#EFE8DD]'
+                ? 'bg-[var(--ink)] text-[var(--bg-ivory)]'
+                : 'bg-[var(--white)] border border-[var(--border-light)] text-[var(--ink)] hover:bg-[var(--bg-beige)]'
             }`}
           >
             {tab.label}
@@ -96,10 +96,10 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
           ))}
         </div>
       ) : entries.length === 0 ? (
-        <div className="text-center py-16 bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl">
-          <BookOpen className="w-12 h-12 text-[#E5E0D8] mx-auto mb-3" />
-          <p className="font-serif-title text-xl text-[#1D1D1D]">No books here yet.</p>
-          <p className="text-xs text-[#777777] mt-1">Search and add books to your library.</p>
+        <div className="text-center py-16 bg-[var(--white)] border border-[var(--border-light)] rounded-3xl">
+          <BookOpen className="w-12 h-12 text-[var(--border-light)] mx-auto mb-3" />
+          <p className="font-serif-title text-xl text-[var(--ink)]">No books here yet.</p>
+          <p className="text-xs text-[var(--muted)] mt-1">Search and add books to your library.</p>
         </div>
       ) : viewMode === 'list' ? (
         <div className="space-y-3">
@@ -107,26 +107,26 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
             const pct = progressPct(entry.currentPage, entry.book.pageCount);
             const badge = statusBadge(entry.status);
             return (
-              <div key={entry.id} className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-2xl p-4 flex items-center gap-4 hover:shadow-warm-md transition-shadow">
+              <div key={entry.id} className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl p-4 flex items-center gap-4 hover:shadow-warm-md transition-shadow">
                 {entry.book.coverImage ? (
                   <img src={entry.book.coverImage} alt={entry.book.title} className="w-12 h-16 object-cover rounded-lg flex-shrink-0" />
                 ) : (
-                  <div className="w-12 h-16 bg-[#EFE8DD] rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-16 bg-[var(--bg-beige)] rounded-lg flex items-center justify-center flex-shrink-0">
                     <BookOpen className="w-5 h-5 text-[#A0522D]" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-serif-title font-bold text-[#1D1D1D] truncate">{entry.book.title}</p>
-                  <p className="text-xs text-[#777777] truncate">{entry.book.authors.join(', ')}</p>
+                  <p className="font-serif-title font-bold text-[var(--ink)] truncate">{entry.book.title}</p>
+                  <p className="text-xs text-[var(--muted)] truncate">{entry.book.authors.join(', ')}</p>
                   {entry.status === 'READING' && (
-                    <div className="mt-2 w-48 bg-[#EFE8DD] rounded-full h-1.5">
+                    <div className="mt-2 w-48 bg-[var(--bg-beige)] rounded-full h-1.5">
                       <div className="bg-[#A0522D] h-1.5 rounded-full" style={{ width: `${pct}%` }} />
                     </div>
                   )}
                 </div>
                 <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${badge.cls}`}>{badge.label}</span>
                 {entry.book.averageRating && (
-                  <span className="flex items-center gap-1 text-xs text-[#777777]">
+                  <span className="flex items-center gap-1 text-xs text-[var(--muted)]">
                     <Star className="w-3.5 h-3.5 fill-[#E0A96D] text-[#E0A96D]" />
                     {Number(entry.book.averageRating).toFixed(1)}
                   </span>
@@ -142,8 +142,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
             const pct = progressPct(entry.currentPage, entry.book.pageCount);
             const badge = statusBadge(entry.status);
             return (
-              <div key={entry.id} className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-2xl overflow-hidden hover:shadow-warm-md transition-shadow group cursor-pointer">
-                <div className="relative aspect-[2/3] overflow-hidden bg-[#EFE8DD]">
+              <div key={entry.id} className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl overflow-hidden hover:shadow-warm-md transition-shadow group cursor-pointer">
+                <div className="relative aspect-[2/3] overflow-hidden bg-[var(--bg-beige)]">
                   {entry.book.coverImage ? (
                     <img src={entry.book.coverImage} alt={entry.book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   ) : (
@@ -154,10 +154,10 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
                   <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.cls}`}>{badge.label}</span>
                 </div>
                 <div className="p-3">
-                  <p className="font-serif-title font-bold text-[#1D1D1D] truncate text-sm">{entry.book.title}</p>
-                  <p className="text-[11px] text-[#777777] truncate">{entry.book.authors.join(', ')}</p>
+                  <p className="font-serif-title font-bold text-[var(--ink)] truncate text-sm">{entry.book.title}</p>
+                  <p className="text-[11px] text-[var(--muted)] truncate">{entry.book.authors.join(', ')}</p>
                   {entry.status === 'READING' && (
-                    <div className="mt-2 bg-[#EFE8DD] rounded-full h-1">
+                    <div className="mt-2 bg-[var(--bg-beige)] rounded-full h-1">
                       <div className="bg-[#A0522D] h-1 rounded-full" style={{ width: `${pct}%` }} />
                     </div>
                   )}

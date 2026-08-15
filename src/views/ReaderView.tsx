@@ -174,7 +174,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ book, onExit }) => {
           {/* AI Drawer Toggle */}
           <button
             onClick={() => setShowAiDrawer(!showAiDrawer)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#E0A96D] text-[#1D1D1D] text-xs font-bold shadow-warm-sm hover:scale-105 transition-transform"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#E0A96D] text-[var(--ink)] text-xs font-bold shadow-warm-sm hover:scale-105 transition-transform"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span className="hidden md:inline">Ask AI</span>
@@ -184,7 +184,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ book, onExit }) => {
 
       {/* Reader Display Settings Floating Drawer */}
       {showSettings && (
-        <div className="fixed top-16 right-6 z-50 w-80 bg-[#1D1D1D] text-[#F8F6F1] rounded-3xl p-6 shadow-2xl border border-white/20 space-y-4">
+        <div className="fixed top-16 right-6 z-50 w-80 bg-[var(--ink)] text-[var(--bg-ivory)] rounded-3xl p-6 shadow-2xl border border-white/20 space-y-4">
           <h4 className="font-serif-title text-xl font-bold border-b border-white/10 pb-2">Reader Customization</h4>
           
           {/* Typography Selector */}
@@ -196,7 +196,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ book, onExit }) => {
                   key={f}
                   onClick={() => setReaderSettings({ ...readerSettings, fontFamily: f as any })}
                   className={`py-2 px-2 rounded-xl text-center border transition-all ${
-                    readerSettings.fontFamily === f ? 'bg-white text-[#1D1D1D] font-bold' : 'border-white/20 text-white/70'
+                    readerSettings.fontFamily === f ? 'bg-white text-[var(--ink)] font-bold' : 'border-white/20 text-white/70'
                   }`}
                 >
                   {f.split(' ')[0]}
@@ -297,7 +297,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ book, onExit }) => {
 
       {/* AI Assistant Side Drawer */}
       {showAiDrawer && (
-        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-[#1D1D1D] text-[#F8F6F1] p-6 shadow-2xl border-l border-white/20 flex flex-col justify-between">
+        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-[var(--ink)] text-[var(--bg-ivory)] p-6 shadow-2xl border-l border-white/20 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
               <div className="flex items-center gap-2 text-[#E0A96D] text-xs font-bold uppercase tracking-wider">
@@ -323,7 +323,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ book, onExit }) => {
               <button
                 onClick={handleAskAi}
                 disabled={loadingAi || !aiPrompt.trim()}
-                className="w-full py-2.5 rounded-2xl bg-[#E0A96D] text-[#1D1D1D] font-bold text-xs hover:bg-[#D49A5B] transition-all disabled:opacity-50"
+                className="w-full py-2.5 rounded-2xl bg-[#E0A96D] text-[var(--ink)] font-bold text-xs hover:bg-[#D49A5B] transition-all disabled:opacity-50"
               >
                 {loadingAi ? 'Synthesizing...' : 'Ask AI Companion'}
               </button>

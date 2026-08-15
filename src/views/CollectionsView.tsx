@@ -3,6 +3,8 @@ import { ViewMode } from '../types';
 import { FolderHeart, Plus, Trash2, X, Check } from 'lucide-react';
 import { useCollections } from '../hooks/useCollections';
 import { ApiCollection } from '../services/api';
+import { CollectionCardSkeleton } from '../components/Skeleton';
+import { EmptyState } from '../components/EmptyState';
 
 interface CollectionsViewProps {
   onNavigate: (view: ViewMode) => void;
@@ -33,18 +35,18 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({ onNavigate, on
     <div className="space-y-8 pb-12">
 
       {/* Header */}
-      <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+      <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EFE8DD] text-[#1D1D1D] text-xs font-semibold mb-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-2">
             <FolderHeart className="w-3.5 h-3.5 text-[#A0522D]" />
             <span>Theme Archives</span>
           </div>
-          <h1 className="font-serif-title text-4xl font-bold text-[#1D1D1D]">Curated Collections</h1>
-          <p className="text-xs text-[#777777] mt-1">Group books by theme, mood, or reading order.</p>
+          <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">Curated Collections</h1>
+          <p className="text-xs text-[var(--muted)] mt-1">Group books by theme, mood, or reading order.</p>
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1D1D1D] text-[#F8F6F1] text-xs font-bold hover:bg-[#333333] transition-all shadow-warm-md"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[#333333] transition-all shadow-warm-md"
         >
           <Plus className="w-4 h-4" />
           <span>New Collection</span>
@@ -53,8 +55,8 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({ onNavigate, on
 
       {/* Create form */}
       {showCreate && (
-        <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 shadow-warm-md">
-          <h3 className="font-serif-title text-xl font-bold text-[#1D1D1D] mb-4">Create Collection</h3>
+        <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 shadow-warm-md">
+          <h3 className="font-serif-title text-xl font-bold text-[var(--ink)] mb-4">Create Collection</h3>
           <form onSubmit={handleCreate} className="flex flex-col gap-3">
             <input
               autoFocus
@@ -62,22 +64,22 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({ onNavigate, on
               placeholder="Collection name"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="w-full bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl px-4 py-2.5 text-sm text-[#1D1D1D] focus:outline-none focus:border-[#1D1D1D]"
+              className="w-full bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl px-4 py-2.5 text-sm text-[var(--ink)] focus:outline-none focus:border-[var(--ink)]"
             />
             <textarea
               rows={2}
               placeholder="Description (optional)"
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
-              className="w-full bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl px-4 py-2.5 text-sm text-[#1D1D1D] focus:outline-none focus:border-[#1D1D1D] resize-none"
+              className="w-full bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl px-4 py-2.5 text-sm text-[var(--ink)] focus:outline-none focus:border-[var(--ink)] resize-none"
             />
             <div className="flex gap-2 justify-end">
               <button type="button" onClick={() => setShowCreate(false)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-[#E5E0D8] text-xs font-semibold text-[#777777] hover:bg-[#F8F6F1]">
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-[var(--border-light)] text-xs font-semibold text-[var(--muted)] hover:bg-[var(--bg-ivory)]">
                 <X className="w-3.5 h-3.5" /> Cancel
               </button>
               <button type="submit" disabled={creating}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#1D1D1D] text-[#F8F6F1] text-xs font-bold hover:bg-[#333333] disabled:opacity-50">
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[#333333] disabled:opacity-50">
                 <Check className="w-3.5 h-3.5" /> {creating ? 'Creating...' : 'Create'}
               </button>
             </div>
@@ -88,18 +90,17 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({ onNavigate, on
       {/* Loading skeleton */}
       {loading && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 h-52 animate-pulse" />
-          ))}
+          {[...Array(4)].map((_, i) => <CollectionCardSkeleton key={i} />)}
         </div>
       )}
 
       {/* Empty state */}
       {!loading && collections.length === 0 && (
-        <div className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-12 text-center">
-          <FolderHeart className="w-10 h-10 text-[#E5E0D8] mx-auto mb-3" />
-          <p className="text-sm text-[#777777]">No collections yet. Create one to group your books by theme.</p>
-        </div>
+        <EmptyState
+          preset="collections"
+          title="No collections yet"
+          description="Create a collection to group your books by theme, genre, or mood."
+        />
       )}
 
       {/* Collections grid */}
@@ -109,10 +110,10 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({ onNavigate, on
             <div
               key={col.id}
               onClick={() => onSelectCollection?.(col.id)}
-              className="bg-[#FFFFFF] border border-[#E5E0D8] rounded-3xl p-6 shadow-warm-sm hover:shadow-warm-md transition-all flex flex-col justify-between cursor-pointer hover:border-[#A0522D]">
+              className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 shadow-warm-sm hover:shadow-warm-md transition-all flex flex-col justify-between cursor-pointer hover:border-[#A0522D]">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#EFE8DD] text-[#A0522D]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D]">
                     {col.books.length} Volumes
                   </span>
                   <button
@@ -124,9 +125,9 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({ onNavigate, on
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <h3 className="font-serif-title text-2xl font-bold text-[#1D1D1D] mb-1">{col.name}</h3>
+                <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)] mb-1">{col.name}</h3>
                 {col.description && (
-                  <p className="text-xs text-[#777777] mb-4 leading-relaxed">{col.description}</p>
+                  <p className="text-xs text-[var(--muted)] mb-4 leading-relaxed">{col.description}</p>
                 )}
                 {col.books.length > 0 && (
                   <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -135,7 +136,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({ onNavigate, on
                         className="w-14 h-20 rounded-lg overflow-hidden shadow-book shrink-0">
                         {cb.book.coverImage
                           ? <img src={cb.book.coverImage} alt={cb.book.title} className="w-full h-full object-cover" />
-                          : <div className="w-full h-full bg-[#E5E0D8] flex items-center justify-center text-[8px] text-[#777777] p-1 text-center">{cb.book.title}</div>
+                          : <div className="w-full h-full bg-[var(--border-light)] flex items-center justify-center text-[8px] text-[var(--muted)] p-1 text-center">{cb.book.title}</div>
                         }
                       </div>
                     ))}
