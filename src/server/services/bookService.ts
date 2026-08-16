@@ -1,7 +1,27 @@
+import { createHash } from 'crypto';
 import { prisma } from '../config/prisma';
+import { cacheService } from '../cache/cacheService';
 import { NotFoundError, ServerError } from '../utils/errors';
 
 const GOOGLE_BOOKS_API = 'https://www.googleapis.com/books/v1';
+
+// Google Books is an external, quota-limited API and volume metadata is
+// effectively immutable, so responses are worth caching hard.
+const SEARCH_TTL_MS = 60 * 60 * 1000; // 1 hour
+const VOLUME_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+/**
+ * Build a cache key by hashing the parts.
+ *
+ * The file-cache backend sanitizes keys with /[^a-z0-9]/gi -> '-', which would
+ * make raw search queries collide ("a b" and "a-b" both become "a-b") and serve
+ * one query's results for another. Hashing keeps keys collision-free and
+ * unaffected by that sanitization.
+ */
+function booksCacheKey(kind: string, parts: unknown[]): string {
+  const hash = createHash('sha1').update(JSON.stringify(parts)).digest('hex');
+  return `gbooks:${kind}:${hash}`;
+}
 
 interface GoogleVolume {
   id: string;
@@ -92,17 +112,23 @@ export class BookService {
     maxResults: number
   ): Promise<{ items: GoogleBookResult[]; totalItems: number }> {
     const prefix = { title: 'intitle:', author: 'inauthor:', isbn: 'isbn:', category: 'subject:' }[type];
-    const query = encodeURIComponent(`${prefix}${q}`);
-    const data = await fetchGoogle(`/volumes?q=${query}&startIndex=${startIndex}&maxResults=${maxResults}&printType=books`);
-    return {
-      items: (data.items ?? []).map(mapVolume),
-      totalItems: data.totalItems ?? 0,
-    };
+    const cacheKey = booksCacheKey('search', [type, q.trim().toLowerCase(), startIndex, maxResults]);
+
+    return cacheService.getOrSet(cacheKey, SEARCH_TTL_MS, async () => {
+      const query = encodeURIComponent(`${prefix}${q}`);
+      const data = await fetchGoogle(`/volumes?q=${query}&startIndex=${startIndex}&maxResults=${maxResults}&printType=books`);
+      return {
+        items: (data.items ?? []).map(mapVolume),
+        totalItems: data.totalItems ?? 0,
+      };
+    });
   }
 
   async getGoogleBook(googleBooksId: string): Promise<GoogleBookResult> {
-    const data = await fetchGoogle(`/volumes/${googleBooksId}`);
-    return mapVolume(data as GoogleVolume);
+    return cacheService.getOrSet(booksCacheKey('volume', [googleBooksId]), VOLUME_TTL_MS, async () => {
+      const data = await fetchGoogle(`/volumes/${googleBooksId}`);
+      return mapVolume(data as GoogleVolume);
+    });
   }
 
   async importBook(googleBooksId: string) {

@@ -1,8 +1,34 @@
 import { prisma } from '../config/prisma';
+import { cacheService } from '../cache/cacheService';
 import type { UpsertGoalInput } from '../validators/books';
+
+/**
+ * getStats is the heaviest read in the app — it loads every library entry with
+ * nested sessions plus every reading session, then buckets 12 months in JS.
+ * It is cached per user with a short TTL and invalidated explicitly whenever
+ * something it derives from changes (see invalidateUserStats callers).
+ */
+const STATS_TTL_MS = 5 * 60 * 1000;
+
+export const statsCacheKey = (userId: string) => `analytics:stats:${userId}`;
+
+/** Drop a user's cached stats. Best-effort: never throws into the caller. */
+export async function invalidateUserStats(userId: string): Promise<void> {
+  try {
+    await cacheService.del(statsCacheKey(userId));
+  } catch (err) {
+    console.error('[Analytics] Failed to invalidate stats cache:', err);
+  }
+}
 
 export class AnalyticsService {
   async getStats(userId: string) {
+    return cacheService.getOrSet(statsCacheKey(userId), STATS_TTL_MS, () =>
+      this.computeStats(userId)
+    );
+  }
+
+  private async computeStats(userId: string) {
     const [entries, sessions, goal] = await Promise.all([
       prisma.libraryEntry.findMany({
         where: { userId },
@@ -133,11 +159,14 @@ export class AnalyticsService {
   }
 
   async upsertGoal(userId: string, input: UpsertGoalInput) {
-    return prisma.readingGoal.upsert({
+    const goal = await prisma.readingGoal.upsert({
       where: { userId_year: { userId, year: input.year } },
       create: { userId, ...input } as any,
       update: { targetBooks: input.targetBooks, targetPages: input.targetPages },
     });
+    // The goal feeds overview.yearlyGoal, so cached stats are now stale.
+    await invalidateUserStats(userId);
+    return goal;
   }
 
   async getGoal(userId: string, year: number) {

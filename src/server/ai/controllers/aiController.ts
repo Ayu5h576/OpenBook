@@ -13,7 +13,10 @@ import { aiService } from '../services/aiService';
 import { aiDataService } from '../services/aiDataService';
 import { conversationHistoryManager } from '../services/conversationHistoryManager';
 import { promptTemplates } from '../templates/prompts';
-import { cacheManager, CacheManager } from '../cache/cacheManager';
+// CacheManager is still the source of cache keys + TTL constants; cacheService
+// is the storage layer (Redis when configured, file cache otherwise).
+import { CacheManager } from '../cache/cacheManager';
+import { cacheService } from '../../cache/cacheService';
 import { rateLimiter } from '../utils/rateLimiter';
 import {
   buildPersonalizedInsightsFallback,
@@ -130,13 +133,13 @@ export class AIController {
     const userId = requireUserId(req);
     const input = validateData(validators.readingCompassSchema, req.body);
 
-    if (!rateLimiter.isAllowed(userId, 20)) {
+    if (!(await rateLimiter.isAllowed(userId, 20))) {
       return res.status(429).json({ error: 'Rate limit exceeded', remaining: 0 });
     }
 
     const cacheKey = CacheManager.getCacheKey('reading-compass', userId, { genres: input.genres, limit: input.limit });
     if (input.useCache) {
-      const cached = await cacheManager.get(cacheKey);
+      const cached = await cacheService.get(cacheKey);
       if (cached) return res.json({ ...cached, fromCache: true });
     }
 
@@ -145,7 +148,7 @@ export class AIController {
     const raw = await this.generateJson(userId, 'reading-compass', promptTemplates.readingCompass(profile, input.limit), fallback, 'You are an expert literary curator. Return valid JSON only.');
     const result: ReadingCompassResponse = formatReadingCompass(raw);
 
-    await cacheManager.set(cacheKey, result, CacheManager.TTLs.RECOMMENDATIONS);
+    await cacheService.set(cacheKey, result, CacheManager.TTLs.RECOMMENDATIONS);
     return res.json(result);
   }
 
@@ -153,13 +156,13 @@ export class AIController {
     const userId = requireUserId(req);
     const input = validateData(validators.bookDNASchema, req.body);
 
-    if (!rateLimiter.isAllowed(userId)) {
+    if (!(await rateLimiter.isAllowed(userId))) {
       return res.status(429).json({ error: 'Rate limit exceeded' });
     }
 
     const cacheKey = CacheManager.getCacheKey('book-dna', userId, { bookId: input.bookId });
     if (input.useCache) {
-      const cached = await cacheManager.get(cacheKey);
+      const cached = await cacheService.get(cacheKey);
       if (cached) return res.json({ ...cached, fromCache: true });
     }
 
@@ -168,7 +171,7 @@ export class AIController {
     const raw = await this.generateJson(userId, 'book-dna', promptTemplates.bookDNA(book), fallback, 'You are a literary analyst. Return valid JSON only.');
     const result: BookDNAResponse = formatBookDNA(raw, book);
 
-    await cacheManager.set(cacheKey, result, CacheManager.TTLs.BOOK_DNA);
+    await cacheService.set(cacheKey, result, CacheManager.TTLs.BOOK_DNA);
     return res.json(result);
   }
 
@@ -176,7 +179,7 @@ export class AIController {
     const userId = requireUserId(req);
     const input = validateData(validators.summarySchema, req.body);
 
-    if (!rateLimiter.isAllowed(userId)) {
+    if (!(await rateLimiter.isAllowed(userId))) {
       return res.status(429).json({ error: 'Rate limit exceeded' });
     }
 
@@ -185,7 +188,7 @@ export class AIController {
       format: input.format,
       spoilerLevel: input.spoilerLevel,
     });
-    const cached = await cacheManager.get(cacheKey);
+    const cached = await cacheService.get(cacheKey);
     if (cached) return res.json({ ...cached, fromCache: true });
 
     const book = await aiDataService.getBookWithUserContext(input.bookId, userId);
@@ -194,7 +197,7 @@ export class AIController {
     const summary = await this.generateText(userId, 'summary', prompt, fallback, 'You summarize books for a personal reading assistant. Avoid spoilers unless requested.');
     const result: SummaryResponse = formatSummary(input.format, summary);
 
-    await cacheManager.set(cacheKey, result, CacheManager.TTLs.SUMMARIES);
+    await cacheService.set(cacheKey, result, CacheManager.TTLs.SUMMARIES);
     return res.json(result);
   }
 
@@ -202,7 +205,7 @@ export class AIController {
     const userId = requireUserId(req);
     const input = validateData(validators.chatSchema, req.body);
 
-    if (!rateLimiter.isAllowed(userId, 50)) {
+    if (!(await rateLimiter.isAllowed(userId, 50))) {
       return res.status(429).json({ error: 'Rate limit exceeded' });
     }
 
@@ -227,13 +230,13 @@ export class AIController {
     const userId = requireUserId(req);
     const input = validateData(validators.insightsSchema, req.body);
 
-    if (!rateLimiter.isAllowed(userId)) {
+    if (!(await rateLimiter.isAllowed(userId))) {
       return res.status(429).json({ error: 'Rate limit exceeded' });
     }
 
     const cacheKey = CacheManager.getCacheKey('insights', userId);
     if (input.useCache) {
-      const cached = await cacheManager.get(cacheKey);
+      const cached = await cacheService.get(cacheKey);
       if (cached) return res.json({ ...cached, fromCache: true });
     }
 
@@ -242,7 +245,7 @@ export class AIController {
     const raw = await this.generateJson(userId, 'insights', promptTemplates.personalInsights(profile), fallback, 'You are a reading coach. Return valid JSON only.');
     const result: InsightsResponse = formatInsights(raw);
 
-    await cacheManager.set(cacheKey, result, CacheManager.TTLs.INSIGHTS);
+    await cacheService.set(cacheKey, result, CacheManager.TTLs.INSIGHTS);
     return res.json(result);
   }
 
@@ -250,7 +253,7 @@ export class AIController {
     const userId = requireUserId(req);
     const input = validateData(validators.plannerSchema, req.body);
 
-    if (!rateLimiter.isAllowed(userId)) {
+    if (!(await rateLimiter.isAllowed(userId))) {
       return res.status(429).json({ error: 'Rate limit exceeded' });
     }
 
@@ -258,7 +261,7 @@ export class AIController {
       bookId: input.bookId,
       dailyAvailableMinutes: input.dailyAvailableMinutes,
     });
-    const cached = await cacheManager.get(cacheKey);
+    const cached = await cacheService.get(cacheKey);
     if (cached) return res.json({ ...cached, fromCache: true });
 
     const [book, profile] = await Promise.all([
@@ -269,7 +272,7 @@ export class AIController {
     const raw = await this.generateJson(userId, 'planner', promptTemplates.smartPlanner(book.userEntry, book, profile, input.dailyAvailableMinutes), fallback, 'You are a reading coach. Return valid JSON only.');
     const result: PlannerResponse = formatPlanner(raw);
 
-    await cacheManager.set(cacheKey, result, CacheManager.TTLs.PLANNER);
+    await cacheService.set(cacheKey, result, CacheManager.TTLs.PLANNER);
     return res.json(result);
   }
 
@@ -277,7 +280,7 @@ export class AIController {
     const userId = requireUserId(req);
     const input = validateData(validators.searchSimilarSchema, req.body);
 
-    if (!rateLimiter.isAllowed(userId)) {
+    if (!(await rateLimiter.isAllowed(userId))) {
       return res.status(429).json({ error: 'Rate limit exceeded' });
     }
 

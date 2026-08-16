@@ -6,6 +6,14 @@ import 'dotenv/config';
 // Ensure test-specific database URL takes priority so we never hit the prod DB
 if (process.env.TEST_DATABASE_URL) {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
+} else if (process.env.DATABASE_URL) {
+  // Integration tests write real rows. Without TEST_DATABASE_URL they land in
+  // whatever DATABASE_URL points at — usually the local dev database.
+  console.warn(
+    '[test setup] TEST_DATABASE_URL is not set — integration tests will run against ' +
+      'DATABASE_URL (your dev database) and will create rows in it. ' +
+      'Set TEST_DATABASE_URL in .env to use a throwaway database instead.'
+  );
 }
 
 // Minimal required env for tests that don't hit the DB

@@ -1,0 +1,11 @@
+import 'dotenv/config';
+process.env.JWT_SECRET ??= 'test-secret-for-vitest-only';
+process.env.NODE_ENV ??= 'test';
+const t0 = Date.now();
+const { buildApp } = await import('./server');
+console.log('IMPORT_MS', Date.now() - t0);
+const t1 = Date.now();
+await buildApp();
+console.log('BUILDAPP_MS', Date.now() - t1);
+console.log('DATABASE_URL set:', !!process.env.DATABASE_URL);
+console.log('TEST_DATABASE_URL set:', !!process.env.TEST_DATABASE_URL);

@@ -1,8 +1,8 @@
 # OpenBook - Project Progress
 
-**Last Updated**: August 10, 2026  
-**Project Phase**: Foundation Complete -> Authentication Complete -> DB Migration Complete -> Book Management Complete -> AI Reading Companion Complete -> Book Catalog Integration Complete -> Social & Community Complete  
-**Overall Progress**: ~90% Complete (Phases 1-5 complete, Phase 6 deployment/scaling upcoming)
+**Last Updated**: August 16, 2026  
+**Project Phase**: Foundation -> Authentication -> DB Migration -> Book Management -> AI Reading Companion -> Book Catalog Integration -> Social & Community -> **Performance & Launch (in progress)**  
+**Overall Progress**: ~95% Complete (Phases 1-5 complete, Phase 6 underway)
 
 ---
 
@@ -21,7 +21,12 @@
 | Book Catalog | Complete | Google Books API integration, real-time search, import to library |
 | Session Persistence | Complete | Login session survives page refresh via refresh token rotation |
 | Community | Complete | Phase 5 - followers, book clubs, discussions, activity feed, achievements |
-| Deployment | Not Started | Phase 6 |
+| Caching | Complete | Redis-backed `cacheService` with file fallback; AI responses, reading stats, Google Books lookups |
+| Rate Limiting | Complete | Redis store for express-rate-limit + per-user AI limiter; both fail open |
+| Test Suite | In Progress | 11 suites / 180 tests passing; 3 services still uncovered |
+| CI/CD | Complete | GitHub Actions: type-check, tests against a Postgres service container, production build |
+| Deployment | Config Ready | Dockerfile (multi-stage) + railway.toml with health check; not yet deployed |
+| Security Audit | In Progress | Committed-secret finding remediated in-repo; credential rotation pending |
 
 ---
 
@@ -232,11 +237,81 @@ GOOGLE_BOOKS_API_KEY=<get from Google Cloud Console, enables real book catalog>
 
 ### Phase 6: Performance & Launch
 
-- [ ] Redis caching and distributed rate limiting
-- [ ] Comprehensive test suite (unit, integration, E2E)
-- [ ] CI/CD with GitHub Actions
-- [ ] Production deployment
-- [ ] Security audit
+- [x] Redis caching and distributed rate limiting
+- [x] Test suite (unit + integration) — 180 tests; E2E still absent
+- [x] CI/CD with GitHub Actions
+- [ ] Production deployment (Docker + Railway config ready, not yet deployed)
+- [~] Security audit (see below — credential rotation is outstanding)
+
+---
+
+## Phase 6: Performance & Launch (August 16, 2026)
+
+### Test suite unblocked
+
+The auth integration suite had been failing in CI. The cause was not the tests: its
+`beforeAll` imports the entire server module graph through Vite's module runner, which
+takes longer than vitest's default 10s `hookTimeout` on a cold cache. `vitest.config.ts`
+now sets `hookTimeout: 60000` / `testTimeout: 30000`.
+
+Also fixed: the hourly cleanup `setInterval` in `ai/utils/rateLimiter.ts` had no
+`.unref()`, so any process importing the server hung on exit instead of finishing.
+
+### Redis caching wired into the request path
+
+`cacheService` and `redisClient` existed but had **zero importers** — the caching work was
+dead code. Now:
+
+- `aiController` stores all 5 cached AI features through `cacheService` instead of calling
+  `cacheManager` directly (`CacheManager` still supplies keys and TTL constants)
+- `analyticsService.getStats` — the heaviest read in the app — is cached per user for 5
+  minutes and invalidated explicitly by `invalidateUserStats()` from
+  `libraryService.addToLibrary` / `updateEntry` / `removeFromLibrary` / `logSession` and
+  `analyticsService.upsertGoal`
+- Google Books search (1h) and volume detail (7d) are cached in `bookService`, with
+  **hashed** cache keys — the file backend sanitizes keys to `[a-z0-9-]`, so raw queries
+  like `"a b"` and `"a-b"` would otherwise collide and serve each other's results
+
+All of it falls back to the file cache when `REDIS_URL` is unset.
+
+### Distributed rate limiting
+
+- `src/server/cache/redisRateLimitStore.ts` implements express-rate-limit's `Store` on
+  ioredis (INCR + PTTL in one MULTI; expiry armed only on the first hit so the window
+  cannot slide forward indefinitely). Built on the existing ioredis dependency rather
+  than adding `rate-limit-redis`.
+- The per-user AI limiter is Redis-backed with an in-memory fallback.
+- Both **fail open** on Redis errors: a cache outage must not take the API down. The
+  tradeoff is that limits lapse while Redis is unavailable.
+
+### Test coverage
+
+| Suite | Tests |
+|-------|-------|
+| `socialService` | 20 |
+| `bookClubService` | 34 |
+| `achievementService` | 18 |
+| `analyticsService` | 18 |
+| `collectionReviewService` | 20 |
+| `rateLimiting` (store + AI limiter) | 20 |
+| `cacheService` | 10 |
+| pre-existing (auth, authService, library, health) | 40 |
+| **Total** | **180 passing** |
+
+Still uncovered: `noteService`, `profileService`, `bookService`. No E2E layer yet.
+
+### Security audit
+
+- **Committed credentials (high).** `.env.supabase-backup` was committed in `5c72a5b`
+  carrying a Supabase service key (bypasses row-level security), a JWT secret, and a
+  Gemini API key — and the live `.env` still used **the same Gemini key**. The file is now
+  untracked and gitignored (`.env.*backup*` added). History was deliberately not
+  rewritten, so **the credentials must be rotated to actually invalidate them.**
+- `.env.example` verified free of real values; `TEST_DATABASE_URL` documented.
+- Reviewed and found acceptable: CORS pinned to a single `APP_URL` origin with
+  credentials; helmet CSP enabled only in production (Vite serves dev); global +
+  auth-specific limiters cover all routes; social/club/achievement routes are all behind
+  `authMiddleware` with Zod validation in their controllers.
 
 ---
 
@@ -285,4 +360,4 @@ npm run dev
 
 ---
 
-**Next Action**: Phase 6 - performance & launch (Redis caching, distributed rate limiting, test suite, CI/CD, production deployment, security audit)
+**Next Action**: Rotate the credentials exposed in `.env.supabase-backup` (Gemini key, Supabase service key, JWT secret), then production deployment — plus tests for the five remaining uncovered services and an E2E layer.

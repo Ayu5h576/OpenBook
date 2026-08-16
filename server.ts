@@ -7,6 +7,8 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { getRedisClient } from './src/server/cache/redisClient';
+import { RedisRateLimitStore } from './src/server/cache/redisRateLimitStore';
 import { env, validateEnv } from './src/server/config/env';
 import authRoutes from './src/server/routes/authRoutes';
 import bookRoutes from './src/server/routes/bookRoutes';
@@ -49,24 +51,41 @@ export async function buildApp(): Promise<Express> {
     crossOriginEmbedderPolicy: false,
   }));
 
+  // Rate limiters. When REDIS_URL is configured, counters live in Redis so the
+  // limits hold across replicas; otherwise express-rate-limit's in-memory store
+  // is used, which only bounds a single process.
+  const redis = getRedisClient();
+  if (redis) {
+    console.log('[RateLimit] Using Redis store (limits shared across instances)');
+  }
+
+  const makeLimiter = (opts: { windowMs: number; max: number; message: string; prefix: string }) =>
+    rateLimit({
+      windowMs: opts.windowMs,
+      max: opts.max,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { error: opts.message },
+      skip: () => env.app.nodeEnv === 'test',
+      ...(redis ? { store: new RedisRateLimitStore(redis, opts.prefix) } : {}),
+    });
+
   // Global rate limit: 200 requests per 15 minutes per IP
-  app.use(rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 200,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many requests, please try again later.' },
-    skip: () => env.app.nodeEnv === 'test',
-  }));
+  app.use(
+    makeLimiter({
+      windowMs: 15 * 60 * 1000,
+      max: 200,
+      message: 'Too many requests, please try again later.',
+      prefix: 'rl:global:',
+    })
+  );
 
   // Tighter limit on auth endpoints: 15 requests per 15 minutes per IP
-  const authRateLimit = rateLimit({
+  const authRateLimit = makeLimiter({
     windowMs: 15 * 60 * 1000,
     max: 15,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many authentication attempts, please try again later.' },
-    skip: () => env.app.nodeEnv === 'test',
+    message: 'Too many authentication attempts, please try again later.',
+    prefix: 'rl:auth:',
   });
 
   // Initialize Gemini Client

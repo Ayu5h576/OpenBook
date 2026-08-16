@@ -2,6 +2,7 @@ import { LibraryStatus } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { ConflictError, NotFoundError, mapPrismaError } from '../utils/errors';
 import { recordActivity } from './socialService';
+import { invalidateUserStats } from './analyticsService';
 import type { AddToLibraryInput, UpdateLibraryEntryInput, LogSessionInput } from '../validators/books';
 
 export class LibraryService {
@@ -20,7 +21,7 @@ export class LibraryService {
     if (existing) throw new ConflictError('Book is already in your library');
 
     try {
-      return await prisma.libraryEntry.create({
+      const created = await prisma.libraryEntry.create({
         data: {
           userId,
           bookId: input.bookId,
@@ -30,6 +31,8 @@ export class LibraryService {
         },
         include: { book: true },
       });
+      await invalidateUserStats(userId);
+      return created;
     } catch (e) {
       throw mapPrismaError(e);
     }
@@ -57,6 +60,9 @@ export class LibraryService {
       include: { book: true },
     });
 
+    // Status / page changes feed every stats aggregate, so drop the cache.
+    await invalidateUserStats(userId);
+
     // Surface finishing a book to the community feed. Only fires on the
     // transition into COMPLETED so re-saving a finished book stays quiet.
     if (input.status === 'COMPLETED' && entry.status !== 'COMPLETED') {
@@ -72,6 +78,7 @@ export class LibraryService {
   async removeFromLibrary(userId: string, entryId: string) {
     await this.requireEntry(userId, entryId);
     await prisma.libraryEntry.delete({ where: { id: entryId } });
+    await invalidateUserStats(userId);
   }
 
   async logSession(userId: string, entryId: string, input: LogSessionInput) {
@@ -96,6 +103,9 @@ export class LibraryService {
         },
       }),
     ]);
+
+    // Sessions drive pages/hours/streak/heatmap — the bulk of the stats payload.
+    await invalidateUserStats(userId);
 
     return session;
   }

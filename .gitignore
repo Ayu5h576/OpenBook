@@ -15,6 +15,10 @@ server.cjs
 .env.local
 .env.*.local
 !.env.example
+# Never commit env backups — these have historically carried live secrets
+.env.supabase-backup
+.env.*backup*
+*.env.bak
 .claude/settings.local.json
 
 # Logs
