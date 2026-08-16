@@ -20,8 +20,32 @@ export const LandingView: React.FC<LandingViewProps> = ({
   return (
     <div className="w-full bg-[var(--bg-ivory)] text-[var(--ink)] min-h-screen">
       
+      {/* Top Navigation */}
+      <header className="absolute top-0 left-0 right-0 p-6 md:px-12 flex justify-between items-center z-10 max-w-7xl mx-auto">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-[var(--ink)] text-[var(--bg-ivory)] flex items-center justify-center font-bold shadow-sm">
+            OB
+          </div>
+          <span className="font-serif-title text-xl font-bold">OpenBook</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => onNavigate('auth')}
+            className="text-sm font-bold hover:text-[#A0522D] transition-colors"
+          >
+            Sign In
+          </button>
+          <button
+            onClick={() => onNavigate('auth')}
+            className="px-5 py-2 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-sm font-bold hover:bg-[#333333] transition-colors shadow-sm hidden sm:block"
+          >
+            Create Free Account
+          </button>
+        </div>
+      </header>
+
       {/* Hero Section */}
-      <section className="relative px-6 md:px-12 py-20 md:py-28 max-w-7xl mx-auto overflow-hidden">
+      <section className="relative px-6 md:px-12 pt-32 pb-20 md:pb-28 max-w-7xl mx-auto overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           
           <div className="lg:col-span-7 space-y-6">
@@ -40,7 +64,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
             <div className="pt-4 flex flex-wrap items-center gap-4">
               <button
-                onClick={() => onNavigate('home')}
+                onClick={() => onNavigate('auth')}
                 className="flex items-center gap-3 px-8 py-4 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-sm hover:bg-[#333333] transition-all shadow-warm-lg"
               >
                 <span>Enter Library Dashboard</span>
@@ -48,7 +72,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </button>
 
               <button
-                onClick={() => onNavigate('bookshelf-3d')}
+                onClick={() => onNavigate('auth')}
                 className="flex items-center gap-2 px-8 py-4 rounded-full bg-[var(--white)] border border-[var(--border-light)] text-[var(--ink)] font-bold text-sm hover:bg-[var(--bg-beige)] transition-all shadow-warm-sm"
               >
                 <Library className="w-4 h-4" />
@@ -75,7 +99,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
           {/* Featured Book Spotlight */}
           <div className="lg:col-span-5 relative flex justify-center">
-            <div className="relative group cursor-pointer" onClick={() => onNavigate('home')}>
+            <div className="relative group cursor-pointer" onClick={() => onNavigate('auth')}>
               <div className="w-64 sm:w-72 h-96 sm:h-[440px] rounded-2xl overflow-hidden shadow-book border border-[var(--border-light)] bg-[var(--bg-beige)] transition-transform duration-500 group-hover:scale-105">
                 <img
                   src={featuredBook.cover}
@@ -104,7 +128,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
               <span className="text-xs uppercase font-bold text-[var(--muted)] tracking-wider">Curated Collections</span>
               <h2 className="font-serif-title text-3xl font-bold text-[var(--ink)]">Explore Popular Literary Realms</h2>
             </div>
-            <button onClick={() => onNavigate('explore')} className="text-xs font-bold text-[var(--ink)] hover:underline flex items-center gap-1">
+            <button onClick={() => onNavigate('auth')} className="text-xs font-bold text-[var(--ink)] hover:underline flex items-center gap-1">
               <span>View All Categories</span>
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -114,7 +138,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
             {['Architecture & Design', 'Scandinavian Literature', 'Classic Philosophy', 'Dark Academia'].map((cat, idx) => (
               <div
                 key={idx}
-                onClick={() => onNavigate('explore')}
+                onClick={() => onNavigate('auth')}
                 className="bg-[var(--white)] border border-[var(--border-light)] hover:border-[var(--ink)] rounded-2xl p-6 cursor-pointer transition-all hover:shadow-warm-md group"
               >
                 <div className="w-10 h-10 rounded-xl bg-[var(--bg-beige)] text-[var(--ink)] flex items-center justify-center mb-4 group-hover:bg-[var(--ink)] group-hover:text-[var(--bg-ivory)] transition-colors">
@@ -140,7 +164,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
           {trendingBooks.slice(0, 4).map((book) => (
             <div
               key={book.id}
-              onClick={() => onNavigate('home')}
+              onClick={() => onNavigate('auth')}
               className="bg-[var(--white)] border border-[var(--border-light)] hover:border-[var(--ink)] rounded-3xl p-4 cursor-pointer transition-all hover:shadow-warm-lg group"
             >
               <div className="aspect-[2/3] w-full rounded-2xl overflow-hidden shadow-book mb-4 bg-[var(--bg-beige)]">

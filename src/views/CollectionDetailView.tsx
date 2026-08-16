@@ -1,19 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { BookOpen, ArrowLeft, Edit2, Save, X, Plus, Trash2, Search } from 'lucide-react';
 import { useCollections } from '../hooks/useCollections';
 import { ApiCollection } from '../services/api';
 
-interface CollectionDetailViewProps {
-  collectionId: string;
-  onNavigate: (view: string) => void;
-  onBack: () => void;
-}
-
-export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
-  collectionId,
-  onNavigate,
-  onBack,
-}) => {
+export const CollectionDetailView: React.FC = () => {
+  const { id: collectionId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { collections, updateCollection, removeBook, loading } = useCollections();
   const [collection, setCollection] = useState<ApiCollection | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -25,6 +18,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
 
   // Find collection from list
   useEffect(() => {
+    if (!collectionId) return;
     const found = collections.find((c) => c.id === collectionId);
     if (found) {
       setCollection(found);
@@ -34,7 +28,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   }, [collections, collectionId]);
 
   const handleSave = async () => {
-    if (!editName.trim()) return;
+    if (!editName.trim() || !collectionId) return;
     setSaveError(null);
     try {
       await updateCollection(collectionId, {
@@ -48,6 +42,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
   };
 
   const handleRemoveBook = async (bookId: string) => {
+    if (!collectionId) return;
     setRemovingBookId(bookId);
     try {
       await removeBook(collectionId, bookId);
@@ -62,7 +57,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
     return (
       <div className="space-y-8 pb-12">
         <button
-          onClick={onBack}
+          onClick={() => navigate('/collections')}
           className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -82,7 +77,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
     <div className="space-y-8 pb-12">
       {/* Back Button */}
       <button
-        onClick={onBack}
+        onClick={() => navigate('/collections')}
         className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
@@ -188,7 +183,8 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
           {filteredBooks.map((cb) => (
             <div
               key={cb.id}
-              className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl p-4 shadow-warm-sm hover:shadow-warm-md transition-shadow flex flex-col"
+              onClick={() => navigate(`/book/${cb.bookId}`)}
+              className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl p-4 shadow-warm-sm hover:shadow-warm-md transition-shadow flex flex-col cursor-pointer"
             >
               <div className="flex gap-4 mb-4">
                 {cb.book.coverImage ? (
@@ -203,7 +199,7 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-serif text-sm font-bold text-[var(--ink)] line-clamp-2">
+                  <h3 className="font-serif text-sm font-bold text-[var(--ink)] line-clamp-2 hover:text-[#A0522D] transition-colors">
                     {cb.book.title}
                   </h3>
                   <p className="text-xs text-[var(--muted)] line-clamp-1">
@@ -216,11 +212,11 @@ export const CollectionDetailView: React.FC<CollectionDetailViewProps> = ({
               </div>
 
               {cb.book.description && (
-                <p className="text-xs text-[var(--muted)] line-clamp-2 mb-4">{cb.book.description}</p>
+                <p className="text-xs text-[var(--muted)] line-clamp-2 mb-4">{cb.book.description.replace(/<[^>]*>?/gm, '')}</p>
               )}
 
               <button
-                onClick={() => handleRemoveBook(cb.bookId)}
+                onClick={(e) => { e.stopPropagation(); handleRemoveBook(cb.bookId); }}
                 disabled={removingBookId === cb.bookId}
                 className="mt-auto flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg border border-[var(--border-light)] text-xs font-semibold text-[#C53030] hover:bg-[#FEE5E5] transition-colors disabled:opacity-50"
               >

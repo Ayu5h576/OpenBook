@@ -1,69 +1,146 @@
 import React, { useState, useEffect } from 'react';
-import { Book, ViewMode } from '../types';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Book } from '../types';
 import { BookDetailSkeleton } from '../components/Skeleton';
 import { useAIBookDetail } from '../hooks/useAI';
 import { useCollections } from '../hooks/useCollections';
+import { useLibrary } from '../hooks/useLibrary';
+import { useWishlist } from '../hooks/useWishlist';
 import { useToast } from '../context/ToastContext';
+import { BookApiService, LocalBook } from '../services/api';
+import { googleBookToApp } from '../utils/bookMapper';
 import { BookOpen, Heart, Bookmark, Share2, Star, ArrowLeft, Play, Sparkles, MessageSquare, Send, RefreshCw, FolderHeart, Check, X } from 'lucide-react';
 
-interface BookDetailViewProps {
-  book: Book;
-  onNavigate: (view: ViewMode) => void;
-  onOpenReader: (book: Book) => void;
-  onToggleFavorite: (id: string) => void;
-  onToggleWishlist: (id: string) => void;
-  onSelectBook: (book: Book) => void;
-  relatedBooks: Book[];
-  isLoading?: boolean;
-}
+import { createPortal } from 'react-dom';
 
-export const BookDetailView: React.FC<BookDetailViewProps> = ({
-  book,
-  onNavigate,
-  onOpenReader,
-  onToggleFavorite,
-  onToggleWishlist,
-  onSelectBook,
-  relatedBooks,
-  isLoading = false,
-}) => {
+export const BookDetailView: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const toast = useToast();
+
+  const isUuidBook = id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) : false;
+
+  const { data: localBook, isLoading: isBookLoading } = useQuery({
+    queryKey: ['book', id],
+    queryFn: async () => {
+      if (!id) throw new Error('No ID');
+      if (isUuidBook) {
+        const res = await BookApiService.getById(id);
+        return res.data?.book;
+      } else {
+        // If it's a google books id, we can just import it to get the full LocalBook
+        const res = await BookApiService.importBook(id);
+        return res.data?.book;
+      }
+    },
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const { entries: libEntries, addBook: addLibraryBook } = useLibrary();
+  const { entries: wishEntries, addBook: addWishlist, removeBook: removeWishlist } = useWishlist();
+
+  const libEntry = localBook ? libEntries.find(e => e.book.id === localBook.id) : undefined;
+  const wishEntry = localBook ? wishEntries.find(e => e.book.id === localBook.id) : undefined;
+
+  const isFavorite = libEntry?.isFavorite || false;
+  const isWishlist = !!wishEntry;
+
+  // We convert the backend LocalBook to our frontend App Book for now, 
+  // though eventually we might want to just use LocalBook directly.
+  const book: Book | undefined = localBook ? {
+    id: localBook.id,
+    title: localBook.title,
+    author: localBook.authors[0] || 'Unknown',
+    authorId: `auth-${localBook.id}`,
+    cover: localBook.coverImage || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+    spineColor: '#1D1D1D',
+    thickness: 30,
+    pages: localBook.pageCount || 300,
+    pagesRead: libEntry?.currentPage || 0,
+    publisher: localBook.publisher || 'Independent',
+    publishedYear: localBook.publishedDate ? parseInt(localBook.publishedDate.substring(0, 4)) : 2024,
+    language: localBook.language || 'English',
+    isbn: localBook.isbn13 || localBook.isbn10 || '',
+    rating: localBook.averageRating || 4.0,
+    reviewCount: localBook.ratingsCount || 0,
+    genres: localBook.categories || [],
+    description: localBook.description || '',
+    status: libEntry ? 'owned' : wishEntry ? 'wishlist' : 'owned',
+    favorite: isFavorite,
+    progress: libEntry ? Math.round(((libEntry.currentPage || 0) / (localBook.pageCount || 300)) * 100) : 0,
+    lastOpened: new Date().toISOString(),
+    chapters: [],
+    notes: [],
+    highlights: [],
+    comments: [],
+  } : undefined;
+
+  const cleanDescription = book?.description?.replace(/<[^>]*>?/gm, '') || '';
+
+  const { data: relatedBooks = [] } = useQuery({
+    queryKey: ['relatedBooks', book?.genres],
+    queryFn: async () => {
+      if (!book || !book.genres.length) return [];
+      const res = await BookApiService.search(book.genres[0], 'category', 0, 3);
+      return res.data?.items?.map(googleBookToApp) || [];
+    },
+    enabled: !!book,
+    staleTime: 1000 * 60 * 60,
+  });
+
   const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'comments' | 'ai-insights'>('overview');
   const [showTrailerModal, setShowTrailerModal] = useState(false);
   const [showCollectionModal, setShowCollectionModal] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
-  const toast = useToast();
   const [addingToCollection, setAddingToCollection] = useState(false);
   const [collectionError, setCollectionError] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
-  const isUuidBook = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(book.id);
-  const ai = useAIBookDetail(isUuidBook ? book.id : undefined);
+
+  const realUuid = localBook?.id;
+  const ai = useAIBookDetail(realUuid);
   const { collections, loading: collectionsLoading, addBook: addBookToCollection } = useCollections();
 
-  const [isFavorite, setIsFavorite] = useState(book.favorite);
-  const [isWishlist, setIsWishlist] = useState(book.status === 'wishlist');
-
-  useEffect(() => {
-    setIsFavorite(book.favorite);
-    setIsWishlist(book.status === 'wishlist');
-  }, [book.id, book.favorite, book.status]);
-
-  if (isLoading) {
+  if (isBookLoading || !book) {
     return (
       <div className="space-y-8 pb-12">
         <button
-          onClick={() => onNavigate('home')}
+          onClick={() => navigate(-1)}
           className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Dashboard</span>
+          <span>Back</span>
         </button>
         <BookDetailSkeleton />
       </div>
     );
   }
+
+  const handleToggleWishlist = async () => {
+    if (isWishlist && wishEntry) {
+      await removeWishlist(wishEntry.id);
+      toast.success('Removed from wishlist');
+    } else {
+      await addWishlist(book.id, 'MEDIUM');
+      toast.success('Added to wishlist');
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    // Currently useLibrary does not expose toggleFavorite directly,
+    // so we might just redirect them to add it to library first if they haven't.
+    if (!libEntry) {
+      await addLibraryBook(book.id, 'OWNED');
+      toast.success('Added to library. Go to library to favorite it!');
+    } else {
+      toast.info('Favorite toggle is handled in Library API.');
+    }
+  };
 
   const sendChat = async () => {
     const message = chatInput.trim();
@@ -87,6 +164,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
       }
       setShowCollectionModal(false);
       setSelectedCollections(new Set());
+      toast.success('Added to collections');
     } catch (err: any) {
       setCollectionError(err.message ?? 'Failed to add book to collection');
     } finally {
@@ -107,15 +185,15 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
     : [];
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8 pb-12 relative">
       
       {/* Back Button */}
       <button
-        onClick={() => onNavigate('home')}
+        onClick={() => navigate(-1)}
         className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--muted)] hover:text-[var(--ink)] transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
-        <span>Back to Dashboard</span>
+        <span>Back</span>
       </button>
 
       {/* Main Bookstore Showcase Card */}
@@ -131,9 +209,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
           {/* Quick Actions Under Cover */}
           <div className="flex items-center gap-3 mt-6">
             <button
-              onClick={() => {
-                onToggleFavorite(book.id);
-              }}
+              onClick={handleToggleFavorite}
               className={`p-3 rounded-2xl border transition-all active:scale-95 ${
                 isFavorite ? 'bg-red-50 border-red-200 text-red-600' : 'border-[var(--border-light)] text-[var(--ink)] hover:bg-[var(--bg-ivory)]'
               }`}
@@ -143,9 +219,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
             </button>
 
             <button
-              onClick={() => {
-                onToggleWishlist(book.id);
-              }}
+              onClick={handleToggleWishlist}
               className={`p-3 rounded-2xl border transition-all active:scale-95 ${
                 isWishlist ? 'bg-[var(--ink)] text-[var(--bg-ivory)]' : 'border-[var(--border-light)] text-[var(--ink)] hover:bg-[var(--bg-ivory)]'
               }`}
@@ -157,7 +231,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
             <button
               onClick={() => {
                 navigator.clipboard.writeText(window.location.href);
-                alert("Book link copied to clipboard!");
+                toast.success("Book link copied to clipboard!");
               }}
               className="p-3 rounded-2xl border border-[var(--border-light)] text-[var(--ink)] hover:bg-[var(--bg-ivory)] transition-all"
               title="Share Volume"
@@ -184,7 +258,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
             </h1>
 
             <p className="text-base text-[var(--muted)] font-medium">
-              by <span className="text-[var(--ink)] font-bold underline cursor-pointer" onClick={() => onNavigate('author')}>{book.author}</span>
+              by <span className="text-[var(--ink)] font-bold underline cursor-pointer" onClick={() => navigate(`/author/${book.authorId}`)}>{book.author}</span>
             </p>
 
             {/* Rating Stars & Metadata Grid */}
@@ -201,15 +275,25 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
             </div>
 
             {/* Description */}
-            <p className="text-sm text-[var(--muted)] leading-relaxed font-normal my-4">
-              {book.description}
-            </p>
+            <div className="my-4">
+              <p className="text-sm text-[var(--muted)] leading-relaxed font-normal line-clamp-2 sm:line-clamp-3">
+                {cleanDescription}
+              </p>
+              {cleanDescription.length > 150 && (
+                <button
+                  onClick={() => setShowSummaryModal(true)}
+                  className="text-xs font-bold text-[#A0522D] hover:underline mt-1"
+                >
+                  Read full description
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Action Buttons Row */}
           <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-[var(--border-light)]">
             <button
-              onClick={() => setShowSummaryModal(true)}
+              onClick={() => navigate(`/reader/${book.id}`)}
               className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-sm hover:bg-[#333333] transition-all shadow-warm-md active:scale-95"
             >
               <BookOpen className="w-4 h-4" />
@@ -233,7 +317,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
             </button>
 
             <button
-              onClick={() => setActiveTab('ai-insights')}
+              onClick={() => document.getElementById('ai-section')?.scrollIntoView({ behavior: 'smooth' })}
               className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[var(--white)] border border-[var(--border-light)] text-[var(--ink)] font-bold text-sm hover:bg-[var(--bg-beige)] transition-all shadow-warm-sm"
             >
               <Sparkles className="w-4 h-4 text-[#B8860B]" />
@@ -265,7 +349,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
       </div>
 
       {/* AI Detail Surface */}
-      <section className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md">
+      <section id="ai-section" className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md scroll-mt-24">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-xs font-semibold mb-2">
@@ -273,13 +357,10 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
               <span>Gemini Reading Companion</span>
             </div>
             <h2 className="font-serif-title text-3xl font-bold text-[var(--ink)]">Personalized Intelligence</h2>
-            {!isUuidBook && (
-              <p className="text-xs text-[var(--muted)] mt-1">Import this book into your library to unlock database-grounded AI analysis.</p>
-            )}
           </div>
           <button
             onClick={ai.retry}
-            disabled={!isUuidBook || ai.loading}
+            disabled={!realUuid || ai.loading}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[var(--border-light)] text-xs font-bold text-[var(--ink)] hover:bg-[var(--bg-ivory)] disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${ai.loading ? 'animate-spin' : ''}`} />
@@ -287,7 +368,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
           </button>
         </div>
 
-        {isUuidBook && ai.error && (
+        {realUuid && ai.error && (
           <div className="mb-4 text-xs text-red-600 bg-red-50 border border-red-200 rounded-2xl px-4 py-3">{ai.error}</div>
         )}
 
@@ -373,13 +454,13 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
               onKeyDown={(event) => {
                 if (event.key === 'Enter') sendChat();
               }}
-              disabled={!isUuidBook}
+              disabled={!realUuid}
               placeholder="Explain this chapter without spoilers..."
               className="flex-1 bg-white/10 border border-white/15 rounded-xl px-3 py-2 text-xs text-white placeholder-white/40 focus:outline-none focus:border-[#E0A96D]"
             />
             <button
               onClick={sendChat}
-              disabled={!isUuidBook || !chatInput.trim()}
+              disabled={!realUuid || !chatInput.trim()}
               className="p-2.5 rounded-xl bg-[#E0A96D] text-[var(--ink)] disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
@@ -400,7 +481,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
               <h2 className="font-serif-title text-2xl font-bold text-[var(--ink)]">What to Read Next</h2>
             </div>
             <button
-              onClick={() => onNavigate('explore')}
+              onClick={() => navigate('/explore')}
               className="hidden sm:block text-xs font-bold text-[var(--ink)] border border-[var(--border-light)] px-4 py-2 rounded-full hover:bg-[var(--bg-ivory)] transition-colors"
             >
               Explore Library →
@@ -410,7 +491,7 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
             {relatedBooks.map((related) => (
               <div 
                 key={related.id} 
-                onClick={() => onSelectBook(related)}
+                onClick={() => navigate(`/book/${related.id}`)}
                 className="group cursor-pointer flex flex-col gap-3"
               >
                 <div className="aspect-[2/3] rounded-xl overflow-hidden border border-[var(--border-light)] shadow-sm bg-[var(--bg-beige)] relative">
@@ -429,9 +510,11 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
         </section>
       )}
 
+      {/* Modals rendered to document.body using createPortal to prevent stacking context issues */}
+      
       {/* Trailer Modal */}
-      {showTrailerModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+      {showTrailerModal && createPortal(
+        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[var(--ink)] text-white rounded-3xl p-6 max-w-xl w-full border border-white/20 shadow-2xl text-center">
             <h3 className="font-serif-title text-2xl font-bold mb-2">Atmospheric Book Trailer</h3>
             <p className="text-xs text-[#A0A0A0] mb-6">Visual and acoustic mood showcase for {book.title}</p>
@@ -445,12 +528,13 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
               Close Trailer
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Add to Collection Modal */}
-      {showCollectionModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+      {showCollectionModal && createPortal(
+        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[var(--white)] rounded-3xl p-6 max-w-md w-full border border-[var(--border-light)] shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">Add to Collection</h3>
@@ -534,11 +618,13 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
+
       {/* Summary Modal */}
-      {showSummaryModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+      {showSummaryModal && createPortal(
+        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[var(--white)] rounded-3xl p-6 md:p-8 max-w-2xl w-full border border-[var(--border-light)] shadow-2xl relative animate-scale-in">
             <button
               onClick={() => setShowSummaryModal(false)}
@@ -552,8 +638,8 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
             </div>
             
             <div className="prose prose-sm text-[#444444] leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
-              {book.description ? (
-                <p>{book.description}</p>
+              {cleanDescription ? (
+                <p>{cleanDescription}</p>
               ) : (
                 <p className="italic text-[var(--muted)]">No summary available for this book.</p>
               )}
@@ -568,7 +654,8 @@ export const BookDetailView: React.FC<BookDetailViewProps> = ({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>

@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
-import { ViewMode } from '../types';
+import { useNavigate } from 'react-router-dom';
 import { BookCardSkeleton } from '../components/Skeleton';
 import { useLibrary } from '../hooks/useLibrary';
 import { LibraryStatus } from '../services/api';
 import { Library, LayoutGrid, List, BookOpen, Star } from 'lucide-react';
-
-interface LibraryViewProps {
-  onNavigate: (view: ViewMode) => void;
-}
 
 const STATUS_TABS: { id: LibraryStatus | 'ALL'; label: string }[] = [
   { id: 'ALL', label: 'All Volumes' },
@@ -25,7 +21,8 @@ const statusBadge = (status: LibraryStatus) => {
   return { label, cls: 'bg-[var(--bg-beige)] text-[var(--ink)]' };
 };
 
-export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
+export const LibraryView: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<LibraryStatus | 'ALL'>('ALL');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -99,7 +96,9 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
         <div className="text-center py-16 bg-[var(--white)] border border-[var(--border-light)] rounded-3xl">
           <BookOpen className="w-12 h-12 text-[var(--border-light)] mx-auto mb-3" />
           <p className="font-serif-title text-xl text-[var(--ink)]">No books here yet.</p>
-          <p className="text-xs text-[var(--muted)] mt-1">Search and add books to your library.</p>
+          <p className="text-xs text-[var(--muted)] mt-1">
+            <button onClick={() => navigate('/explore')} className="text-[#A0522D] hover:underline">Search and add books</button> to your library.
+          </p>
         </div>
       ) : viewMode === 'list' ? (
         <div className="space-y-3">
@@ -107,7 +106,11 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
             const pct = progressPct(entry.currentPage, entry.book.pageCount);
             const badge = statusBadge(entry.status);
             return (
-              <div key={entry.id} className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl p-4 flex items-center gap-4 hover:shadow-warm-md transition-shadow">
+              <div 
+                key={entry.id} 
+                onClick={() => navigate(`/book/${entry.book.id}`)}
+                className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl p-4 flex items-center gap-4 hover:shadow-warm-md transition-shadow cursor-pointer"
+              >
                 {entry.book.coverImage ? (
                   <img src={entry.book.coverImage} alt={entry.book.title} className="w-12 h-16 object-cover rounded-lg flex-shrink-0" />
                 ) : (
@@ -131,7 +134,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
                     {Number(entry.book.averageRating).toFixed(1)}
                   </span>
                 )}
-                <button onClick={() => removeEntry(entry.id)} className="text-xs text-red-400 hover:text-red-600 transition-colors ml-2">Remove</button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); removeEntry(entry.id); }} 
+                  className="text-xs text-red-400 hover:text-red-600 transition-colors ml-2"
+                >
+                  Remove
+                </button>
               </div>
             );
           })}
@@ -142,7 +150,11 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
             const pct = progressPct(entry.currentPage, entry.book.pageCount);
             const badge = statusBadge(entry.status);
             return (
-              <div key={entry.id} className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl overflow-hidden hover:shadow-warm-md transition-shadow group cursor-pointer">
+              <div 
+                key={entry.id} 
+                onClick={() => navigate(`/book/${entry.book.id}`)}
+                className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl overflow-hidden hover:shadow-warm-md transition-shadow group cursor-pointer"
+              >
                 <div className="relative aspect-[2/3] overflow-hidden bg-[var(--bg-beige)]">
                   {entry.book.coverImage ? (
                     <img src={entry.book.coverImage} alt={entry.book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -161,7 +173,12 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
                       <div className="bg-[#A0522D] h-1 rounded-full" style={{ width: `${pct}%` }} />
                     </div>
                   )}
-                  <button onClick={() => removeEntry(entry.id)} className="mt-2 text-[10px] text-red-400 hover:text-red-600 transition-colors">Remove</button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); removeEntry(entry.id); }} 
+                    className="mt-2 text-[10px] text-red-400 hover:text-red-600 transition-colors"
+                  >
+                    Remove
+                  </button>
                 </div>
               </div>
             );
@@ -171,3 +188,4 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onNavigate }) => {
     </div>
   );
 };
+

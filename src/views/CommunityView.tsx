@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Users, MessageSquare, Sparkles, BookOpen, UserCheck, Plus, X, Loader2,
   Crown, Shield, Lock, Award, UserPlus, PenSquare, Star, Rss,
@@ -37,10 +39,10 @@ const ACTIVITY_ICON: Record<ActivityType, React.ComponentType<{ className?: stri
   UNLOCKED_ACHIEVEMENT: Award,
 };
 
-function activityText(a: ActivityItem, onOpenProfile: (u: UserSummary) => void): React.ReactNode {
+function activityText(a: ActivityItem, navigate: (path: string) => void): React.ReactNode {
   const who = (
     <button
-      onClick={() => onOpenProfile(a.actor)}
+      onClick={() => navigate(`/profile/${a.actor.id}`)}
       className="font-semibold text-[var(--ink)] hover:text-[#A0522D] transition-colors"
     >
       {a.actor.username}
@@ -112,20 +114,25 @@ const CreateClubModal: React.FC<{
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
-        className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md w-full max-w-lg"
+        className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md w-full max-w-lg animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
           <h2 className="font-serif-title text-2xl font-bold text-[var(--ink)]">Start a Book Club</h2>
-          <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--ink)]">
+          <button onClick={onClose} className="text-[var(--muted)] hover:text-[var(--ink)] transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="space-y-4">
+          {err && (
+            <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {err}
+            </div>
+          )}
           <div>
             <label className="block text-xs font-semibold text-[var(--ink)] mb-1.5">Club Name</label>
             <input
@@ -141,15 +148,21 @@ const CreateClubModal: React.FC<{
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              placeholder="What will your club read and discuss?"
+              placeholder="What will your club focus on?"
               className="w-full px-4 py-2.5 rounded-2xl border border-[var(--border-light)] bg-[var(--bg-ivory)] text-sm text-[var(--ink)] focus:outline-none focus:border-[#A0522D] resize-none"
             />
           </div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} className="accent-[#A0522D]" />
-            <span className="text-xs text-[var(--muted)] flex items-center gap-1">
-              <Lock className="w-3.5 h-3.5" /> Private club (invite / join only, hidden from discovery)
-            </span>
+          <label className="flex items-center gap-3 cursor-pointer mt-2">
+            <input
+              type="checkbox"
+              checked={isPrivate}
+              onChange={(e) => setIsPrivate(e.target.checked)}
+              className="w-4 h-4 rounded text-[#A0522D] focus:ring-[#A0522D]"
+            />
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-[var(--ink)]">Private Club</span>
+              <span className="text-[10px] text-[var(--muted)]">Only approved members can join and view activity.</span>
+            </div>
           </label>
 
           {err && <p className="text-xs text-[#B23B3B]">{err}</p>}
@@ -175,12 +188,8 @@ const CreateClubModal: React.FC<{
 
 // ─── Main View ───────────────────────────────────────────────────────────────
 
-interface CommunityViewProps {
-  onOpenClub: (id: string) => void;
-  onOpenProfile: (u: UserSummary) => void;
-}
-
-export const CommunityView: React.FC<CommunityViewProps> = ({ onOpenClub, onOpenProfile }) => {
+export const CommunityView: React.FC = () => {
+  const navigate = useNavigate();
   const { clubs, loading: clubsLoading, error: clubsError, createClub, joinClub, leaveClub } = useBookClubs();
   const [scope, setScope] = useState<FeedScope>('following');
   const { activities, loading: feedLoading, hasMore, loadMore, loadingMore } = useActivityFeed(scope);
@@ -253,7 +262,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({ onOpenClub, onOpen
                 return (
                   <div
                     key={club.id}
-                    onClick={() => onOpenClub(club.id)}
+                    onClick={() => navigate(`/clubs/${club.id}`)}
                     className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 shadow-warm-sm hover:shadow-warm-md transition-shadow cursor-pointer flex flex-col"
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -348,7 +357,7 @@ export const CommunityView: React.FC<CommunityViewProps> = ({ onOpenClub, onOpen
                         <Icon className="w-4 h-4 text-[#A0522D]" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs text-[var(--muted)] leading-relaxed">{activityText(a, onOpenProfile)}</p>
+                        <p className="text-xs text-[var(--muted)] leading-relaxed">{activityText(a, navigate)}</p>
                         <span className="text-[10px] text-[#A0A0A0]">{timeAgo(a.createdAt)}</span>
                       </div>
                     </div>

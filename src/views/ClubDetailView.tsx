@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Users, MessageSquare, Loader2, Lock, Crown, Shield, UserCheck,
   Plus, Send, Sparkles,
@@ -238,14 +239,11 @@ const DiscussionThread: React.FC<{
 
 // ─── Main View ───────────────────────────────────────────────────────────────
 
-interface ClubDetailViewProps {
-  clubId: string;
-  onBack: () => void;
-  onOpenProfile: (u: UserSummary) => void;
-}
-
-export const ClubDetailView: React.FC<ClubDetailViewProps> = ({ clubId, onBack, onOpenProfile }) => {
-  const { club, discussions, loading, error, join, leave, createDiscussion } = useBookClub(clubId);
+export const ClubDetailView: React.FC = () => {
+  const { id: clubId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  // We can safely cast clubId because the route is only matched if the id exists
+  const { club, discussions, loading, error, join, leave, createDiscussion } = useBookClub(clubId as string);
   const [selectedDiscussionId, setSelectedDiscussionId] = useState<string | null>(null);
   const [showNewDiscussion, setShowNewDiscussion] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -263,10 +261,14 @@ export const ClubDetailView: React.FC<ClubDetailViewProps> = ({ clubId, onBack, 
     }
   };
 
+  if (!clubId) {
+     return null; // or redirect
+  }
+
   if (loading || !club) {
     return (
       <div className="space-y-8 pb-12">
-        <BackButton onBack={onBack} />
+        <BackButton onBack={() => navigate('/community')} />
         {error ? (
           <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-8 text-center text-sm text-[#B23B3B]">{error}</div>
         ) : (
@@ -284,14 +286,14 @@ export const ClubDetailView: React.FC<ClubDetailViewProps> = ({ clubId, onBack, 
         discussionId={selectedDiscussionId}
         canComment={club.isMember}
         onBack={() => setSelectedDiscussionId(null)}
-        onOpenProfile={onOpenProfile}
+        onOpenProfile={(u) => navigate(`/profile/${u.id}`)}
       />
     );
   }
 
   return (
     <div className="space-y-8 pb-12">
-      <BackButton onBack={onBack} />
+      <BackButton onBack={() => navigate('/community')} />
 
       {/* Header Card */}
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md">
@@ -320,7 +322,7 @@ export const ClubDetailView: React.FC<ClubDetailViewProps> = ({ clubId, onBack, 
               <span className="text-[#A0A0A0]">
                 Hosted by{' '}
                 <button
-                  onClick={() => onOpenProfile(club.owner)}
+                  onClick={() => navigate(`/profile/${club.owner.id}`)}
                   className="font-semibold text-[#A0522D] hover:underline"
                 >
                   {club.owner.username}
@@ -361,7 +363,7 @@ export const ClubDetailView: React.FC<ClubDetailViewProps> = ({ clubId, onBack, 
               return (
                 <button
                   key={m.id}
-                  onClick={() => onOpenProfile(m)}
+                  onClick={() => navigate(`/profile/${m.id}`)}
                   className="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-[var(--bg-ivory)] border border-[var(--border-light)] hover:border-[#A0522D] transition-colors"
                 >
                   <Avatar username={m.username} avatar={m.avatar} size="w-6 h-6" />

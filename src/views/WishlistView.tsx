@@ -1,14 +1,10 @@
 import React from 'react';
-import { ViewMode } from '../types';
+import { useNavigate } from 'react-router-dom';
 import { useWishlist } from '../hooks/useWishlist';
 import { Bookmark, Orbit, BookOpen, Star, X } from 'lucide-react';
 import { BookCardSkeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorBanner } from '../components/ErrorBanner';
-
-interface WishlistViewProps {
-  onNavigate: (view: ViewMode) => void;
-}
 
 const priorityBadge = (priority: 'HIGH' | 'MEDIUM' | 'LOW') => {
   if (priority === 'HIGH') return { label: 'High', cls: 'bg-red-100 text-red-700' };
@@ -16,7 +12,8 @@ const priorityBadge = (priority: 'HIGH' | 'MEDIUM' | 'LOW') => {
   return { label: 'Low', cls: 'bg-green-100 text-green-700' };
 };
 
-export const WishlistView: React.FC<WishlistViewProps> = ({ onNavigate }) => {
+export const WishlistView: React.FC = () => {
+  const navigate = useNavigate();
   const { entries, loading, error, removeBook } = useWishlist();
 
   return (
@@ -33,7 +30,7 @@ export const WishlistView: React.FC<WishlistViewProps> = ({ onNavigate }) => {
           <p className="text-xs text-[var(--muted)] mt-1">{entries.length} Volumes Saved for Future Sessions</p>
         </div>
         <button
-          onClick={() => onNavigate('wishlist-galaxy')}
+          onClick={() => navigate('/wishlist-galaxy')}
           className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[#333333] transition-all shadow-warm-md"
         >
           <Orbit className="w-4 h-4 text-[#E0A96D]" />
@@ -54,16 +51,20 @@ export const WishlistView: React.FC<WishlistViewProps> = ({ onNavigate }) => {
           preset="wishlist"
           title="Your wishlist is empty"
           description="Explore books and bookmark volumes to save them here for future reading sessions."
-          action={{ label: 'Explore Books', onClick: () => onNavigate('explore') }}
+          action={{ label: 'Explore Books', onClick: () => navigate('/explore') }}
         />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {entries.map((entry) => {
             const badge = priorityBadge(entry.priority);
             return (
-              <div key={entry.id} className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl overflow-hidden hover:shadow-warm-md transition-shadow group relative">
+              <div 
+                key={entry.id} 
+                onClick={() => navigate(`/book/${entry.book.id}`)}
+                className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl overflow-hidden hover:shadow-warm-md transition-shadow group relative cursor-pointer"
+              >
                 <button
-                  onClick={() => removeBook(entry.id)}
+                  onClick={(e) => { e.stopPropagation(); removeBook(entry.id); }}
                   className="absolute top-2 left-2 z-10 w-6 h-6 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-red-500 transition-colors"
                 >
                   <X className="w-3.5 h-3.5" />

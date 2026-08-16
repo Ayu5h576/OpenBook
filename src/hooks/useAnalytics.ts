@@ -1,33 +1,50 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnalyticsApiService, AnalyticsStats, ReadingGoal } from '../services/api';
 
 export function useAnalytics() {
-  const [stats, setStats] = useState<AnalyticsStats | null>(null);
-  const [goal, setGoal] = useState<ReadingGoal | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: statsData, isLoading: loadingStats, error: statsError, refetch: refetchStats } = useQuery({
+    queryKey: ['analytics', 'stats'],
+    queryFn: async () => {
+      const res = await AnalyticsApiService.getStats();
+      if (res.error) throw new Error(res.error);
+      return res.data?.stats ?? null;
+    },
+  });
+
+  const { data: goalData, isLoading: loadingGoal, error: goalError, refetch: refetchGoal } = useQuery({
+    queryKey: ['analytics', 'goal'],
+    queryFn: async () => {
+      const res = await AnalyticsApiService.getGoal();
+      if (res.error) throw new Error(res.error);
+      return res.data?.goal ?? null;
+    },
+  });
+
+  const loading = loadingStats || loadingGoal;
+  const error = statsError ? statsError.message : goalError ? goalError.message : null;
+
+  const upsertMutation = useMutation({
+    mutationFn: async (data: { year: number; targetBooks: number; targetPages?: number }) => {
+      const res = await AnalyticsApiService.upsertGoal(data);
+      if (res.error) throw new Error(res.error);
+      return res.data!.goal;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['analytics', 'goal'] });
+    },
+  });
+
+  const upsertGoal = useCallback(
+    async (data: { year: number; targetBooks: number; targetPages?: number }) => upsertMutation.mutateAsync(data),
+    [upsertMutation]
+  );
 
   const fetchAll = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const [statsRes, goalRes] = await Promise.all([
-      AnalyticsApiService.getStats(),
-      AnalyticsApiService.getGoal(),
-    ]);
-    if (statsRes.error) setError(statsRes.error);
-    else setStats(statsRes.data?.stats ?? null);
-    if (!goalRes.error) setGoal(goalRes.data?.goal ?? null);
-    setLoading(false);
-  }, []);
+    await Promise.all([refetchStats(), refetchGoal()]);
+  }, [refetchStats, refetchGoal]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
-
-  const upsertGoal = useCallback(async (data: { year: number; targetBooks: number; targetPages?: number }) => {
-    const res = await AnalyticsApiService.upsertGoal(data);
-    if (res.error) throw new Error(res.error);
-    setGoal(res.data!.goal);
-    return res.data!.goal;
-  }, []);
-
-  return { stats, goal, loading, error, refetch: fetchAll, upsertGoal };
+  return { stats: statsData ?? null, goal: goalData ?? null, loading, error, refetch: fetchAll, upsertGoal };
 }

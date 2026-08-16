@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Book, ReaderSettings, Chapter } from '../types';
-import { AIApiService } from '../services/api';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { ReaderSettings, Chapter } from '../types';
+import { AIApiService, BookApiService } from '../services/api';
+import { BookDetailSkeleton } from '../components/Skeleton';
 import {
   ArrowLeft,
   Settings,
@@ -20,12 +23,28 @@ import {
   Highlighter
 } from 'lucide-react';
 
-interface ReaderViewProps {
-  book: Book;
-  onExit: () => void;
-}
+export const ReaderView: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
-export const ReaderView: React.FC<ReaderViewProps> = ({ book, onExit }) => {
+  const isUuidBook = id ? /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) : false;
+
+  const { data: localBook, isLoading } = useQuery({
+    queryKey: ['book', id],
+    queryFn: async () => {
+      if (!id) throw new Error('No ID');
+      if (isUuidBook) {
+        const res = await BookApiService.getById(id);
+        return res.data?.book;
+      } else {
+        const res = await BookApiService.importBook(id);
+        return res.data?.book;
+      }
+    },
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+  });
+
   const [currentChapterIdx, setCurrentChapterIdx] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [showAiDrawer, setShowAiDrawer] = useState(false);
@@ -52,11 +71,22 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ book, onExit }) => {
     return () => clearInterval(timer);
   }, []);
 
-  const chapters: Chapter[] = book.chapters.length > 0 ? book.chapters : [
+  if (isLoading || !localBook) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-ivory)] flex flex-col items-center justify-center p-8">
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--ink)] mb-4"></div>
+        <p className="text-[var(--ink)] font-serif text-lg">Preparing your book...</p>
+      </div>
+    );
+  }
+
+  // Use DB chapters if they exist, else generate a placeholder chapter
+  // Assuming LocalBook might have chapters in the future, currently we mock it based on description
+  const chapters: Chapter[] = [
     {
       id: 1,
-      title: "Chapter I: The Sanctuary of Quiet",
-      content: book.description + "\n\nIn the quiet Nordic fjords, timber structures do not fight the winter daylight; they welcome it as a sacred guest. Sunlight filters through long spruce beams, casting elongated shadows across wide pine floorboards that have aged gracefully for over a century."
+      title: "Chapter 1",
+      content: localBook.description || "The beginning of the story..."
     }
   ];
 
@@ -97,7 +127,6 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ book, onExit }) => {
   // AI Assistant Call
   const handleAskAi = async () => {
     if (!aiPrompt.trim()) return;
-    const isUuidBook = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(book.id);
     if (!isUuidBook) {
       setAiResponse('Import this book into your library first so OpenBook can answer from your real reading data.');
       return;
@@ -105,7 +134,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ book, onExit }) => {
     setLoadingAi(true);
     try {
       const response = await AIApiService.chat({
-        bookId: book.id,
+        bookId: localBook.id,
         message: aiPrompt,
         context: `Chapter: ${activeChapter.title}\nReader excerpt: ${activeChapter.content.slice(0, 4000)}`,
       });
@@ -132,7 +161,10 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ book, onExit }) => {
       {/* Top Header Controls Bar */}
       <header className="sticky top-0 z-40 border-b px-6 py-4 flex items-center justify-between backdrop-blur-md bg-opacity-80" style={{ borderColor: themeStyle.border }}>
         <button
-          onClick={onExit}
+          onClick={() => {
+            window.speechSynthesis.cancel();
+            navigate(-1);
+          }}
           className="flex items-center gap-2 text-xs font-semibold hover:opacity-80 transition-opacity"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -140,7 +172,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ book, onExit }) => {
         </button>
 
         <div className="text-center">
-          <span className="font-serif-title font-bold text-base block">{book.title}</span>
+          <span className="font-serif-title font-bold text-base block">{localBook.title}</span>
           <span className="text-[11px] opacity-70">{activeChapter.title}</span>
         </div>
 

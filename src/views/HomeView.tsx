@@ -1,35 +1,64 @@
 import React from 'react';
-import { Book, ViewMode } from '../types';
+import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Book } from '../types';
 import { BookCard3D } from '../components/BookCard3D';
 import { HeroSkeleton, BookCardSkeleton } from '../components/Skeleton';
 import { RecommendedForYou } from '../components/RecommendedForYou';
 import { useAIHome } from '../hooks/useAI';
 import { useAuth } from '../hooks/useAuth';
+import { useLibrary } from '../hooks/useLibrary';
+import { useWishlist } from '../hooks/useWishlist';
+import { BookApiService } from '../services/api';
+import { googleBookToApp, libraryEntryToApp } from '../utils/bookMapper';
 import { Sparkles, ArrowRight, BookOpen, Flame, Compass, Star, RefreshCw } from 'lucide-react';
 
-interface HomeViewProps {
-  books: Book[];
-  onSelectBook: (book: Book) => void;
-  onOpenReader: (book: Book) => void;
-  onNavigate: (view: ViewMode) => void;
-  onAddBookToWishlist?: (recommendation: Partial<Book>) => void;
-  isLoading?: boolean;
-}
-
-export const HomeView: React.FC<HomeViewProps> = ({
-  books,
-  onSelectBook,
-  onOpenReader,
-  onNavigate,
-  onAddBookToWishlist,
-  isLoading = false,
-}) => {
+export const HomeView: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const aiHome = useAIHome();
-  const continueReadingBook = books.find((b) => b.status === 'reading') || books[0];
-  const recentlyOpened = books.filter((b) => b.progress > 0);
-  const newReleases = books.filter((b) => b.publishedYear >= 2023);
+  const { entries: libraryEntries, loading: libLoading } = useLibrary();
+  const { entries: wishlistEntries, loading: wishLoading } = useWishlist();
+
+  const { data: featuredBooks = [], isLoading: featuredLoading } = useQuery({
+    queryKey: ['featuredBooks'],
+    queryFn: async () => {
+      const res = await BookApiService.search('fiction', 'category', 0, 12);
+      return res.data?.items?.map(googleBookToApp) || [];
+    },
+    staleTime: 1000 * 60 * 60, // 1 hour
+  });
+
+  const isLoading = libLoading || wishLoading || featuredLoading;
+
+  // Sync books with library status (just for display in HomeView)
+  const books = React.useMemo(() => {
+    return featuredBooks.map((book) => {
+      const libEntry = libraryEntries.find((e) => e.book.googleBooksId === book.id || e.book.id === book.id);
+      const wishEntry = wishlistEntries.find((e) => e.book.googleBooksId === book.id || e.book.id === book.id);
+      
+      let status = book.status;
+      if (wishEntry) status = 'wishlist';
+      else if (libEntry) status = 'owned';
+      
+      return { ...book, status, favorite: libEntry?.isFavorite || false };
+    });
+  }, [featuredBooks, libraryEntries, wishlistEntries]);
+
+  const libraryAppBooks = libraryEntries.map(libraryEntryToApp);
+  const continueReadingBook = libraryAppBooks.find((b) => b.progress > 0 && b.progress < 100) || libraryAppBooks[0];
+  const recentlyOpened = libraryAppBooks.filter((b) => b.progress > 0).slice(0, 4);
+  const newReleases = books.filter((b) => b.publishedYear >= 2023).slice(0, 3);
+  
   const insight = aiHome.insights.data?.insights;
+
+  const handleSelectBook = (book: Book) => {
+    navigate(`/book/${book.id}`);
+  };
+
+  const handleOpenReader = (book: Book) => {
+    navigate(`/reader/${book.id}`);
+  };
 
   if (isLoading) {
     return (
@@ -60,11 +89,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
   return (
     <div className="space-y-10 pb-12">
       
-      {/* Hero: Continue Reading Highlight (Apple Books Style) */}
+      {/* Hero: Continue Reading Highlight */}
       {continueReadingBook && (
         <section className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md relative overflow-hidden flex flex-col md:flex-row items-center gap-8">
           
-          <div className="w-40 sm:w-48 h-60 sm:h-72 rounded-2xl overflow-hidden shadow-book flex-shrink-0 bg-[var(--bg-beige)] relative group cursor-pointer" onClick={() => onSelectBook(continueReadingBook)}>
+          <div className="w-40 sm:w-48 h-60 sm:h-72 rounded-2xl overflow-hidden shadow-book flex-shrink-0 bg-[var(--bg-beige)] relative group cursor-pointer" onClick={() => handleSelectBook(continueReadingBook)}>
             <img src={continueReadingBook.cover} alt={continueReadingBook.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
             <div className="absolute top-3 left-3 bg-[var(--ink)]/90 text-[var(--bg-ivory)] text-[10px] font-semibold px-2.5 py-1 rounded-full">
               {continueReadingBook.progress}% Read
@@ -85,7 +114,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </div>
 
             <p className="text-xs text-[var(--muted)] line-clamp-2 max-w-xl font-normal leading-relaxed">
-              {continueReadingBook.description}
+              {continueReadingBook.description?.replace(/<[^>]*>?/gm, '') || ''}
             </p>
 
             {/* Reading Progress Bar */}
@@ -104,7 +133,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
             <div className="pt-2 flex items-center gap-4">
               <button
-                onClick={() => onOpenReader(continueReadingBook)}
+                onClick={() => handleOpenReader(continueReadingBook)}
                 className="flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-xs hover:bg-[#333333] transition-all shadow-warm-md"
               >
                 <BookOpen className="w-4 h-4" />
@@ -112,14 +141,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </button>
 
               <button
-                onClick={() => onSelectBook(continueReadingBook)}
+                onClick={() => handleSelectBook(continueReadingBook)}
                 className="px-5 py-3 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] font-bold text-xs hover:bg-[#E5DCCF] transition-all"
               >
                 Book Details
               </button>
             </div>
           </div>
-
         </section>
       )}
 
@@ -196,39 +224,42 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
       <RecommendedForYou
         userBooks={books}
-        onSelectBook={onSelectBook}
-        onAddBookToWishlist={onAddBookToWishlist}
+        onSelectBook={handleSelectBook}
       />
 
       {/* Recently Opened Volumes */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">Recently Opened</h3>
-          <button onClick={() => onNavigate('library')} className="text-xs font-semibold text-[var(--ink)] hover:underline flex items-center gap-1">
-            <span>Library</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
+      {recentlyOpened.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">Recently Opened</h3>
+            <button onClick={() => navigate('/library')} className="text-xs font-semibold text-[var(--ink)] hover:underline flex items-center gap-1">
+              <span>Library</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {recentlyOpened.map((book) => (
-            <BookCard3D key={book.id} book={book} onSelect={onSelectBook} />
-          ))}
-        </div>
-      </section>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {recentlyOpened.map((book) => (
+              <BookCard3D key={book.id} book={book} onSelect={handleSelectBook} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* New Releases Banner */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">New Releases</h3>
-        </div>
+      {newReleases.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">New Releases</h3>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {newReleases.map((book) => (
-            <BookCard3D key={book.id} book={book} onSelect={onSelectBook} layout="horizontal" />
-          ))}
-        </div>
-      </section>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {newReleases.map((book) => (
+              <BookCard3D key={book.id} book={book} onSelect={handleSelectBook} layout="horizontal" />
+            ))}
+          </div>
+        </section>
+      )}
 
     </div>
   );

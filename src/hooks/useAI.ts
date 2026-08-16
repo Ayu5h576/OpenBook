@@ -1,71 +1,86 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { DependencyList } from 'react';
+import { useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   AIApiService,
-  BookDNAResponse,
   ChatResponse,
-  InsightsResponse,
-  PlannerResponse,
-  ReadingCompassResponse,
   SummaryFormat,
-  SummaryResponse,
 } from '../services/api';
 
-function useAsyncValue<T>(loader: () => Promise<{ data?: T; error?: string }>, deps: DependencyList, enabled = true) {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(enabled);
-  const [error, setError] = useState<string | null>(null);
-
-  const retry = useCallback(async () => {
-    if (!enabled) return;
-    setLoading(true);
-    setError(null);
-    const response = await loader();
-    if (response.error) {
-      setError(response.error);
-    } else {
-      setData(response.data ?? null);
-    }
-    setLoading(false);
-  }, deps);
-
-  useEffect(() => {
-    retry();
-  }, [retry]);
-
-  return { data, loading, error, retry };
-}
-
 export function useAIHome() {
-  const compass = useAsyncValue<ReadingCompassResponse>(() => AIApiService.getReadingCompass({ limit: 1 }), []);
-  const insights = useAsyncValue<InsightsResponse>(() => AIApiService.getInsights(), []);
+  const compassQuery = useQuery({
+    queryKey: ['ai', 'compass'],
+    queryFn: async () => {
+      const res = await AIApiService.getReadingCompass({ limit: 1 });
+      if (res.error) throw new Error(res.error);
+      return res.data!;
+    },
+  });
+
+  const insightsQuery = useQuery({
+    queryKey: ['ai', 'insights'],
+    queryFn: async () => {
+      const res = await AIApiService.getInsights();
+      if (res.error) throw new Error(res.error);
+      return res.data!;
+    },
+  });
+
+  const loading = compassQuery.isLoading || insightsQuery.isLoading;
+  const error = compassQuery.error?.message || insightsQuery.error?.message || null;
 
   return {
-    recommendation: compass.data?.recommendations[0] ?? null,
-    compass,
-    insights,
-    loading: compass.loading || insights.loading,
-    error: compass.error || insights.error,
+    recommendation: compassQuery.data?.recommendations?.[0] ?? null,
+    compass: { data: compassQuery.data ?? null, loading: compassQuery.isLoading, error: compassQuery.error?.message ?? null },
+    insights: { data: insightsQuery.data ?? null, loading: insightsQuery.isLoading, error: insightsQuery.error?.message ?? null },
+    loading,
+    error,
     retry: () => {
-      compass.retry();
-      insights.retry();
+      compassQuery.refetch();
+      insightsQuery.refetch();
     },
   };
 }
 
 export function useAIBookDetail(bookId?: string) {
   const enabled = Boolean(bookId);
-  const dna = useAsyncValue<BookDNAResponse>(() => AIApiService.getBookDNA(bookId as string), [bookId], enabled);
-  const summary = useAsyncValue<SummaryResponse>(() => AIApiService.getSummary(bookId as string, 'quick'), [bookId], enabled);
-  const planner = useAsyncValue<PlannerResponse>(() => AIApiService.getPlanner(bookId as string), [bookId], enabled);
+
+  const dnaQuery = useQuery({
+    queryKey: ['ai', 'dna', bookId],
+    queryFn: async () => {
+      const res = await AIApiService.getBookDNA(bookId as string);
+      if (res.error) throw new Error(res.error);
+      return res.data!;
+    },
+    enabled,
+  });
+
+  const summaryQuery = useQuery({
+    queryKey: ['ai', 'summary', bookId, 'quick'],
+    queryFn: async () => {
+      const res = await AIApiService.getSummary(bookId as string, 'quick');
+      if (res.error) throw new Error(res.error);
+      return res.data!;
+    },
+    enabled,
+  });
+
+  const plannerQuery = useQuery({
+    queryKey: ['ai', 'planner', bookId],
+    queryFn: async () => {
+      const res = await AIApiService.getPlanner(bookId as string);
+      if (res.error) throw new Error(res.error);
+      return res.data!;
+    },
+    enabled,
+  });
 
   const loadSummary = useCallback(
     async (format: SummaryFormat) => {
-      if (!bookId) return summary.data;
+      if (!bookId) return summaryQuery.data ?? null;
       const response = await AIApiService.getSummary(bookId, format);
       return response.data ?? null;
     },
-    [bookId, summary.data]
+    [bookId, summaryQuery.data]
   );
 
   const sendChat = useCallback(
@@ -77,18 +92,21 @@ export function useAIBookDetail(bookId?: string) {
     [bookId]
   );
 
+  const loading = dnaQuery.isLoading || summaryQuery.isLoading || plannerQuery.isLoading;
+  const error = dnaQuery.error?.message || summaryQuery.error?.message || plannerQuery.error?.message || null;
+
   return {
-    dna,
-    summary,
-    planner,
+    dna: { data: dnaQuery.data ?? null, loading: dnaQuery.isLoading, error: dnaQuery.error?.message ?? null },
+    summary: { data: summaryQuery.data ?? null, loading: summaryQuery.isLoading, error: summaryQuery.error?.message ?? null },
+    planner: { data: plannerQuery.data ?? null, loading: plannerQuery.isLoading, error: plannerQuery.error?.message ?? null },
     loadSummary,
     sendChat,
-    loading: dna.loading || summary.loading || planner.loading,
-    error: dna.error || summary.error || planner.error,
+    loading,
+    error,
     retry: () => {
-      dna.retry();
-      summary.retry();
-      planner.retry();
+      dnaQuery.refetch();
+      summaryQuery.refetch();
+      plannerQuery.refetch();
     },
   };
 }

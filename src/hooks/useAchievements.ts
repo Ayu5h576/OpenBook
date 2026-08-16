@@ -1,25 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
-import { AchievementApiService, Achievement } from '../services/api';
+import { useQuery } from '@tanstack/react-query';
+import { AchievementApiService } from '../services/api';
 
 export function useAchievements() {
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [summary, setSummary] = useState<{ unlocked: number; total: number }>({ unlocked: 0, total: 0 });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, isLoading: loading, error: queryError, refetch } = useQuery({
+    queryKey: ['achievements'],
+    queryFn: async () => {
+      const res = await AchievementApiService.getAchievements();
+      if (res.error) throw new Error(res.error);
+      return res.data!;
+    },
+  });
 
-  const fetchAchievements = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const res = await AchievementApiService.getAchievements();
-    if (res.error) setError(res.error);
-    else {
-      setAchievements(res.data?.achievements ?? []);
-      setSummary(res.data?.summary ?? { unlocked: 0, total: 0 });
-    }
-    setLoading(false);
-  }, []);
+  const error = queryError ? queryError.message : null;
+  const achievements = data?.achievements ?? [];
+  const summary = data?.summary ?? { unlocked: 0, total: 0 };
 
-  useEffect(() => { fetchAchievements(); }, [fetchAchievements]);
-
-  return { achievements, summary, loading, error, refetch: fetchAchievements };
+  return { achievements, summary, loading, error, refetch };
 }

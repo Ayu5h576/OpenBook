@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
+import { useParams, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, UserCheck, UserPlus, Users } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
+import { AuthContext } from '../context/AuthContext';
 import type { UserSummary } from '../services/api';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -68,17 +70,35 @@ const UserList: React.FC<{
 
 type ProfileTab = 'followers' | 'following';
 
-interface ProfileViewProps {
-  user: UserSummary;
-  viewerId?: string;
-  onBack: () => void;
-  onOpenProfile: (u: UserSummary) => void;
-}
+export const ProfileView: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const auth = useContext(AuthContext);
+  
+  // Since we don't have an endpoint to fetch user details by ID, we rely on state
+  // being passed when navigating, or fallback to the logged-in user if the ID matches.
+  const stateUser = location.state?.user as UserSummary | undefined;
+  const isMe = id === auth?.user?.id;
+  
+  let user = stateUser;
+  if (!user && isMe && auth?.user) {
+    user = {
+      id: auth.user.id,
+      username: auth.user.username,
+      avatar: auth.user.avatar,
+      bio: auth.user.bio,
+    };
+  }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ user, viewerId, onBack, onOpenProfile }) => {
   const { stats, followers, following, isFollowing, isSelf, loading, error, busy, toggleFollow } =
-    useProfile(user.id, viewerId);
+    useProfile(id as string, auth?.user?.id);
   const [tab, setTab] = useState<ProfileTab>('followers');
+
+  if (!id || !user) {
+    // We cannot display a profile without user details. Navigate back or to community.
+    return <Navigate to="/community" />;
+  }
 
   const tabs: { key: ProfileTab; label: string; count: number }[] = [
     { key: 'followers', label: 'Followers', count: stats.followers },
@@ -87,7 +107,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, viewerId, onBack
 
   return (
     <div className="space-y-8 pb-12">
-      <BackButton onBack={onBack} />
+      <BackButton onBack={() => navigate(-1)} />
 
       {/* Header card */}
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md">
@@ -107,7 +127,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, viewerId, onBack
             <span className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-xs font-bold shrink-0">
               <UserCheck className="w-4 h-4" /> This is you
             </span>
-          ) : viewerId ? (
+          ) : auth?.user?.id ? (
             isFollowing ? (
               <button
                 onClick={toggleFollow}
@@ -155,14 +175,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, viewerId, onBack
             <UserList
               users={followers}
               currentId={user.id}
-              onOpenProfile={onOpenProfile}
+              onOpenProfile={(u) => navigate(`/profile/${u.id}`, { state: { user: u } })}
               emptyLabel={isSelf ? 'No followers yet. Share what you’re reading to attract fellow readers.' : `${user.username} has no followers yet.`}
             />
           ) : (
             <UserList
               users={following}
               currentId={user.id}
-              onOpenProfile={onOpenProfile}
+              onOpenProfile={(u) => navigate(`/profile/${u.id}`, { state: { user: u } })}
               emptyLabel={isSelf ? 'You’re not following anyone yet. Explore the community to find readers.' : `${user.username} isn’t following anyone yet.`}
             />
           )}

@@ -1,31 +1,33 @@
 import React, { useState } from 'react';
+import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Book } from '../types';
 import { BookCard3D } from '../components/BookCard3D';
 import { BookCardSkeleton } from '../components/Skeleton';
 import { useBookSearch } from '../hooks/useBookSearch';
 import { BookApiService, GoogleBookResult } from '../services/api';
+import { googleBookToApp } from '../utils/bookMapper';
 import { Search, Compass, BookOpen, Plus, Star } from 'lucide-react';
 
-interface ExploreViewProps {
-  books: Book[];
-  onSelectBook: (book: Book) => void;
-  searchQuery: string;
-  onSearchChange: (q: string) => void;
-  isLoading?: boolean;
-}
+import { useLibrary } from '../hooks/useLibrary';
 
 // Renders a card for a live Google Books result
 function GoogleBookCard({
   book,
   onImport,
+  onSelect,
   importing,
 }: {
   book: GoogleBookResult;
   onImport: (id: string) => void;
+  onSelect: (id: string) => void;
   importing: boolean;
 }) {
   return (
-    <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl overflow-hidden shadow-warm-sm hover:shadow-warm-md transition-shadow flex flex-col">
+    <div 
+      onClick={() => onSelect(book.googleBooksId)}
+      className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl overflow-hidden shadow-warm-sm hover:shadow-warm-md transition-shadow flex flex-col cursor-pointer"
+    >
       <div className="relative h-52 bg-[var(--bg-beige)] flex items-center justify-center overflow-hidden">
         {book.coverImage ? (
           <img
@@ -49,10 +51,10 @@ function GoogleBookCard({
           </div>
         )}
         {book.description && (
-          <p className="text-xs text-[var(--muted)] line-clamp-3 mt-1">{book.description}</p>
+          <p className="text-xs text-[var(--muted)] line-clamp-2 mt-1">{book.description.replace(/<[^>]*>?/gm, '')}</p>
         )}
         <button
-          onClick={() => onImport(book.googleBooksId)}
+          onClick={(e) => { e.stopPropagation(); onImport(book.googleBooksId); }}
           disabled={importing}
           className="mt-auto pt-2 flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--ink)] border border-[var(--ink)] rounded-xl py-2 hover:bg-[var(--ink)] hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -64,19 +66,27 @@ function GoogleBookCard({
   );
 }
 
-export const ExploreView: React.FC<ExploreViewProps> = ({
-  books,
-  onSelectBook,
-  searchQuery,
-  onSearchChange,
-  isLoading = false,
-}) => {
+export const ExploreView: React.FC = () => {
+  const navigate = useNavigate();
+  const { searchQuery, setSearchQuery } = useOutletContext<{ searchQuery: string, setSearchQuery: (q: string) => void }>();
+
   const [selectedGenre, setSelectedGenre] = useState<string>('All');
   const [sortBy, setSortBy] = useState<'rating' | 'popular' | 'newest'>('rating');
   const [importingId, setImportingId] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
   const { query, setQuery, results: apiResults, totalItems, loading: searchLoading, error: searchError } = useBookSearch();
+  const { addBook } = useLibrary();
+
+  // Fetch initial featured books when not searching
+  const { data: featuredBooks = [], isLoading: featuredLoading } = useQuery({
+    queryKey: ['featuredBooks'],
+    queryFn: async () => {
+      const res = await BookApiService.search('fiction', 'category', 0, 12);
+      return res.data?.items?.map(googleBookToApp) || [];
+    },
+    staleTime: 1000 * 60 * 60,
+  });
 
   // Sync the prop searchQuery with the hook's internal query state
   React.useEffect(() => {
@@ -89,7 +99,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
 
   const genres = ['All', 'Architecture', 'Philosophy', 'Scandinavian Design', 'Mystery', 'Psychology', 'Programming'];
 
-  const filteredBooks = books
+  const filteredBooks = featuredBooks
     .filter((b) => {
       const matchesSearch =
         b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -108,7 +118,11 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     setImportingId(googleBooksId);
     setImportError(null);
     try {
-      await BookApiService.importBook(googleBooksId);
+      const res = await BookApiService.importBook(googleBooksId);
+      const localBookId = res.data?.book?.id;
+      if (localBookId) {
+        await addBook(localBookId, 'OWNED');
+      }
     } catch (e: any) {
       setImportError(e.message ?? 'Failed to add book');
     } finally {
@@ -116,7 +130,15 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
     }
   };
 
-  const showLoading = isSearching ? searchLoading : isLoading;
+  const handleSelectBook = (book: Book) => {
+    navigate(`/book/${book.id}`);
+  };
+
+  const handleSelectGoogleBook = (id: string) => {
+    navigate(`/book/${id}`);
+  };
+
+  const showLoading = isSearching ? searchLoading : featuredLoading;
 
   return (
     <div className="space-y-8 pb-12">
@@ -143,7 +165,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
             type="text"
             placeholder="Search any book or author…"
             value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl pl-10 pr-4 py-2.5 text-xs text-[var(--ink)] focus:outline-none focus:border-[var(--ink)]"
           />
         </div>
@@ -210,6 +232,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
               <GoogleBookCard
                 book={book}
                 onImport={handleImport}
+                onSelect={handleSelectGoogleBook}
                 importing={importingId === book.googleBooksId}
               />
             </div>
@@ -219,7 +242,7 @@ export const ExploreView: React.FC<ExploreViewProps> = ({
         /* Browse mode — local books */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredBooks.map((book) => (
-            <BookCard3D key={book.id} book={book} onSelect={onSelectBook} />
+            <BookCard3D key={book.id} book={book} onSelect={handleSelectBook} />
           ))}
         </div>
       )}

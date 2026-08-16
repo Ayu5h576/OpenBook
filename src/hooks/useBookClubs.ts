@@ -1,44 +1,67 @@
-import { useState, useEffect, useCallback } from 'react';
-import { BookClubApiService, BookClub } from '../services/api';
+import { useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { BookClubApiService } from '../services/api';
 
 export function useBookClubs() {
-  const [clubs, setClubs] = useState<BookClub[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const fetchClubs = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const res = await BookClubApiService.getClubs();
-    if (res.error) setError(res.error);
-    else setClubs(res.data?.clubs ?? []);
-    setLoading(false);
-  }, []);
+  const { data: clubs = [], isLoading: loading, error: queryError, refetch } = useQuery({
+    queryKey: ['bookClubs'],
+    queryFn: async () => {
+      const res = await BookClubApiService.getClubs();
+      if (res.error) throw new Error(res.error);
+      return res.data?.clubs ?? [];
+    },
+  });
 
-  useEffect(() => { fetchClubs(); }, [fetchClubs]);
+  const error = queryError ? queryError.message : null;
 
-  const createClub = useCallback(
-    async (data: { name: string; description?: string; coverImage?: string; currentBookId?: string; isPrivate?: boolean }) => {
+  const createMutation = useMutation({
+    mutationFn: async (data: { name: string; description?: string; coverImage?: string; currentBookId?: string; isPrivate?: boolean }) => {
       const res = await BookClubApiService.createClub(data);
       if (res.error) throw new Error(res.error);
-      setClubs((prev) => [res.data!.club, ...prev]);
       return res.data!.club;
     },
-    []
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookClubs'] });
+    },
+  });
+
+  const joinMutation = useMutation({
+    mutationFn: async (clubId: string) => {
+      const res = await BookClubApiService.joinClub(clubId);
+      if (res.error) throw new Error(res.error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookClubs'] });
+    },
+  });
+
+  const leaveMutation = useMutation({
+    mutationFn: async (clubId: string) => {
+      const res = await BookClubApiService.leaveClub(clubId);
+      if (res.error) throw new Error(res.error);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookClubs'] });
+    },
+  });
+
+  const createClub = useCallback(
+    async (data: { name: string; description?: string; coverImage?: string; currentBookId?: string; isPrivate?: boolean }) => 
+      createMutation.mutateAsync(data),
+    [createMutation]
   );
 
-  const joinClub = useCallback(async (clubId: string) => {
-    const res = await BookClubApiService.joinClub(clubId);
-    if (res.error) throw new Error(res.error);
-    // Refetch so viewerRole / memberCount reflect the join across the list.
-    await fetchClubs();
-  }, [fetchClubs]);
+  const joinClub = useCallback(
+    async (clubId: string) => joinMutation.mutateAsync(clubId),
+    [joinMutation]
+  );
 
-  const leaveClub = useCallback(async (clubId: string) => {
-    const res = await BookClubApiService.leaveClub(clubId);
-    if (res.error) throw new Error(res.error);
-    await fetchClubs();
-  }, [fetchClubs]);
+  const leaveClub = useCallback(
+    async (clubId: string) => leaveMutation.mutateAsync(clubId),
+    [leaveMutation]
+  );
 
-  return { clubs, loading, error, refetch: fetchClubs, createClub, joinClub, leaveClub };
+  return { clubs, loading, error, refetch, createClub, joinClub, leaveClub };
 }

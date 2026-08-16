@@ -1,17 +1,13 @@
 import React, { useState } from 'react';
-import { ViewMode } from '../types';
+import { useNavigate } from 'react-router-dom';
 import { FolderHeart, Plus, Trash2, X, Check } from 'lucide-react';
 import { useCollections } from '../hooks/useCollections';
 import { ApiCollection } from '../services/api';
 import { CollectionCardSkeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 
-interface CollectionsViewProps {
-  onNavigate: (view: ViewMode) => void;
-  onSelectCollection?: (collectionId: string) => void;
-}
-
-export const CollectionsView: React.FC<CollectionsViewProps> = ({ onNavigate, onSelectCollection }) => {
+export const CollectionsView: React.FC = () => {
+  const navigate = useNavigate();
   const { collections, loading, createCollection, deleteCollection } = useCollections();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
@@ -109,7 +105,7 @@ export const CollectionsView: React.FC<CollectionsViewProps> = ({ onNavigate, on
           {collections.map((col: ApiCollection) => (
             <div
               key={col.id}
-              onClick={() => onSelectCollection?.(col.id)}
+              onClick={() => navigate(`/collections/${col.id}`)}
               className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 shadow-warm-sm hover:shadow-warm-md transition-all flex flex-col justify-between cursor-pointer hover:border-[#A0522D]">
               <div>
                 <div className="flex items-center justify-between mb-3">

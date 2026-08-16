@@ -1,5 +1,5 @@
 import React from 'react';
-import { ViewMode } from '../types';
+import { NavLink } from 'react-router-dom';
 import {
   Home,
   Compass,
@@ -23,36 +23,36 @@ import {
 } from 'lucide-react';
 
 interface SidebarProps {
-  currentView: ViewMode;
-  onNavigate: (view: ViewMode) => void;
+  currentView?: string;
+  onNavigate?: (view: string) => void;
   isOpen?: boolean;
   onClose?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const mainNavItems = [
-    { id: 'home' as ViewMode, label: 'Home Dashboard', icon: Home },
-    { id: 'explore' as ViewMode, label: 'Explore & Discover', icon: Compass },
-    { id: 'library' as ViewMode, label: 'Personal Library', icon: Library },
-    { id: 'wishlist' as ViewMode, label: 'Saved Wishlist', icon: Bookmark },
-    { id: 'collections' as ViewMode, label: 'Curated Collections', icon: FolderHeart },
-    { id: 'community' as ViewMode, label: 'Reader Community', icon: Users },
+    { id: 'home', label: 'Home Dashboard', icon: Home },
+    { id: 'explore', label: 'Explore & Discover', icon: Compass },
+    { id: 'library', label: 'Personal Library', icon: Library },
+    { id: 'wishlist', label: 'Saved Wishlist', icon: Bookmark },
+    { id: 'collections', label: 'Curated Collections', icon: FolderHeart },
+    { id: 'community', label: 'Reader Community', icon: Users },
   ];
 
   const studioItems = [
-    { id: 'bookshelf-3d' as ViewMode, label: 'Interactive Wooden Shelf', icon: BookOpen },
-    { id: 'reading-room' as ViewMode, label: 'Reading Room Haven', icon: Coffee },
-    { id: 'wishlist-galaxy' as ViewMode, label: 'Wishlist Galaxy', icon: Orbit },
-    { id: 'book-dna' as ViewMode, label: 'Book DNA Taste', icon: Dna },
-    { id: 'quote-wall' as ViewMode, label: 'Quote Wall', icon: QuoteIcon },
-    { id: 'book-memories' as ViewMode, label: 'Book Memories', icon: History },
-    { id: 'smart-planner' as ViewMode, label: 'Reading Planner', icon: CalendarDays },
+    { id: 'bookshelf-3d', label: 'Interactive Wooden Shelf', icon: BookOpen },
+    { id: 'reading-room', label: 'Reading Room Haven', icon: Coffee },
+    { id: 'wishlist-galaxy', label: 'Wishlist Galaxy', icon: Orbit },
+    { id: 'book-dna', label: 'Book DNA Taste', icon: Dna },
+    { id: 'quote-wall', label: 'Quote Wall', icon: QuoteIcon },
+    { id: 'book-memories', label: 'Book Memories', icon: History },
+    { id: 'smart-planner', label: 'Reading Planner', icon: CalendarDays },
   ];
 
   const analyticsItems = [
-    { id: 'statistics' as ViewMode, label: 'Reading Analytics', icon: BarChart3 },
-    { id: 'achievements' as ViewMode, label: 'Achievements & Badges', icon: Award },
-    { id: 'settings' as ViewMode, label: 'Settings', icon: SettingsIcon },
+    { id: 'statistics', label: 'Reading Analytics', icon: BarChart3 },
+    { id: 'achievements', label: 'Achievements & Badges', icon: Award },
+    { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
 
   const renderNavGroup = (title: string, items: typeof mainNavItems) => (
@@ -63,20 +63,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
       <div className="space-y-1">
         {items.map((item) => {
           const Icon = item.icon;
-          const isActive = currentView === item.id;
           return (
-            <button
+            <NavLink
               key={item.id}
-              onClick={() => onNavigate(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-2xl text-xs font-medium transition-all active:scale-95 ${
+              to={`/${item.id}`}
+              onClick={onClose}
+              className={({ isActive }) => `w-full flex items-center gap-3 px-3 py-2 rounded-2xl text-xs font-medium transition-all active:scale-95 ${
                 isActive
                   ? 'bg-[var(--ink)] text-[var(--bg-ivory)] shadow-warm-sm font-semibold'
                   : 'text-[var(--ink)] hover:bg-[var(--bg-beige)] hover:text-[var(--ink)]'
               }`}
             >
-              <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-[var(--bg-ivory)]' : 'text-[var(--muted)]'}`} />
-              <span>{item.label}</span>
-            </button>
+              {({ isActive }) => (
+                <>
+                  <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-[var(--bg-ivory)]' : 'text-[var(--muted)]'}`} />
+                  <span>{item.label}</span>
+                </>
+              )}
+            </NavLink>
           );
         })}
       </div>
@@ -85,11 +89,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
 
   /* Mobile bottom navigation — 5 primary icons */
   const mobileNavItems = [
-    { id: 'home' as ViewMode, icon: Home, label: 'Home' },
-    { id: 'explore' as ViewMode, icon: Compass, label: 'Explore' },
-    { id: 'library' as ViewMode, icon: Library, label: 'Library' },
-    { id: 'community' as ViewMode, icon: Users, label: 'Community' },
-    { id: 'settings' as ViewMode, icon: SettingsIcon, label: 'Settings' },
+    { id: 'home', icon: Home, label: 'Home' },
+    { id: 'explore', icon: Compass, label: 'Explore' },
+    { id: 'library', icon: Library, label: 'Library' },
+    { id: 'community', icon: Users, label: 'Community' },
+    { id: 'settings', icon: SettingsIcon, label: 'Settings' },
   ];
 
   return (
@@ -112,28 +116,32 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
       {/* ── Mobile bottom navigation bar ── */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--bg-ivory)]/95 backdrop-blur-md border-t border-[var(--border-light)] flex items-center justify-around px-2 py-2 shadow-warm-lg">
         {mobileNavItems.map(({ id, icon: Icon, label }) => {
-          const isActive = currentView === id;
           return (
-            <button
+            <NavLink
               key={id}
-              onClick={() => onNavigate(id)}
-              className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition-all active:scale-90 ${
+              to={`/${id}`}
+              className={({ isActive }) => `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition-all active:scale-90 ${
                 isActive ? 'text-[var(--ink)]' : 'text-[#999999]'
               }`}
               aria-label={label}
             >
-              <div className={`w-9 h-9 flex items-center justify-center rounded-2xl transition-all ${
-                isActive ? 'bg-[var(--ink)] text-[var(--bg-ivory)]' : 'text-[#999999]'
-              }`}>
-                <Icon className="w-4.5 h-4.5" />
-              </div>
-              <span className={`text-[9px] font-semibold ${isActive ? 'text-[var(--ink)]' : 'text-[#999999]'}`}>
-                {label}
-              </span>
-            </button>
+              {({ isActive }) => (
+                <>
+                  <div className={`w-9 h-9 flex items-center justify-center rounded-2xl transition-all ${
+                    isActive ? 'bg-[var(--ink)] text-[var(--bg-ivory)]' : 'text-[#999999]'
+                  }`}>
+                    <Icon className="w-4.5 h-4.5" />
+                  </div>
+                  <span className={`text-[9px] font-semibold ${isActive ? 'text-[var(--ink)]' : 'text-[#999999]'}`}>
+                    {label}
+                  </span>
+                </>
+              )}
+            </NavLink>
           );
         })}
       </nav>
     </>
   );
 };
+
