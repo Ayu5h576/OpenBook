@@ -32,7 +32,7 @@ async function registerUser(email: string, password = 'Password123!') {
     email,
     password,
     confirmPassword: password,
-    username: `user_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+    username: `user_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
   });
 }
 
