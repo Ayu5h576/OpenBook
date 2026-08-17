@@ -222,6 +222,51 @@ describe('LibraryService', () => {
         })
       ).rejects.toBeInstanceOf(NotFoundError);
     });
+
+    it('promotes a paused book back to READING when a session is logged', async () => {
+      const existing = fakeEntry({ status: 'PAUSED', currentPage: 30, startedAt: new Date('2026-01-01') });
+      vi.mocked(prisma.libraryEntry.findFirst).mockResolvedValue(existing as any);
+      vi.mocked(prisma.readingSession.create).mockResolvedValue({ id: 'session-2' } as any);
+      vi.mocked(prisma.libraryEntry.update).mockResolvedValue(existing as any);
+      vi.mocked(prisma.$transaction).mockImplementation((ops: any) =>
+        Array.isArray(ops) ? Promise.all(ops) : ops(prisma)
+      );
+
+      await service.logSession('user-1', 'entry-1', {
+        startPage: 30,
+        endPage: 45,
+        durationSecs: 900,
+        startedAt: new Date().toISOString(),
+        endedAt: new Date().toISOString(),
+      });
+
+      expect(prisma.libraryEntry.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'READING', currentPage: 45 }),
+        })
+      );
+    });
+
+    it('does not reopen a completed book when a session is logged', async () => {
+      const existing = fakeEntry({ status: 'COMPLETED', currentPage: 180 });
+      vi.mocked(prisma.libraryEntry.findFirst).mockResolvedValue(existing as any);
+      vi.mocked(prisma.readingSession.create).mockResolvedValue({ id: 'session-3' } as any);
+      vi.mocked(prisma.libraryEntry.update).mockResolvedValue(existing as any);
+      vi.mocked(prisma.$transaction).mockImplementation((ops: any) =>
+        Array.isArray(ops) ? Promise.all(ops) : ops(prisma)
+      );
+
+      await service.logSession('user-1', 'entry-1', {
+        startPage: 170,
+        endPage: 180,
+        durationSecs: 600,
+        startedAt: new Date().toISOString(),
+        endedAt: new Date().toISOString(),
+      });
+
+      const updateArg = vi.mocked(prisma.libraryEntry.update).mock.calls[0][0] as any;
+      expect(updateArg.data.status).toBeUndefined();
+    });
   });
 
   // ---- removeFromLibrary ---------------------------------------------------

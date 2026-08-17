@@ -9,6 +9,8 @@ const GOOGLE_BOOKS_API = 'https://www.googleapis.com/books/v1';
 // effectively immutable, so responses are worth caching hard.
 const SEARCH_TTL_MS = 60 * 60 * 1000; // 1 hour
 const VOLUME_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+// Prices move, unlike volume metadata, so keep this window short.
+const SALE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 /**
  * Build a cache key by hashing the parts.
@@ -23,6 +25,29 @@ function booksCacheKey(kind: string, parts: unknown[]): string {
   return `gbooks:${kind}:${hash}`;
 }
 
+interface GoogleImageLinks {
+  smallThumbnail?: string;
+  thumbnail?: string;
+  small?: string;
+  medium?: string;
+  large?: string;
+  extraLarge?: string;
+}
+
+interface GoogleMoney {
+  amount?: number;
+  currencyCode?: string;
+}
+
+interface GoogleSaleInfo {
+  country?: string;
+  saleability?: string;
+  isEbook?: boolean;
+  listPrice?: GoogleMoney;
+  retailPrice?: GoogleMoney;
+  buyLink?: string;
+}
+
 interface GoogleVolume {
   id: string;
   volumeInfo: {
@@ -30,7 +55,7 @@ interface GoogleVolume {
     subtitle?: string;
     authors?: string[];
     description?: string;
-    imageLinks?: { thumbnail?: string; smallThumbnail?: string };
+    imageLinks?: GoogleImageLinks;
     pageCount?: number;
     categories?: string[];
     language?: string;
@@ -40,12 +65,36 @@ interface GoogleVolume {
     averageRating?: number;
     ratingsCount?: number;
   };
+  saleInfo?: GoogleSaleInfo;
 }
 
-function buildCoverUrl(imageLinks?: GoogleVolume['volumeInfo']['imageLinks']): string | undefined {
+function normalizeImageUrl(raw: string): string {
+  return raw.replace('http://', 'https://').replace('&zoom=1', '&zoom=0');
+}
+
+function buildCoverUrl(imageLinks?: GoogleImageLinks): string | undefined {
   const raw = imageLinks?.thumbnail ?? imageLinks?.smallThumbnail;
   if (!raw) return undefined;
-  return raw.replace('http://', 'https://').replace('&zoom=1', '&zoom=0');
+  return normalizeImageUrl(raw);
+}
+
+/**
+ * Highest-resolution cover Google offers for this volume.
+ *
+ * The thumbnail sizes used for cards look soft when a cover is displayed large
+ * (the scrapbook page shows it at several hundred pixels), so prefer the biggest
+ * link present. Only `thumbnail`/`smallThumbnail` are guaranteed to exist.
+ */
+function buildLargeCoverUrl(imageLinks?: GoogleImageLinks): string | undefined {
+  const raw =
+    imageLinks?.extraLarge ??
+    imageLinks?.large ??
+    imageLinks?.medium ??
+    imageLinks?.small ??
+    imageLinks?.thumbnail ??
+    imageLinks?.smallThumbnail;
+  if (!raw) return undefined;
+  return normalizeImageUrl(raw);
 }
 
 function extractIsbn(ids?: { type: string; identifier: string }[]) {
@@ -62,6 +111,8 @@ export interface GoogleBookResult {
   authors: string[];
   description?: string;
   coverImage?: string;
+  /** Largest cover Google exposes; undefined when no image links at all. */
+  largeCoverImage?: string;
   pageCount?: number;
   categories: string[];
   language: string;
@@ -82,6 +133,7 @@ function mapVolume(v: GoogleVolume): GoogleBookResult {
     authors: v.volumeInfo.authors ?? [],
     description: v.volumeInfo.description,
     coverImage: buildCoverUrl(v.volumeInfo.imageLinks),
+    largeCoverImage: buildLargeCoverUrl(v.volumeInfo.imageLinks),
     pageCount: v.volumeInfo.pageCount,
     categories: v.volumeInfo.categories ?? [],
     language: v.volumeInfo.language ?? 'en',
@@ -102,6 +154,15 @@ async function fetchGoogle(path: string): Promise<any> {
   const res = await fetch(url);
   if (!res.ok) throw new ServerError(`Google Books API error: ${res.status}`);
   return res.json();
+}
+
+export interface VolumeSaleInfo {
+  saleability: string;
+  isEbook: boolean;
+  /** Present only when the volume is actually for sale in the requested country. */
+  price?: number;
+  currency?: string;
+  buyLink?: string;
 }
 
 export class BookService {
@@ -163,6 +224,60 @@ export class BookService {
     const book = await prisma.book.findUnique({ where: { id } });
     if (!book) throw new NotFoundError('Book');
     return book;
+  }
+
+  /**
+   * Google Play Books pricing for a volume in a given country.
+   *
+   * This is the only live retail price OpenBook can obtain without paid or
+   * approval-gated affiliate credentials, so it is the one priced card the
+   * purchase page can show today.
+   *
+   * Returns null rather than throwing on any failure: Google answers 403
+   * (`unsupportedCountry`) for some regions and `fetchGoogle` turns every
+   * non-2xx into a ServerError, which must not take down the whole spread.
+   * Prices are per-country, so `country` is part of the cache key.
+   */
+  async getVolumeSaleInfo(googleBooksId: string, country: string): Promise<VolumeSaleInfo | null> {
+    const cacheKey = booksCacheKey('sale', [googleBooksId, country]);
+
+    // Wrapped in an envelope because cacheService treats a cached `null` as a
+    // miss — a book that simply isn't for sale would otherwise be re-fetched on
+    // every request.
+    const { sale } = await cacheService.getOrSet<{ sale: VolumeSaleInfo | null }>(
+      cacheKey,
+      SALE_TTL_MS,
+      async () => {
+        try {
+          const data = await fetchGoogle(
+            `/volumes/${encodeURIComponent(googleBooksId)}?country=${encodeURIComponent(country)}`
+          );
+          const raw: GoogleSaleInfo | undefined = (data as GoogleVolume).saleInfo;
+          if (!raw) return { sale: null };
+
+          // retailPrice is what the buyer actually pays; listPrice is pre-discount.
+          const money = raw.retailPrice ?? raw.listPrice;
+
+          return {
+            sale: {
+              saleability: raw.saleability ?? 'UNKNOWN',
+              isEbook: raw.isEbook ?? false,
+              price: typeof money?.amount === 'number' ? money.amount : undefined,
+              currency: money?.currencyCode,
+              buyLink: raw.buyLink,
+            },
+          };
+        } catch (err) {
+          console.error(
+            `[BookService] saleInfo lookup failed for ${googleBooksId} (${country}):`,
+            err
+          );
+          return { sale: null };
+        }
+      }
+    );
+
+    return sale;
   }
 }
 

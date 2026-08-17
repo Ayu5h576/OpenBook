@@ -11,6 +11,11 @@ export const importBookSchema = z.object({
   googleBooksId: z.string().min(1, 'Google Books ID is required'),
 });
 
+// Storefronts and currency are region-specific; India is the default market.
+export const offersQuerySchema = z.object({
+  region: z.enum(['IN', 'US']).default('IN'),
+});
+
 export const addToLibrarySchema = z.object({
   bookId: z.string().uuid('Invalid book ID'),
   status: z.enum(['READING', 'COMPLETED', 'PAUSED', 'DROPPED', 'ARCHIVED', 'OWNED']).default('OWNED'),
@@ -26,13 +31,20 @@ export const updateLibraryEntrySchema = z.object({
   finishedAt: z.string().datetime().optional(),
 });
 
-export const logSessionSchema = z.object({
-  startPage: z.number().int().min(0),
-  endPage: z.number().int().min(0),
-  durationSecs: z.number().int().min(1),
-  startedAt: z.string().datetime(),
-  endedAt: z.string().datetime(),
-});
+// analyticsService derives total pages read from `endPage - startPage`, so a
+// backwards session would silently subtract from every aggregate that uses it.
+export const logSessionSchema = z
+  .object({
+    startPage: z.number().int().min(0),
+    endPage: z.number().int().min(0),
+    durationSecs: z.number().int().min(1),
+    startedAt: z.string().datetime(),
+    endedAt: z.string().datetime(),
+  })
+  .refine((s) => s.endPage >= s.startPage, {
+    message: 'endPage cannot be before startPage',
+    path: ['endPage'],
+  });
 
 export const createCollectionSchema = z.object({
   name: z.string().min(1).max(100),
@@ -93,6 +105,7 @@ export const upsertGoalSchema = z.object({
 
 export type SearchBooksInput = z.infer<typeof searchBooksSchema>;
 export type ImportBookInput = z.infer<typeof importBookSchema>;
+export type OffersQueryInput = z.infer<typeof offersQuerySchema>;
 export type AddToLibraryInput = z.infer<typeof addToLibrarySchema>;
 export type UpdateLibraryEntryInput = z.infer<typeof updateLibraryEntrySchema>;
 export type LogSessionInput = z.infer<typeof logSessionSchema>;

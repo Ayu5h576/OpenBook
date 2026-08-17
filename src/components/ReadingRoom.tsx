@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Book, ReadingRoomSettings } from '../types';
 import { ambientEngine } from '../utils/audioSynth';
 import { useLibrary } from '../hooks/useLibrary';
+import { formatDuration, useReadingSession } from '../hooks/useReadingSession';
+import { ProgressTracker } from './ProgressTracker';
 import type { LibraryEntry } from '../services/api';
-import { Coffee, Flame, CloudRain, Lamp, BookOpen, Clock, Layers, BarChart3 } from 'lucide-react';
+import { Coffee, Flame, CloudRain, Lamp, BookOpen, Clock } from 'lucide-react';
 
 interface ReadingRoomProps {
   books: Book[];
@@ -44,15 +46,6 @@ function entryToBook(entry: LibraryEntry): Book {
   };
 }
 
-function formatDuration(secs: number): string {
-  const hrs = Math.floor(secs / 3600);
-  const mins = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  if (hrs > 0) return `${hrs}h ${mins}m ${s}s`;
-  if (mins > 0) return `${mins}m ${s}s`;
-  return `${s}s`;
-}
-
 export const ReadingRoom: React.FC<ReadingRoomProps> = ({ books: _legacyBooks, onOpenReader }) => {
   const { entries, loading } = useLibrary();
 
@@ -71,23 +64,11 @@ export const ReadingRoom: React.FC<ReadingRoomProps> = ({ books: _legacyBooks, o
   const [isLampOn, setIsLampOn] = useState<boolean>(true);
   const [activeIndex, setActiveIndex] = useState(0);
 
-  // Session timer
-  const [sessionActive, setSessionActive] = useState(false);
-  const [sessionSecs, setSessionSecs] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeEntry = allEntries[activeIndex] ?? null;
 
-  useEffect(() => {
-    if (sessionActive) {
-      timerRef.current = setInterval(() => {
-        setSessionSecs((prev) => prev + 1);
-      }, 1000);
-    } else if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [sessionActive]);
+  // A real, persisted reading session — the timer keeps counting across
+  // navigation and reloads, and finishing it logs pages + time for analytics.
+  const { isActive: sessionActive, elapsedSecs: sessionSecs } = useReadingSession(activeEntry?.id);
 
   useEffect(() => {
     ambientEngine.setSound(settings.ambientSound, 0.5);
@@ -115,11 +96,6 @@ export const ReadingRoom: React.FC<ReadingRoomProps> = ({ books: _legacyBooks, o
         return 'bg-[#28231D] text-[var(--bg-ivory)]';
     }
   };
-
-  const activeEntry = allEntries[activeIndex] ?? null;
-  const progress = activeEntry && activeEntry.book.pageCount
-    ? Math.round((activeEntry.currentPage / activeEntry.book.pageCount) * 100)
-    : 0;
 
   // Loading state
   if (loading) {
@@ -231,21 +207,18 @@ export const ReadingRoom: React.FC<ReadingRoomProps> = ({ books: _legacyBooks, o
             <span>{isLampOn ? 'Lamp On' : 'Lamp Off'}</span>
           </button>
 
-          {/* Session Timer Toggle */}
-          <button
-            onClick={() => {
-              if (!sessionActive) setSessionSecs(0);
-              setSessionActive(!sessionActive);
-            }}
+          {/* Live session indicator — the session itself is driven by the
+              tracker below so the reader sets start/end pages deliberately. */}
+          <div
             className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
               sessionActive
                 ? 'bg-green-500/80 text-white border-green-500/50'
-                : 'bg-black/50 text-white/60 border-white/10 hover:text-white'
+                : 'bg-black/50 text-white/60 border-white/10'
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
-            <span>{sessionActive ? formatDuration(sessionSecs) : 'Start Timer'}</span>
-          </button>
+            <span>{sessionActive ? formatDuration(sessionSecs) : 'No active session'}</span>
+          </div>
         </div>
       </div>
 
@@ -281,25 +254,8 @@ export const ReadingRoom: React.FC<ReadingRoomProps> = ({ books: _legacyBooks, o
             </p>
           )}
 
-          {/* Reading Progress Bar */}
-          <div className="max-w-md">
-            <div className="flex justify-between text-xs text-white/70 mb-1.5">
-              <span className="flex items-center gap-1.5">
-                <Layers className="w-3 h-3" />
-                Page {activeEntry.currentPage} of {book.pageCount || '?'}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <BarChart3 className="w-3 h-3" />
-                {progress}% complete
-              </span>
-            </div>
-            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-[#E0A96D] to-[#A0522D] rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
+          {/* Reading Progress — manual page or timed session */}
+          <ProgressTracker entry={activeEntry} variant="dark" className="max-w-md" />
 
           <div className="pt-4 flex flex-wrap items-center justify-center md:justify-start gap-4">
             <button

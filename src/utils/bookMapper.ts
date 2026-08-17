@@ -1,6 +1,14 @@
 import { Book } from '../types';
 import { LocalBook, LibraryEntry } from '../services/api';
 
+/**
+ * Google Books descriptions arrive with markup (<p>, <br>, <i>) that would
+ * render as literal tags in our own typography, so strip it before display.
+ */
+export function stripHtml(value?: string | null): string {
+  return (value ?? '').replace(/<[^>]*>?/gm, '').trim();
+}
+
 export function googleBookToApp(gb: any): Book {
   return {
     id: gb.googleBooksId || `book-${Date.now()}`,

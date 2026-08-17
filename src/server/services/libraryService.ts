@@ -84,6 +84,10 @@ export class LibraryService {
   async logSession(userId: string, entryId: string, input: LogSessionInput) {
     const entry = await this.requireEntry(userId, entryId);
 
+    // Logging time against a book you had only marked OWNED/PAUSED/DROPPED means
+    // you are reading it again — promote it so it shows up under Currently Reading.
+    const resumes = entry.status !== 'READING' && entry.status !== 'COMPLETED';
+
     const [session] = await prisma.$transaction([
       prisma.readingSession.create({
         data: {
@@ -100,6 +104,12 @@ export class LibraryService {
         data: {
           currentPage: Math.max(entry.currentPage, input.endPage),
           lastReadAt: new Date(input.endedAt),
+          ...(resumes
+            ? {
+                status: LibraryStatus.READING,
+                startedAt: entry.startedAt ?? new Date(input.startedAt),
+              }
+            : {}),
         },
       }),
     ]);

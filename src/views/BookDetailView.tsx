@@ -9,8 +9,10 @@ import { useLibrary } from '../hooks/useLibrary';
 import { useWishlist } from '../hooks/useWishlist';
 import { useToast } from '../context/ToastContext';
 import { BookApiService, LocalBook } from '../services/api';
-import { googleBookToApp } from '../utils/bookMapper';
-import { BookOpen, Heart, Bookmark, Share2, Star, ArrowLeft, Play, Sparkles, MessageSquare, Send, RefreshCw, FolderHeart, Check, X } from 'lucide-react';
+import { googleBookToApp, stripHtml } from '../utils/bookMapper';
+import { ProgressTracker } from '../components/ProgressTracker';
+import { BookSpread } from '../components/BookSpread';
+import { BookOpen, Heart, Bookmark, Share2, Star, ArrowLeft, Play, Sparkles, MessageSquare, Send, RefreshCw, FolderHeart, Check, X, Info } from 'lucide-react';
 
 import { createPortal } from 'react-dom';
 
@@ -78,7 +80,7 @@ export const BookDetailView: React.FC = () => {
     comments: [],
   } : undefined;
 
-  const cleanDescription = book?.description?.replace(/<[^>]*>?/gm, '') || '';
+  const cleanDescription = stripHtml(book?.description);
 
   const { data: relatedBooks = [] } = useQuery({
     queryKey: ['relatedBooks', book?.genres],
@@ -94,7 +96,7 @@ export const BookDetailView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'notes' | 'comments' | 'ai-insights'>('overview');
   const [showTrailerModal, setShowTrailerModal] = useState(false);
   const [showCollectionModal, setShowCollectionModal] = useState(false);
-  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [showSpread, setShowSpread] = useState(false);
   const [selectedCollections, setSelectedCollections] = useState<Set<string>>(new Set());
   const [addingToCollection, setAddingToCollection] = useState(false);
   const [collectionError, setCollectionError] = useState<string | null>(null);
@@ -279,14 +281,15 @@ export const BookDetailView: React.FC = () => {
               <p className="text-sm text-[var(--muted)] leading-relaxed font-normal line-clamp-2 sm:line-clamp-3">
                 {cleanDescription}
               </p>
-              {cleanDescription.length > 150 && (
-                <button
-                  onClick={() => setShowSummaryModal(true)}
-                  className="text-xs font-bold text-[#A0522D] hover:underline mt-1"
-                >
-                  Read full description
-                </button>
-              )}
+              {/* Not gated on description length: the spread also carries buying
+                  options and cover photos, which exist either way. */}
+              <button
+                onClick={() => setShowSpread(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#A0522D] hover:underline mt-2"
+              >
+                <Info className="w-3.5 h-3.5" />
+                <span>More info</span>
+              </button>
             </div>
           </div>
 
@@ -344,6 +347,23 @@ export const BookDetailView: React.FC = () => {
               <span className="font-bold text-[var(--ink)]">Digital E-Book</span>
             </div>
           </div>
+
+          {/* Track where you are — manual page or a timed session. Only for
+              books already in the library; otherwise there's no entry to update. */}
+          {libEntry ? (
+            <ProgressTracker entry={libEntry} variant="light" />
+          ) : (
+            <button
+              onClick={async () => {
+                await addLibraryBook(book.id, 'READING');
+                toast.success('Added to library — track your progress below.');
+              }}
+              className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] font-bold text-sm hover:bg-[#E5DCCF] transition-all self-start"
+            >
+              <BookOpen className="w-4 h-4 text-[#A0522D]" />
+              <span>Add to library to track progress</span>
+            </button>
+          )}
 
         </div>
       </div>
@@ -622,40 +642,16 @@ export const BookDetailView: React.FC = () => {
         document.body
       )}
 
-      {/* Summary Modal */}
-      {showSummaryModal && createPortal(
-        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[var(--white)] rounded-3xl p-6 md:p-8 max-w-2xl w-full border border-[var(--border-light)] shadow-2xl relative animate-scale-in">
-            <button
-              onClick={() => setShowSummaryModal(false)}
-              className="absolute top-6 right-6 p-2 rounded-full text-[var(--muted)] hover:bg-[var(--bg-beige)] transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-3 mb-6">
-              <BookOpen className="w-6 h-6 text-[#A0522D]" />
-              <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">Book Summary</h3>
-            </div>
-            
-            <div className="prose prose-sm text-[#444444] leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
-              {cleanDescription ? (
-                <p>{cleanDescription}</p>
-              ) : (
-                <p className="italic text-[var(--muted)]">No summary available for this book.</p>
-              )}
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-[var(--border-light)] flex justify-end">
-              <button
-                onClick={() => setShowSummaryModal(false)}
-                className="px-6 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-xs hover:bg-[#333333] transition-colors"
-              >
-                Close Summary
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
+      {/* More Info Spread — buying options + cover scrapbook.
+          Needs the local UUID, so it only opens once the book has resolved. */}
+      {showSpread && realUuid && (
+        <BookSpread
+          bookId={realUuid}
+          title={book.title}
+          author={book.author}
+          description={cleanDescription}
+          onClose={() => setShowSpread(false)}
+        />
       )}
 
     </div>

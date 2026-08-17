@@ -16,6 +16,15 @@
 - Cache keys for anything containing user input must be **hashed** (see `booksCacheKey` in `bookService.ts`). The file backend sanitizes keys with `/[^a-z0-9]/gi -> '-'`, so raw values like `"a b"` and `"a-b"` collide and would serve each other's results.
 - Rate limiting is Redis-backed when available: `RedisRateLimitStore` for the express-rate-limit middleware, and the per-user AI limiter in `ai/utils/rateLimiter.ts`. Both **fail open** on Redis errors — a cache outage must not take the API down.
 
+### Purchase Offers & Book Media (the "More info" spread)
+
+`BookSpread.tsx` opens a two-page album from the book detail page: `PurchasePanel` (where to buy) on the left, `ScrapbookPanel` (every cover the book has worn) on the right. Backed by `GET /api/books/:id/offers?region=IN|US` and `GET /api/books/:id/media`.
+
+- **Never synthesize a price.** `priceService.ts` returns a price only when a provider actually reported one. Today that is Google Play alone (via `saleInfo` on the Google Books volume) — Amazon's Product Advertising API needs an approved Associates account with qualifying sales, and Flipkart's affiliate API is closed to new signups. Everything else is a deep link from the `STOREFRONTS` table in `storefronts.ts` and renders as "Check price". Adding a real store later = one `PriceProvider` in `PROVIDERS`; the UI needs no change.
+- `rankOffers` sorts priced offers ascending, then link-only offers by the storefront table's `order`. A price in a currency other than the region's is **demoted to link-only**, not compared — `9.99 USD` must never sort as cheaper than `349 INR`.
+- `bookMediaService.ts` collects collage images from Open Library (work → editions → distinct cover ids) plus an author portrait from Open Library or Wikipedia. Every external call is individually try/caught and the service **never throws** — a third-party outage must still leave the local cover on the page. Cover URLs carry `?default=false` so missing covers 404 and the client can drop them.
+- Cache TTLs: offers 6h, media 7d, Google Play `saleInfo` 6h (keyed per country). Null results are cached inside an envelope object, because `cacheService` treats a cached `null` as a miss.
+
 ### Environment Variables
 Required:
 - `DATABASE_URL`: PostgreSQL connection
@@ -42,6 +51,7 @@ Optional:
 - PDF reader not yet implemented (reading room)
 - Audio synthesis utility exists but not integrated with UI
 - `noteService`, `profileService`, and `bookService` still have no unit tests
+- Live per-store prices (Amazon / Kindle / Flipkart) need approved affiliate credentials. Until then the purchase page shows one live price (Google Play) plus deep links — see the Purchase Offers section above. Outbound links carry no affiliate tags yet.
 - `.env.supabase-backup` was committed in `5c72a5b` with a live Gemini key, a Supabase service key, and a JWT secret. The file is now untracked and gitignored, but **those credentials remain readable in git history** — they must be rotated, not just removed.
 
 ### Performance Considerations

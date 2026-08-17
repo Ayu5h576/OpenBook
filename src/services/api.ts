@@ -309,7 +309,53 @@ export const BookApiService = {
   async importBook(googleBooksId: string) {
     return apiClient.post<{ book: LocalBook }>('/api/books/import', { googleBooksId });
   },
+
+  async getOffers(id: string, region: Region) {
+    return apiClient.get<OffersResult>(`/api/books/${id}/offers?region=${region}`);
+  },
+
+  async getMedia(id: string) {
+    return apiClient.get<{ images: MediaImage[] }>(`/api/books/${id}/media`);
+  },
 };
+
+// ─── Purchase offers & book media (the "More info" spread) ────────────────────
+
+export type Region = 'IN' | 'US';
+
+export type OfferFormat = 'paperback' | 'hardcover' | 'ebook' | 'audiobook' | 'any';
+
+export interface Offer {
+  platform: string;
+  label: string;
+  format: OfferFormat;
+  url: string;
+  /**
+   * Absent when no free API can quote this storefront (Amazon, Flipkart and
+   * friends need approval-gated affiliate credentials). Never a placeholder —
+   * a missing price means the card links out instead of showing a number.
+   */
+  price?: number;
+  currency?: string;
+  priceSource: 'live' | 'link-only';
+  free?: boolean;
+}
+
+export interface OffersResult {
+  region: Region;
+  currency: string;
+  offers: Offer[];
+  cheapestPlatform?: string;
+  pricedCount: number;
+}
+
+export interface MediaImage {
+  url: string;
+  kind: 'cover' | 'edition' | 'author';
+  caption?: string;
+  sourceName: string;
+  sourceUrl: string;
+}
 
 // ─── Library ──────────────────────────────────────────────────────────────────
 

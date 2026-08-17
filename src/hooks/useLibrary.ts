@@ -35,6 +35,22 @@ export function useLibrary(statusFilter?: LibraryStatus) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['library'] });
+      // Page and status changes feed every reading stat.
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
+    },
+  });
+
+  const logSessionMutation = useMutation({
+    mutationFn: async ({ entryId, session }: { entryId: string; session: Parameters<typeof LibraryApiService.logSession>[1] }) => {
+      const res = await LibraryApiService.logSession(entryId, session);
+      if (res.error) throw new Error(res.error);
+      return res.data!.session;
+    },
+    onSuccess: (_session, { entryId }) => {
+      queryClient.invalidateQueries({ queryKey: ['library'] });
+      queryClient.invalidateQueries({ queryKey: ['entry', entryId] });
+      // Sessions drive pages, hours, streak and the heatmap.
+      queryClient.invalidateQueries({ queryKey: ['analytics'] });
     },
   });
 
@@ -63,6 +79,22 @@ export function useLibrary(statusFilter?: LibraryStatus) {
     [removeMutation]
   );
 
-  return { entries, loading, error, refetch, addBook, updateEntry, removeEntry };
+  const logSession = useCallback(
+    async (entryId: string, session: Parameters<typeof LibraryApiService.logSession>[1]) =>
+      logSessionMutation.mutateAsync({ entryId, session }),
+    [logSessionMutation]
+  );
+
+  return {
+    entries,
+    loading,
+    error,
+    refetch,
+    addBook,
+    updateEntry,
+    removeEntry,
+    logSession,
+    savingProgress: updateMutation.isPending || logSessionMutation.isPending,
+  };
 }
 
