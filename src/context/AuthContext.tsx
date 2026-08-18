@@ -43,9 +43,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setAccessToken(response.data.session.accessToken);
           setUser(response.data.user);
           setIsAuthenticated(true);
+<<<<<<< HEAD
         } else if (response.error) {
           // No refresh token available (first load or session expired) - this is OK
           console.debug('No active session to restore');
+=======
+>>>>>>> ed6b0cd (your commit message)
         }
       } catch (err) {
         console.debug('Auth session restore failed (expected on first load):', err);

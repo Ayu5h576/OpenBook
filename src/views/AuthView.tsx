@@ -62,6 +62,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
   const [username, setUsername] = useState('');
   const [localError, setLocalError] = useState('');
 
+<<<<<<< HEAD
   // Track which fields the user has interacted with
   const [touched, setTouched] = useState({ username: false, email: false, password: false });
 
@@ -75,11 +76,33 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
   const usernameStatus = fieldStatus(touched.username, usernameError);
   const emailStatus = fieldStatus(touched.email, emailError);
   const passwordStatus = fieldStatus(touched.password, passwordError);
+=======
+  // Mirrors the server-side rules in src/server/validators/auth.ts so the user
+  // gets the specific reason before a round trip.
+  const validateSignup = (): string | null => {
+    if (username.length < 3 || username.length > 30) {
+      return 'Username must be between 3 and 30 characters.';
+    }
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      return 'Username can only contain letters, numbers, underscores and hyphens (no spaces).';
+    }
+    if (password.length < 8) {
+      return 'Password must be at least 8 characters.';
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      return 'Password must contain an uppercase letter, a lowercase letter and a number.';
+    }
+    return null;
+  };
+>>>>>>> ed6b0cd (your commit message)
 
   const switchMode = (next: 'login' | 'signup' | 'forgot') => {
     setMode(next);
     setLocalError('');
+<<<<<<< HEAD
     setTouched({ username: false, email: false, password: false });
+=======
+>>>>>>> ed6b0cd (your commit message)
     auth.clearError();
   };
 
@@ -92,8 +115,14 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
       if (mode === 'login') {
         await auth.login(email, password);
       } else if (mode === 'signup') {
+<<<<<<< HEAD
         if (usernameError || emailError || passwordError) {
           setTouched({ username: true, email: true, password: true });
+=======
+        const validationError = validateSignup();
+        if (validationError) {
+          setLocalError(validationError);
+>>>>>>> ed6b0cd (your commit message)
           return;
         }
         await auth.register(email, username.trim(), password);
@@ -157,7 +186,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
 
           {(localError || auth.error) && (
             <div className="mb-6 p-3 rounded-2xl bg-[#FEE5E5] border border-[#C53030] flex gap-3">
+<<<<<<< HEAD
               <AlertCircle className="w-4 h-4 text-[#C53030] shrink-0 mt-0.5" />
+=======
+              <AlertCircle className="w-4 h-4 text-[#C53030] flex-shrink-0 mt-0.5" />
+>>>>>>> ed6b0cd (your commit message)
               <p className="text-xs text-[#C53030] whitespace-pre-line">{localError || auth.error}</p>
             </div>
           )}
@@ -188,18 +221,32 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             {/* Username — signup only */}
             {mode === 'signup' && (
               <div>
+<<<<<<< HEAD
                 <label className="block text-xs font-semibold text-[var(--ink)] mb-1">Username</label>
+=======
+                <label className="block text-xs font-semibold text-[#1D1D1D] mb-1">Username</label>
+>>>>>>> ed6b0cd (your commit message)
                 <div className="relative">
                   <User className="w-4 h-4 text-[var(--muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     required
+<<<<<<< HEAD
+=======
+                    minLength={3}
+                    maxLength={30}
+                    pattern="[a-zA-Z0-9_-]+"
+>>>>>>> ed6b0cd (your commit message)
                     autoComplete="username"
                     placeholder="astrid_lindgren"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
+<<<<<<< HEAD
                     onBlur={() => touch('username')}
                     className={`w-full bg-[var(--bg-ivory)] border ${inputBorder(usernameStatus)} rounded-2xl pl-10 pr-9 py-2.5 text-sm text-[var(--ink)] focus:outline-none transition-colors`}
+=======
+                    className="w-full bg-[#F8F6F1] border border-[#E5E0D8] rounded-2xl pl-10 pr-4 py-2.5 text-sm text-[#1D1D1D] focus:outline-none focus:border-[#1D1D1D]"
+>>>>>>> ed6b0cd (your commit message)
                   />
                   {usernameStatus !== 'idle' && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -207,11 +254,17 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                     </span>
                   )}
                 </div>
+<<<<<<< HEAD
                 {usernameStatus === 'invalid' ? (
                   <p className="text-[10px] text-[#C53030] mt-1">{usernameError}</p>
                 ) : (
                   <p className="text-[10px] text-[var(--muted)] mt-1">3–30 chars. Letters, numbers, _ and - only.</p>
                 )}
+=======
+                <p className="text-[10px] text-[#777777] mt-1">
+                  3-30 characters. Letters, numbers, underscores and hyphens only - no spaces.
+                </p>
+>>>>>>> ed6b0cd (your commit message)
               </div>
             )}
 
@@ -261,6 +314,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                     </span>
                   )}
                 </div>
+<<<<<<< HEAD
 
                 {/* Live password rules checklist — only in signup, once user starts typing */}
                 {mode === 'signup' && touched.password && (
@@ -275,6 +329,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                       );
                     })}
                   </ul>
+=======
+                {mode === 'signup' && (
+                  <p className="text-[10px] text-[#777777] mt-1">
+                    At least 8 characters, with an uppercase letter, a lowercase letter and a number.
+                  </p>
+>>>>>>> ed6b0cd (your commit message)
                 )}
               </div>
             )}
@@ -298,7 +358,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             {mode === 'login' && (
               <p>
                 Don't have an account?{' '}
+<<<<<<< HEAD
                 <button onClick={() => switchMode('signup')} className="font-bold text-[var(--ink)] underline">
+=======
+                <button onClick={() => switchMode('signup')} className="font-bold text-[#1D1D1D] underline">
+>>>>>>> ed6b0cd (your commit message)
                   Sign up
                 </button>
               </p>
@@ -306,7 +370,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             {mode === 'signup' && (
               <p>
                 Already have an account?{' '}
+<<<<<<< HEAD
                 <button onClick={() => switchMode('login')} className="font-bold text-[var(--ink)] underline">
+=======
+                <button onClick={() => switchMode('login')} className="font-bold text-[#1D1D1D] underline">
+>>>>>>> ed6b0cd (your commit message)
                   Sign in
                 </button>
               </p>
