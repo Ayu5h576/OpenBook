@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-<<<<<<< HEAD
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 enum LibraryStatus {
@@ -45,15 +44,12 @@ enum ActivityType {
 
 // ─── Auth Models ──────────────────────────────────────────────────────────────
 
-=======
->>>>>>> ed6b0cd (your commit message)
 model User {
   id            String         @id @default(uuid()) @db.Uuid
   email         String         @unique
   passwordHash  String         @map("password_hash")
   createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
-<<<<<<< HEAD
 
   profile       Profile?
   refreshTokens RefreshToken[]
@@ -73,10 +69,6 @@ model User {
   discussions        Discussion[]
   discussionComments DiscussionComment[]
   achievements       UserAchievement[]
-=======
-  profile       Profile?
-  refreshTokens RefreshToken[]
->>>>>>> ed6b0cd (your commit message)
 
   @@map("users")
 }
@@ -107,7 +99,6 @@ model RefreshToken {
   @@index([userId])
   @@map("refresh_tokens")
 }
-<<<<<<< HEAD
 
 // ─── Book Catalog ─────────────────────────────────────────────────────────────
 
@@ -441,5 +432,3 @@ model UserAchievement {
   @@index([userId])
   @@map("user_achievements")
 }
-=======
->>>>>>> ed6b0cd (your commit message)
