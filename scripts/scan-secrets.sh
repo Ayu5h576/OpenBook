@@ -32,7 +32,9 @@ STRICT_CHECKS=(
   'Google short-form API key|AQ\.[A-Za-z0-9_-]{25,}'
   'sk- style API key|sk-[A-Za-z0-9_-]{30,}'
   'freemodel.dev API key|fe_oa_[0-9a-f]{30,}'
-  'apiKeyHelper (leaks a literal key)|apiKeyHelper'
+  # Matched as a JSON key, not as a bare word: docs (CLAUDE.md) discuss
+  # apiKeyHelper by name, and prose must not fail the scan.
+  'apiKeyHelper setting (echoes a literal key)|"apiKeyHelper"[[:space:]]*:'
 )
 
 # HEURISTIC — match a *variable name* plus any value. These legitimately fire on
