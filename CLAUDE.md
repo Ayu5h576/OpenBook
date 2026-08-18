@@ -7,7 +7,8 @@
 ## Development Workflow
 
 - `npm run lint` runs **`tsc --noEmit`** (type-checking only — this project has no ESLint). Run it before considering a change done.
-- `npm test` runs the vitest suite. `vitest.config.ts` sets `hookTimeout: 60000` deliberately: the auth integration suite's `beforeAll` imports the whole server module graph through Vite's module runner, which exceeds the 10s default on a cold cache. Don't lower it.
+- `npm test` runs the vitest suite (`vitest run`). `vitest.config.ts` sets `hookTimeout: 60000` deliberately: the auth integration suite's `beforeAll` imports the whole server module graph through Vite's module runner, which exceeds the 10s default on a cold cache. Don't lower it.
+- `npm run scan:secrets` runs `scripts/scan-secrets.sh`, which fails if any **tracked** file contains a credential — that is exactly the set of files that reaches origin. It is the first CI job, and `build` depends on it. Patterns come in two tiers: format matches (JWT, `AIza`, `sk-`, `fe_oa_`) are reported verbatim, while name-based matches (`ANTHROPIC_API_KEY=…`, `postgres://user:pass@…`) are filtered against a placeholder list so `.env.example` and the localhost URLs in the README don't fire. If you add a cred-bearing var, add its format to the strict tier — not the heuristic one.
 - `tsconfig.json` is **non-strict** (no `strict`, `noUnusedLocals`, or `noUnusedParameters`) — the type-checker will not catch null-deref or unused-symbol mistakes, so guard those by hand.
 
 ### Caching & Rate Limiting
@@ -52,7 +53,10 @@ Optional:
 - Audio synthesis utility exists but not integrated with UI
 - `noteService`, `profileService`, and `bookService` still have no unit tests
 - Live per-store prices (Amazon / Kindle / Flipkart) need approved affiliate credentials. Until then the purchase page shows one live price (Google Play) plus deep links — see the Purchase Offers section above. Outbound links carry no affiliate tags yet.
-- `.env.supabase-backup` was committed in `5c72a5b` with a live Gemini key, a Supabase service key, and a JWT secret. The file is now untracked and gitignored, but **those credentials remain readable in git history** — they must be rotated, not just removed.
+- **Leaked credentials (public repo).** Two separate leaks, both now removed from the tree and gated by `npm run scan:secrets`, but **removal is not a fix — a published key can only be revoked at the provider**:
+  - `.env.supabase-backup` (committed in `5c72a5b`, still tracked at HEAD until `e01977f` because an earlier `filter-branch` was never pushed): Supabase service key, Supabase JWT secret, anon key, Gemini key. File deleted — nothing in the codebase references Supabase any more. Since the **JWT secret** itself leaked, anyone can mint arbitrary tokens for project `mypdvrjtqkcjewtgiwks`; rotating the service key alone is not enough, the JWT secret must be rotated (which invalidates all its keys).
+  - `.claude/settings.json` (present since the initial commit `8f9d091`): a plaintext third-party `ANTHROPIC_API_KEY` for `cc.freemodel.dev` plus an `apiKeyHelper` echoing the same literal.
+  - Status: `GEMINI_API_KEY` and `JWT_SECRET` verified rotated (local values differ from the leaked ones). **Still to revoke: the Supabase JWT secret / service key, and the `fe_oa_…` freemodel key.** Both remain in git history; history was deliberately *not* rewritten, since force-pushing cannot un-publish them.
 
 ### Performance Considerations
 - 3D visualizations may need optimization for large libraries
