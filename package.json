@@ -9,7 +9,10 @@
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.cjs",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "scan:secrets": "bash scripts/scan-secrets.sh"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -48,6 +51,7 @@
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "nodemon": "^3.1.14",
+    "supertest": "^7.2.2",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
