@@ -8,6 +8,24 @@ on:
 
 jobs:
   # --------------------------------------------------------------------------
+  # Job 0: Secret scan — cheapest job, and the one that gates a leak.
+  # Runs first and needs no npm install. See scripts/scan-secrets.sh for why
+  # this exists (two live keys were once published from this repo).
+  # --------------------------------------------------------------------------
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Scan the tree as it stands; full history is not needed.
+          fetch-depth: 1
+
+      - name: Scan tracked files for credentials
+        run: npm run scan:secrets
+
+  # --------------------------------------------------------------------------
   # Job 1: TypeScript type-check (no transpilation needed)
   # --------------------------------------------------------------------------
   lint:
@@ -85,7 +103,7 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [secrets, lint, test]
 
     env:
       DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
