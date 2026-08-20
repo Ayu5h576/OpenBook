@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { MediaImage } from '../services/api';
 import { EmptyState } from './EmptyState';
+import { hasPlausibleCoverShape, isGoogleCoverPlaceholder } from './BookCover';
 import { Images } from 'lucide-react';
 
 interface ScrapbookPanelProps {
-  bookId: string;
   title: string;
   author: string;
   images: MediaImage[];
@@ -12,180 +12,74 @@ interface ScrapbookPanelProps {
   error?: string | null;
 }
 
-// ─── Seeded arrangement ───────────────────────────────────────────────────────
-
-function hashString(value: string): number {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < value.length; i++) {
-    h ^= value.charCodeAt(i);
-    h = Math.imul(h, 16777619) >>> 0;
-  }
-  return h >>> 0;
-}
-
-/** Small deterministic PRNG (mulberry32). */
-function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-interface Placement {
-  rotation: number;
-  width: string;
-  align: string;
-  tape: 0 | 1 | 2;
-}
-
-const WIDTHS = ['100%', '92%', '82%'];
-const ALIGNMENTS = ['mr-auto', 'ml-auto', 'mx-auto'];
-
-/**
- * Where a photo sits on the page.
- *
- * Seeded from the image URL, not its list index: a book always looks the same,
- * and dropping a 404'd cover mid-session doesn't reshuffle everything else.
- * `Math.random()` here would re-roll on every render and make the collage twitch.
- */
-function placementFor(bookId: string, url: string): Placement {
-  const rnd = mulberry32(hashString(`${bookId}:${url}`));
-
-  let rotation = -6.5 + rnd() * 13;
-  // Nudge away from dead-straight — a photo at 0.2° just looks like a mistake.
-  if (Math.abs(rotation) < 1.5) rotation = rotation < 0 ? -1.5 - rnd() * 2 : 1.5 + rnd() * 2;
-
-  return {
-    rotation: Math.round(rotation * 10) / 10,
-    width: WIDTHS[Math.floor(rnd() * WIDTHS.length)],
-    align: ALIGNMENTS[Math.floor(rnd() * ALIGNMENTS.length)],
-    tape: Math.floor(rnd() * 3) as 0 | 1 | 2,
-  };
-}
-
-// ─── Pieces ───────────────────────────────────────────────────────────────────
-
-const Tape: React.FC<{ variant: 0 | 1 | 2 }> = ({ variant }) => {
-  if (variant === 2) return null;
-
-  if (variant === 0) {
-    return (
-      <span
-        aria-hidden="true"
-        className="album-tape absolute -top-2.5 left-1/2 -translate-x-1/2 w-16 h-5 rotate-[-2deg]"
-      />
-    );
-  }
-
-  return (
-    <>
-      <span
-        aria-hidden="true"
-        className="album-tape absolute -top-2 -left-3 w-14 h-5 rotate-[-42deg]"
-      />
-      <span
-        aria-hidden="true"
-        className="album-tape absolute -bottom-2 -right-3 w-14 h-5 rotate-[-42deg]"
-      />
-    </>
-  );
-};
-
-interface PhotoProps {
+interface PlateProps {
   image: MediaImage;
-  placement: Placement;
   alt: string;
   delayMs: number;
   hero?: boolean;
   onError: () => void;
 }
 
-const Photo: React.FC<PhotoProps> = ({ image, placement, alt, delayMs, hero, onError }) => {
-  // Author portraits get a circular mount, the way a portrait is framed in a
-  // real album — and it also says "this is a person, not another edition".
-  const isPortrait = image.kind === 'author';
-
-  const img = (
-    <img
-      src={image.url}
-      alt={alt}
-      loading={hero ? 'eager' : 'lazy'}
-      onError={onError}
-      className={`w-full block bg-[var(--bg-beige)] object-cover ${
-        isPortrait ? 'rounded-full aspect-square' : ''
-      }`}
-    />
-  );
-
-  return (
-    // Outer element owns the resting tilt and the hover straighten. The paste-in
-    // animation lives on the inner wrapper so its fill-mode transform can't
-    // permanently override hover.
-    <div
-      className="transition-transform duration-300 ease-out hover:rotate-0 hover:scale-[1.04] hover:z-20 relative"
-      style={{ transform: `rotate(${placement.rotation}deg)` }}
-    >
-      <div className="animate-paste-in" style={{ animationDelay: `${delayMs}ms` }}>
-        {isPortrait ? (
-          <figure>
-            {/* Caption sits outside the circle — inside it the round mount
-                would crop the text. */}
-            <div className="album-photo relative rounded-full bg-[var(--white)] p-3">
-              <Tape variant={placement.tape} />
-              {img}
-            </div>
-            {image.caption && (
-              <figcaption className="font-hand text-[17px] leading-tight text-[var(--muted)] text-center pt-2">
-                {image.caption}
-              </figcaption>
-            )}
-          </figure>
-        ) : (
-          <figure
-            className={`album-photo relative bg-[var(--white)] p-2 ${
-              image.caption ? 'pb-7' : ''
-            }`}
-          >
-            <Tape variant={placement.tape} />
-            {img}
-            {image.caption && (
-              <figcaption className="font-hand text-[17px] leading-none text-[var(--muted)] pt-2 pl-0.5">
-                {image.caption}
-              </figcaption>
-            )}
-          </figure>
-        )}
-      </div>
+/**
+ * One cover reproduced as a plate on the page. A cream mat, a hairline frame,
+ * the cover shown whole (object-contain, never cropped — a cropped cover loses
+ * its title), and a caption underneath, the way a plate is captioned in a real
+ * illustrated book.
+ */
+const Plate: React.FC<PlateProps> = ({ image, alt, delayMs, hero, onError }) => (
+  <figure className="animate-plate-in" style={{ animationDelay: `${delayMs}ms` }}>
+    <div className="cover-plate rounded-[3px] p-2 aspect-[3/4] flex items-center justify-center">
+      <img
+        src={image.url}
+        alt={alt}
+        loading={hero ? 'eager' : 'lazy'}
+        onError={onError}
+        // Google's "image not available" filler returns 200 OK, so onError never
+        // fires for it — its shape once decoded is the only tell.
+        onLoad={(e) => {
+          if (!hasPlausibleCoverShape(e.currentTarget)) onError();
+        }}
+        className="max-h-full max-w-full object-contain rounded-[1px] shadow-sm"
+      />
     </div>
-  );
-};
+    {image.caption && (
+      <figcaption className="font-reader text-[12px] italic leading-snug text-[var(--muted)] text-center pt-2 px-1">
+        {image.caption}
+      </figcaption>
+    )}
+  </figure>
+);
 
 // ─── Panel ────────────────────────────────────────────────────────────────────
 
-/** Right page of the spread: every cover this book has worn, pasted in. */
+/** Right page of the spread: every cover this book has worn, as book plates. */
 export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
-  bookId,
   title,
   author,
   images,
   loading,
   error,
-}) => {
+}: ScrapbookPanelProps) => {
   // Open Library serves plenty of 404s; a dead image must leave no gap behind.
   const [failed, setFailed] = useState<Set<string>>(new Set());
 
-  const usable = useMemo(() => images.filter((i) => !failed.has(i.url)), [images, failed]);
+  const usable = useMemo(
+    () =>
+      images.filter(
+        // Drop Google's known "image not available" fillers up front (they'd
+        // 200-OK past onError), and anything a shape check has already retired.
+        (i) => !isGoogleCoverPlaceholder(i.url) && !failed.has(i.url),
+      ),
+    [images, failed],
+  );
 
-  const { hero, rest } = useMemo(() => {
-    const heroIndex = usable.findIndex((i) => i.kind === 'cover');
-    const index = heroIndex >= 0 ? heroIndex : 0;
-    return {
-      hero: usable[index],
-      rest: usable.filter((_, i) => i !== index),
-    };
+  // Split the images into the three roles the page lays out differently: the
+  // author portrait, the lead cover, and the remaining editions.
+  const { portrait, hero, rest } = useMemo(() => {
+    const portrait = usable.find((i) => i.kind === 'author');
+    const covers = usable.filter((i) => i.kind !== 'author');
+    const [hero, ...rest] = covers;
+    return { portrait, hero, rest };
   }, [usable]);
 
   const markFailed = (url: string) =>
@@ -207,27 +101,15 @@ export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
     return [...bySource.entries()];
   }, [usable]);
 
-  // Sticker dots, placed once per book. Decorative only.
-  const dots = useMemo(() => {
-    const rnd = mulberry32(hashString(`dots:${bookId}`));
-    const colors = ['#A0522D', '#B8860B', '#8A9A7B'];
-    return colors.map((color, i) => ({
-      color,
-      top: `${8 + rnd() * 78}%`,
-      left: `${4 + rnd() * 88}%`,
-      size: 7 + Math.round(rnd() * 5),
-      key: `${color}-${i}`,
-    }));
-  }, [bookId]);
-
   if (loading) {
     return (
       <div className="space-y-6" role="status">
         <span className="sr-only">Loading cover photos</span>
-        <div className="h-64 w-2/3 mx-auto rounded-xl bg-[var(--bg-beige)] animate-pulse" />
-        <div className="grid grid-cols-2 gap-5">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-40 rounded-xl bg-[var(--bg-beige)] animate-pulse" />
+        <div className="h-6 w-40 rounded bg-[var(--bg-beige)] animate-pulse" />
+        <div className="aspect-[3/4] max-w-[60%] mx-auto rounded bg-[var(--bg-beige)] animate-pulse" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="aspect-[3/4] rounded bg-[var(--bg-beige)] animate-pulse" />
           ))}
         </div>
       </div>
@@ -239,80 +121,80 @@ export const ScrapbookPanel: React.FC<ScrapbookPanelProps> = ({
       <EmptyState
         preset="library"
         icon={<Images className="w-10 h-10" />}
-        title="Nothing pasted in yet"
+        title="No cover gallery yet"
         description={
           error
-            ? "The edition archive didn't respond, so there are no photos to show for this book."
-            : 'No cover photos were found for this book in the edition archives.'
+            ? "The edition archive didn't respond, so there are no covers to show for this book."
+            : 'No cover images were found for this book in the edition archives.'
         }
       />
     );
   }
 
   return (
-    <div className="relative">
-      {dots.map((dot) => (
-        <span
-          key={dot.key}
-          aria-hidden="true"
-          className="absolute rounded-full pointer-events-none"
-          style={{
-            top: dot.top,
-            left: dot.left,
-            width: dot.size,
-            height: dot.size,
-            backgroundColor: dot.color,
-            opacity: 0.5,
-          }}
-        />
-      ))}
+    <div>
+      {/* Page heading, set like the facing "Where to buy" — same eyebrow, same
+          serif title, so the two pages read as one spread. */}
+      <header className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)] mb-2">
+            Cover gallery
+          </p>
+          <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)] leading-tight">
+            Every cover it has worn
+          </h3>
+        </div>
 
-      <p className="font-hand text-3xl text-[var(--ink)] text-center rotate-[-1.5deg] mb-8">
-        every cover it has worn
-      </p>
+        {/* The author, framed as a small inset portrait — captioned, so it
+            reads as "the author", not another edition. */}
+        {portrait && (
+          <figure className="flex-shrink-0 w-20 text-center">
+            <div className="cover-plate rounded-full p-1.5 aspect-square flex items-center justify-center">
+              <img
+                src={portrait.url}
+                alt={altFor(portrait)}
+                loading="lazy"
+                onError={() => markFailed(portrait.url)}
+                className="w-full h-full object-cover rounded-full"
+              />
+            </div>
+            <figcaption className="font-reader text-[11px] italic text-[var(--muted)] pt-1.5 leading-tight">
+              {portrait.caption || author}
+            </figcaption>
+          </figure>
+        )}
+      </header>
 
+      {/* The lead cover, given the room a frontispiece gets. */}
       {hero && (
-        <div className="max-w-[62%] mx-auto mb-10">
-          <Photo
-            image={hero}
-            placement={placementFor(bookId, hero.url)}
-            alt={altFor(hero)}
-            delayMs={0}
-            hero
-            onError={() => markFailed(hero.url)}
-          />
+        <div className="max-w-[62%] mx-auto mb-8">
+          <Plate image={hero} alt={altFor(hero)} delayMs={0} hero onError={() => markFailed(hero.url)} />
         </div>
       )}
 
-      {/* CSS columns rather than a grid: covers arrive at wildly different
-          aspect ratios and a column flow lets them pack like real pasted photos
-          instead of stretching to fill grid cells. */}
+      {/* The other editions, ranged in an even plate grid. */}
       {rest.length > 0 && (
-        <div className="columns-2 gap-5 [column-fill:balance]">
-          {rest.map((image, index) => {
-            const placement = placementFor(bookId, image.url);
-            return (
-              <div
+        <>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[var(--muted)] mb-4 pt-4 border-t border-[var(--border-light)]">
+            Other editions
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {rest.map((image, index) => (
+              <Plate
                 key={image.url}
-                className={`break-inside-avoid mb-7 ${placement.align}`}
-                style={{ width: placement.width }}
-              >
-                <Photo
-                  image={image}
-                  placement={placement}
-                  alt={altFor(image)}
-                  delayMs={80 + index * 55}
-                  onError={() => markFailed(image.url)}
-                />
-              </div>
-            );
-          })}
-        </div>
+                image={image}
+                alt={altFor(image)}
+                delayMs={70 + index * 55}
+                onError={() => markFailed(image.url)}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {credits.length > 0 && (
-        <p className="mt-10 pt-5 border-t border-[var(--border-light)] text-[11px] text-[var(--muted)]">
-          Photos from{' '}
+        <p className="mt-8 pt-5 border-t border-[var(--border-light)] text-[11px] text-[var(--muted)]">
+          Covers from{' '}
           {credits.map(([name, url], i) => (
             <React.Fragment key={name}>
               {i > 0 && ' · '}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Book } from '../types';
+import { BookCover } from './BookCover';
 import { Star, BookOpen, Bookmark, Heart, MoreHorizontal } from 'lucide-react';
 
 interface BookCard3DProps {
@@ -24,7 +25,13 @@ export const BookCard3D: React.FC<BookCard3DProps> = ({
         className="bg-[var(--white)] border border-[var(--border-light)] hover:border-[var(--ink)] rounded-2xl p-4 flex items-center gap-4 cursor-pointer transition-all hover:shadow-warm-md group"
       >
         <div className="w-16 h-24 rounded-lg overflow-hidden flex-shrink-0 shadow-warm-sm group-hover:scale-105 transition-transform">
-          <img src={book.cover} alt={book.title} className="w-full h-full object-cover" />
+          <BookCover
+            title={book.title}
+            author={book.author}
+            coverUrl={book.cover}
+            isbn13={book.isbn}
+            className="w-full h-full object-cover"
+          />
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-[10px] font-semibold uppercase text-[var(--muted)] tracking-wider">{book.genres[0]}</span>
@@ -49,11 +56,12 @@ export const BookCard3D: React.FC<BookCard3DProps> = ({
       <div>
         {/* Book Cover Container with 3D shadow */}
         <div className="relative aspect-[2/3] w-full rounded-2xl overflow-hidden shadow-book mb-4 bg-[var(--bg-beige)] group-hover:scale-[1.02] transition-transform">
-          <img
-            src={book.cover}
-            alt={book.title}
+          <BookCover
+            title={book.title}
+            author={book.author}
+            coverUrl={book.cover}
+            isbn13={book.isbn}
             className="w-full h-full object-cover"
-            loading="lazy"
           />
 
           {/* Spine Highlight Shadow Overlay */}

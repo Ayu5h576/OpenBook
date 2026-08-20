@@ -1,5 +1,6 @@
 import React from 'react';
 import { Book, ViewMode } from '../types';
+import { BookCover } from '../components/BookCover';
 import { BookOpen, Sparkles, ArrowRight, Star, ShieldCheck, Heart, Coffee, Library, ChevronRight } from 'lucide-react';
 
 interface LandingViewProps {
@@ -101,9 +102,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <div className="lg:col-span-5 relative flex justify-center">
             <div className="relative group cursor-pointer" onClick={() => onNavigate('auth')}>
               <div className="w-64 sm:w-72 h-96 sm:h-[440px] rounded-2xl overflow-hidden shadow-book border border-[var(--border-light)] bg-[var(--bg-beige)] transition-transform duration-500 group-hover:scale-105">
-                <img
-                  src={featuredBook.cover}
-                  alt={featuredBook.title}
+                <BookCover
+                  title={featuredBook.title}
+                  author={featuredBook.author}
+                  coverUrl={featuredBook.cover}
+                  isbn13={featuredBook.isbn}
+                  size="large"
+                  eager
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -168,7 +173,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
               className="bg-[var(--white)] border border-[var(--border-light)] hover:border-[var(--ink)] rounded-3xl p-4 cursor-pointer transition-all hover:shadow-warm-lg group"
             >
               <div className="aspect-[2/3] w-full rounded-2xl overflow-hidden shadow-book mb-4 bg-[var(--bg-beige)]">
-                <img src={book.cover} alt={book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                <BookCover
+                  title={book.title}
+                  author={book.author}
+                  coverUrl={book.cover}
+                  isbn13={book.isbn}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                />
               </div>
               <span className="text-[10px] font-bold uppercase text-[var(--muted)]">{book.genres[0]}</span>
               <h3 className="font-serif-title text-xl font-bold text-[var(--ink)] line-clamp-1">{book.title}</h3>

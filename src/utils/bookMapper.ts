@@ -15,7 +15,9 @@ export function googleBookToApp(gb: any): Book {
     title: gb.title || 'Untitled',
     author: gb.authors?.[0] || 'Unknown Author',
     authorId: `auth-${gb.googleBooksId}`,
-    cover: gb.coverImage || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+    // Empty, not a stock photo: BookCover draws a real cover from the title and
+    // author when there's no artwork, which beats showing someone else's shelf.
+    cover: gb.coverImage || '',
     spineColor: '#1D1D1D',
     thickness: Math.max(20, Math.min(60, (gb.pageCount || 300) / 10)),
     pages: gb.pageCount || 300,
@@ -50,7 +52,7 @@ export function libraryEntryToApp(entry: LibraryEntry): Book {
     title: localBook.title,
     author: localBook.authors?.[0] || 'Unknown',
     authorId: `auth-${localBook.id}`,
-    cover: localBook.coverImage || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+    cover: localBook.coverImage || '',
     spineColor: '#1D1D1D',
     thickness: 30,
     pages: pageCount,

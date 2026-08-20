@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Book } from '../types';
 import { BookCard3D } from '../components/BookCard3D';
+import { BookCover } from '../components/BookCover';
 import { HeroSkeleton, BookCardSkeleton } from '../components/Skeleton';
 import { RecommendedForYou } from '../components/RecommendedForYou';
 import { useAIHome } from '../hooks/useAI';
@@ -94,7 +95,15 @@ export const HomeView: React.FC = () => {
         <section className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md relative overflow-hidden flex flex-col md:flex-row items-center gap-8">
           
           <div className="w-40 sm:w-48 h-60 sm:h-72 rounded-2xl overflow-hidden shadow-book flex-shrink-0 bg-[var(--bg-beige)] relative group cursor-pointer" onClick={() => handleSelectBook(continueReadingBook)}>
-            <img src={continueReadingBook.cover} alt={continueReadingBook.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+            <BookCover
+              title={continueReadingBook.title}
+              author={continueReadingBook.author}
+              coverUrl={continueReadingBook.cover}
+              isbn13={continueReadingBook.isbn}
+              size="large"
+              eager
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+            />
             <div className="absolute top-3 left-3 bg-[var(--ink)]/90 text-[var(--bg-ivory)] text-[10px] font-semibold px-2.5 py-1 rounded-full">
               {continueReadingBook.progress}% Read
             </div>

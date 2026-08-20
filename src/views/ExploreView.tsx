@@ -3,6 +3,7 @@ import { useOutletContext, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Book } from '../types';
 import { BookCard3D } from '../components/BookCard3D';
+import { BookCover } from '../components/BookCover';
 import { BookCardSkeleton } from '../components/Skeleton';
 import { useBookSearch } from '../hooks/useBookSearch';
 import { BookApiService, GoogleBookResult } from '../services/api';
@@ -29,15 +30,14 @@ function GoogleBookCard({
       className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl overflow-hidden shadow-warm-sm hover:shadow-warm-md transition-shadow flex flex-col cursor-pointer"
     >
       <div className="relative h-52 bg-[var(--bg-beige)] flex items-center justify-center overflow-hidden">
-        {book.coverImage ? (
-          <img
-            src={book.coverImage}
-            alt={book.title}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <BookOpen className="w-12 h-12 text-[#A0522D] opacity-40" />
-        )}
+        <BookCover
+          title={book.title}
+          author={book.authors?.[0]}
+          coverUrl={book.coverImage}
+          isbn13={book.isbn13}
+          isbn10={book.isbn10}
+          className="h-full w-full object-cover"
+        />
       </div>
       <div className="p-4 flex flex-col flex-1 gap-2">
         <h3 className="font-serif text-sm font-bold text-[var(--ink)] line-clamp-2 leading-snug">

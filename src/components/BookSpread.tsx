@@ -23,33 +23,9 @@ const REGIONS: { value: Region; label: string }[] = [
 const FOCUSABLE =
   'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
-/** One loop of the album's double-loop wire binding. */
-const Rings: React.FC<{ orientation: 'vertical' | 'horizontal'; count: number }> = ({
-  orientation,
-  count,
-}) => (
-  <div
-    aria-hidden="true"
-    className={
-      orientation === 'vertical'
-        ? 'hidden lg:flex w-8 flex-col items-center gap-3 py-7 bg-[var(--bg-beige)] relative z-10'
-        : 'flex lg:hidden justify-center items-center gap-3 px-7 py-2.5 bg-[var(--bg-beige)] relative z-10 overflow-hidden'
-    }
-  >
-    {Array.from({ length: count }).map((_, i) => (
-      <span
-        key={i}
-        className={`album-ring rounded-full flex-shrink-0 ${
-          orientation === 'vertical' ? 'h-2.5 w-11 -mx-1.5' : 'w-2.5 h-9 -my-1.5'
-        }`}
-      />
-    ))}
-  </div>
-);
-
 /**
- * The "More info" spread — an open scrapbook album. Left page is where to buy
- * the book, right page is every cover it has worn.
+ * The "More info" spread — a hardbound book opened flat. Left page is where to
+ * buy the book, right page is every cover it has worn.
  */
 export const BookSpread: React.FC<BookSpreadProps> = ({
   bookId,
@@ -167,31 +143,38 @@ export const BookSpread: React.FC<BookSpreadProps> = ({
           </div>
         </div>
 
-        {/* The album. On a phone the whole thing is one scroll; on a desktop each
-            page scrolls independently, the way you'd read a real spread. */}
-        <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden rounded-md shadow-warm-lg grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr]">
-          <div className="album-paper album-page-left bg-[var(--white)] p-5 sm:p-8 lg:p-10 lg:overflow-y-auto rounded-t-md lg:rounded-t-none lg:rounded-l-md">
-            <PurchasePanel
-              description={description}
-              data={offers.data}
-              loading={offers.isLoading}
-              error={offers.error ? (offers.error as Error).message : null}
-              region={region}
-              onRetry={() => offers.refetch()}
-            />
-          </div>
+        {/* The book. On a phone the whole thing is one scroll; on a desktop each
+            page scrolls independently, the way you'd read a real spread. The
+            binding cases the pages in, and a central gutter falls between them. */}
+        <div className="book-binding flex-1 min-h-0 rounded-lg p-2 sm:p-2.5 lg:p-3">
+          <div className="book-block relative h-full min-h-0 overflow-y-auto lg:overflow-hidden rounded-[3px] grid grid-cols-1 lg:grid-cols-2">
+            <div className="album-paper album-page-left bg-[var(--white)] p-5 sm:p-8 lg:p-10 lg:pr-12 lg:overflow-y-auto">
+              <PurchasePanel
+                description={description}
+                data={offers.data}
+                loading={offers.isLoading}
+                error={offers.error ? (offers.error as Error).message : null}
+                region={region}
+                onRetry={() => offers.refetch()}
+              />
+            </div>
 
-          <Rings orientation="vertical" count={15} />
-          <Rings orientation="horizontal" count={9} />
+            <div className="album-paper album-page-right bg-[var(--white)] p-5 sm:p-8 lg:p-10 lg:pl-12 lg:overflow-y-auto">
+              <ScrapbookPanel
+                title={title}
+                author={author}
+                images={media.data ?? []}
+                loading={media.isLoading}
+                error={media.error ? (media.error as Error).message : null}
+              />
+            </div>
 
-          <div className="album-paper album-page-right bg-[var(--white)] p-5 sm:p-8 lg:p-10 lg:overflow-y-auto rounded-b-md lg:rounded-b-none lg:rounded-r-md">
-            <ScrapbookPanel
-              bookId={bookId}
-              title={title}
-              author={author}
-              images={media.data ?? []}
-              loading={media.isLoading}
-              error={media.error ? (media.error as Error).message : null}
+            {/* The gutter, drawn over the seam where the two pages meet. Desktop
+                only — on a phone the pages stack and scroll as one, so there is
+                no fixed seam for it to sit on. */}
+            <div
+              aria-hidden="true"
+              className="book-gutter hidden lg:block absolute inset-y-0 left-1/2 w-16 -translate-x-1/2 pointer-events-none"
             />
           </div>
         </div>

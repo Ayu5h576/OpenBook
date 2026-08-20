@@ -4,6 +4,7 @@ import { ambientEngine } from '../utils/audioSynth';
 import { useLibrary } from '../hooks/useLibrary';
 import { formatDuration, useReadingSession } from '../hooks/useReadingSession';
 import { ProgressTracker } from './ProgressTracker';
+import { BookCover } from './BookCover';
 import type { LibraryEntry } from '../services/api';
 import { Coffee, Flame, CloudRain, Lamp, BookOpen, Clock } from 'lucide-react';
 
@@ -22,7 +23,7 @@ function entryToBook(entry: LibraryEntry): Book {
     title: b.title,
     author: b.authors?.[0] || 'Unknown Author',
     authorId: `auth-${b.id}`,
-    cover: b.coverImage || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+    cover: b.coverImage || '',
     spineColor: '#1D1D1D',
     thickness: Math.max(20, Math.min(60, (b.pageCount || 300) / 10)),
     pages: b.pageCount || 300,
@@ -228,9 +229,14 @@ export const ReadingRoom: React.FC<ReadingRoomProps> = ({ books: _legacyBooks, o
         {/* Book Cover Display */}
         <div className="relative group perspective-1000">
           <div className="w-52 h-80 rounded-xl overflow-hidden shadow-2xl border border-white/20 transform group-hover:rotate-y-6 transition-transform duration-500">
-            <img
-              src={book.coverImage || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80'}
-              alt={book.title}
+            <BookCover
+              title={book.title}
+              author={book.authors?.[0]}
+              coverUrl={book.coverImage}
+              isbn13={book.isbn13}
+              isbn10={book.isbn10}
+              size="large"
+              eager
               className="w-full h-full object-cover"
             />
           </div>

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Book } from '../types';
+import { BookCover } from './BookCover';
 import { ambientEngine } from '../utils/audioSynth';
 import { Sparkles, MoveRight, BookOpen, Layers, Maximize2, Play, ArrowLeft, Volume2, Bookmark, Star } from 'lucide-react';
 
@@ -199,7 +200,13 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
                 <div className="flex flex-col items-center">
                   <div className="relative group/cover mb-6">
                     <div className="w-44 h-64 rounded-xl overflow-hidden shadow-2xl transform hover:rotate-3 hover:scale-105 transition-all duration-300 border-4 border-[var(--white)]">
-                      <img src={book.cover} alt={book.title} className="w-full h-full object-cover" />
+                      <BookCover
+                        title={book.title}
+                        author={book.author}
+                        coverUrl={book.cover}
+                        isbn13={book.isbn}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     <div className="absolute top-2 right-2 bg-[var(--ink)]/80 backdrop-blur-md text-[var(--bg-ivory)] text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
                       <Star className="w-3 h-3 text-amber-400 fill-amber-400" />

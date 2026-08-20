@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FolderHeart, Plus, Trash2, X, Check } from 'lucide-react';
 import { useCollections } from '../hooks/useCollections';
 import { ApiCollection } from '../services/api';
+import { BookCover } from '../components/BookCover';
 import { CollectionCardSkeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 
@@ -130,10 +131,14 @@ export const CollectionsView: React.FC = () => {
                     {col.books.slice(0, 6).map((cb) => (
                       <div key={cb.id}
                         className="w-14 h-20 rounded-lg overflow-hidden shadow-book shrink-0">
-                        {cb.book.coverImage
-                          ? <img src={cb.book.coverImage} alt={cb.book.title} className="w-full h-full object-cover" />
-                          : <div className="w-full h-full bg-[var(--border-light)] flex items-center justify-center text-[8px] text-[var(--muted)] p-1 text-center">{cb.book.title}</div>
-                        }
+                        <BookCover
+                          title={cb.book.title}
+                          author={cb.book.authors?.[0]}
+                          coverUrl={cb.book.coverImage}
+                          isbn13={cb.book.isbn13}
+                          isbn10={cb.book.isbn10}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
                     ))}
                   </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Book } from '../types';
+import { BookCover } from './BookCover';
 import { History, Star, Quote as QuoteIcon, Calendar, Heart } from 'lucide-react';
 
 interface BookMemoriesProps {
@@ -45,7 +46,13 @@ export const BookMemories: React.FC<BookMemoriesProps> = ({ completedBooks }) =>
                 </div>
 
                 <div className="flex items-center gap-3 mb-4">
-                  <img src={book.cover} alt={book.title} className="w-12 h-16 rounded object-cover shadow-warm-sm" />
+                  <BookCover
+                    title={book.title}
+                    author={book.author}
+                    coverUrl={book.cover}
+                    isbn13={book.isbn}
+                    className="w-12 h-16 rounded object-cover shadow-warm-sm"
+                  />
                   <div>
                     <h4 className="font-serif-title text-xl font-bold text-[var(--ink)] group-hover:text-[#A0522D] transition-colors">{book.title}</h4>
                     <p className="text-xs text-[var(--muted)]">by {book.author}</p>

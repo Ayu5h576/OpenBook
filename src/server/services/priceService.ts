@@ -2,9 +2,10 @@
  * Price Service — aggregates purchase offers for a book across storefronts.
  *
  * Design note: offers come from *providers*, and a provider either returns a
- * real price or it doesn't. Today exactly one provider can quote a number
- * (Google Play Books, via the Google Books `saleInfo` field); every other
- * storefront is reachable only as a deep link, because Amazon's Product
+ * real price or it doesn't. Two providers can quote a number without paid
+ * credentials — Google Play Books (any region, via the Google Books `saleInfo`
+ * field) and Apple Books (US only, via the public iTunes Search API). Every
+ * other storefront is reachable only as a deep link, because Amazon's Product
  * Advertising API needs an approved Associates account with qualifying sales and
  * Flipkart's affiliate API is closed to new signups.
  *
@@ -15,6 +16,7 @@
  */
 import { createHash } from 'crypto';
 import { cacheService } from '../cache/cacheService';
+import { appleBooksService } from './appleBooksService';
 import { bookService } from './bookService';
 import {
   OfferFormat,
@@ -111,6 +113,32 @@ export const googlePlayProvider: PriceProvider = {
   },
 };
 
+/**
+ * Apple Books — a live ebook price via the iTunes Search API, US only.
+ *
+ * `appleBooksService` verifies the title+author match before returning anything,
+ * so a hit here is a real price for the right book, not a best guess.
+ */
+export const appleBooksProvider: PriceProvider = {
+  id: 'appleBooks',
+  supports: (region) => region === 'US',
+  async fetchOffer({ book, region }) {
+    const offer = await appleBooksService.getEbookOffer(book, region);
+    if (!offer) return null;
+
+    return {
+      platform: 'appleBooks',
+      label: 'Apple Books',
+      format: 'ebook',
+      url: offer.url,
+      price: offer.price,
+      currency: offer.currency,
+      priceSource: 'live',
+      free: offer.free,
+    };
+  },
+};
+
 /** Wraps a storefront table entry as a link-only provider. */
 function linkOnlyProvider(store: Storefront): PriceProvider {
   return {
@@ -135,7 +163,7 @@ function linkOnlyProvider(store: Storefront): PriceProvider {
  */
 export function providersForRegion(region: Region): PriceProvider[] {
   const linkOnly = storefrontsForRegion(region).map(linkOnlyProvider);
-  return [googlePlayProvider, ...linkOnly].filter((p) => p.supports(region));
+  return [googlePlayProvider, appleBooksProvider, ...linkOnly].filter((p) => p.supports(region));
 }
 
 // ─── Aggregation ──────────────────────────────────────────────────────────────

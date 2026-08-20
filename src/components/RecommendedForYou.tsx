@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Book } from '../types';
 import { AIApiService, AIRecommendation } from '../services/api';
+import { BookCover } from './BookCover';
 import { Sparkles, RefreshCw, BookOpen, Plus, Check, Star, Compass, Bookmark, Lightbulb, ArrowRight } from 'lucide-react';
 
 interface RecommendationItem {
@@ -25,7 +26,7 @@ function toRecommendationItem(rec: AIRecommendation, index: number): Recommendat
     matchPercentage: rec.matchScore,
     basedOnBook: rec.categories.slice(0, 2).join(', '),
     personalizedSummary: rec.reasoning,
-    cover: rec.coverImage || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+    cover: rec.coverImage || '',
     rating: 4.8,
     pages: 280,
   };
@@ -86,7 +87,7 @@ export const RecommendedForYou: React.FC<RecommendedForYouProps> = ({
         author: rec.author,
         genres: [rec.genre],
         description: rec.personalizedSummary,
-        cover: rec.cover || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+        cover: rec.cover || '',
         rating: rec.rating || 4.8,
         pages: rec.pages || 280,
         status: 'wishlist',
@@ -212,9 +213,10 @@ export const RecommendedForYou: React.FC<RecommendedForYouProps> = ({
                   {/* Book Info Block */}
                   <div className="flex gap-4 mb-4">
                     <div className="w-20 h-28 rounded-xl overflow-hidden shadow-book flex-shrink-0 bg-[var(--bg-beige)] relative group-hover:scale-105 transition-transform">
-                      <img
-                        src={rec.cover || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80'}
-                        alt={rec.title}
+                      <BookCover
+                        title={rec.title}
+                        author={rec.author}
+                        coverUrl={rec.cover}
                         className="w-full h-full object-cover"
                       />
                     </div>
@@ -279,7 +281,7 @@ export const RecommendedForYou: React.FC<RecommendedForYouProps> = ({
                           author: rec.author,
                           genres: [rec.genre],
                           description: rec.personalizedSummary,
-                          cover: rec.cover || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+                          cover: rec.cover || '',
                           rating: rec.rating || 4.8,
                           pages: rec.pages || 280,
                           status: 'wishlist',

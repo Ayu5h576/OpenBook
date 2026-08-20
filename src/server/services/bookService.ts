@@ -68,14 +68,37 @@ interface GoogleVolume {
   saleInfo?: GoogleSaleInfo;
 }
 
-function normalizeImageUrl(raw: string): string {
-  return raw.replace('http://', 'https://').replace('&zoom=1', '&zoom=0');
+/**
+ * Rewrite a Google Books image URL to the size we actually render.
+ *
+ * `zoom` is the whole story: 1 is 128px wide, 2 is ~300px, 0 is the full scan
+ * (~1744px, ~400KB). Both builders below used to force `zoom=0`, so a shelf of
+ * twelve cards pulled several megabytes of cover art to draw thumbnails.
+ * `edge=curl` paints a fake page-curl into the bitmap, which reads as an artifact
+ * once the image sits inside our own framed card.
+ */
+function normalizeImageUrl(raw: string, zoom: 0 | 2): string {
+  return raw
+    .replace('http://', 'https://')
+    .replace(/([?&])zoom=\d+/, `$1zoom=${zoom}`)
+    .replace(/([?&])edge=curl/, '$1edge=none');
+}
+
+/**
+ * True for volumes Google has no scan of, whose every image size resolves to the
+ * "image not available" grey box — served with a 200, so nothing downstream can
+ * detect it from the response. `…AAAACAAJ` ids are library-catalogue imports;
+ * `…AAAAQBAJ` ids are publisher-supplied ebooks with real art. Storing undefined
+ * instead lets the client fall through to Open Library or a drawn cover.
+ */
+function isPlaceholderVolume(volumeId: string): boolean {
+  return /CAAJ$/.test(volumeId);
 }
 
 function buildCoverUrl(imageLinks?: GoogleImageLinks): string | undefined {
   const raw = imageLinks?.thumbnail ?? imageLinks?.smallThumbnail;
   if (!raw) return undefined;
-  return normalizeImageUrl(raw);
+  return normalizeImageUrl(raw, 2);
 }
 
 /**
@@ -94,7 +117,7 @@ function buildLargeCoverUrl(imageLinks?: GoogleImageLinks): string | undefined {
     imageLinks?.thumbnail ??
     imageLinks?.smallThumbnail;
   if (!raw) return undefined;
-  return normalizeImageUrl(raw);
+  return normalizeImageUrl(raw, 0);
 }
 
 function extractIsbn(ids?: { type: string; identifier: string }[]) {
@@ -126,14 +149,15 @@ export interface GoogleBookResult {
 
 function mapVolume(v: GoogleVolume): GoogleBookResult {
   const { isbn10, isbn13 } = extractIsbn(v.volumeInfo.industryIdentifiers);
+  const hasArt = !isPlaceholderVolume(v.id);
   return {
     googleBooksId: v.id,
     title: v.volumeInfo.title,
     subtitle: v.volumeInfo.subtitle,
     authors: v.volumeInfo.authors ?? [],
     description: v.volumeInfo.description,
-    coverImage: buildCoverUrl(v.volumeInfo.imageLinks),
-    largeCoverImage: buildLargeCoverUrl(v.volumeInfo.imageLinks),
+    coverImage: hasArt ? buildCoverUrl(v.volumeInfo.imageLinks) : undefined,
+    largeCoverImage: hasArt ? buildLargeCoverUrl(v.volumeInfo.imageLinks) : undefined,
     pageCount: v.volumeInfo.pageCount,
     categories: v.volumeInfo.categories ?? [],
     language: v.volumeInfo.language ?? 'en',

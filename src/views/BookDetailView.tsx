@@ -12,6 +12,7 @@ import { BookApiService, LocalBook } from '../services/api';
 import { googleBookToApp, stripHtml } from '../utils/bookMapper';
 import { ProgressTracker } from '../components/ProgressTracker';
 import { BookSpread } from '../components/BookSpread';
+import { BookCover } from '../components/BookCover';
 import { BookOpen, Heart, Bookmark, Share2, Star, ArrowLeft, Play, Sparkles, MessageSquare, Send, RefreshCw, FolderHeart, Check, X, Info } from 'lucide-react';
 
 import { createPortal } from 'react-dom';
@@ -57,7 +58,7 @@ export const BookDetailView: React.FC = () => {
     title: localBook.title,
     author: localBook.authors[0] || 'Unknown',
     authorId: `auth-${localBook.id}`,
-    cover: localBook.coverImage || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+    cover: localBook.coverImage || '',
     spineColor: '#1D1D1D',
     thickness: 30,
     pages: localBook.pageCount || 300,
@@ -204,7 +205,16 @@ export const BookDetailView: React.FC = () => {
         {/* Large 3D Cover */}
         <div className="lg:col-span-4 flex flex-col items-center">
           <div className="w-56 sm:w-64 h-80 sm:h-96 rounded-2xl overflow-hidden shadow-book border border-[var(--border-light)] bg-[var(--bg-beige)] relative group transform hover:rotate-y-3 transition-transform duration-500">
-            <img src={book.cover} alt={book.title} className="w-full h-full object-cover" />
+            <BookCover
+              title={book.title}
+              author={book.author}
+              coverUrl={localBook?.coverImage}
+              isbn13={localBook?.isbn13}
+              isbn10={localBook?.isbn10}
+              size="large"
+              eager
+              className="w-full h-full object-cover"
+            />
             <div className="absolute left-0 top-0 bottom-0 w-3 bg-gradient-to-r from-black/20 to-transparent" />
           </div>
 
@@ -281,26 +291,21 @@ export const BookDetailView: React.FC = () => {
               <p className="text-sm text-[var(--muted)] leading-relaxed font-normal line-clamp-2 sm:line-clamp-3">
                 {cleanDescription}
               </p>
-              {/* Not gated on description length: the spread also carries buying
-                  options and cover photos, which exist either way. */}
-              <button
-                onClick={() => setShowSpread(true)}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#A0522D] hover:underline mt-2"
-              >
-                <Info className="w-3.5 h-3.5" />
-                <span>More info</span>
-              </button>
             </div>
           </div>
 
           {/* Action Buttons Row */}
           <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-[var(--border-light)]">
+            {/* The primary action on a book you don't own yet is finding out
+                about it — the full description, where to buy it, and every cover
+                it has worn. Not gated on description length: the spread carries
+                buying options and cover photos, which exist either way. */}
             <button
-              onClick={() => navigate(`/reader/${book.id}`)}
+              onClick={() => setShowSpread(true)}
               className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-sm hover:bg-[#333333] transition-all shadow-warm-md active:scale-95"
             >
-              <BookOpen className="w-4 h-4" />
-              <span>Read Now</span>
+              <Info className="w-4 h-4" />
+              <span>More info</span>
             </button>
 
             <button
@@ -515,7 +520,13 @@ export const BookDetailView: React.FC = () => {
                 className="group cursor-pointer flex flex-col gap-3"
               >
                 <div className="aspect-[2/3] rounded-xl overflow-hidden border border-[var(--border-light)] shadow-sm bg-[var(--bg-beige)] relative">
-                  <img src={related.cover} alt={related.title} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500" />
+                  <BookCover
+                    title={related.title}
+                    author={related.author}
+                    coverUrl={related.cover}
+                    isbn13={related.isbn}
+                    className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
+                  />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                     <span className="text-[var(--white)] font-bold text-xs uppercase tracking-widest bg-[var(--ink)]/80 px-4 py-2 rounded-full backdrop-blur-md">View Book</span>
                   </div>

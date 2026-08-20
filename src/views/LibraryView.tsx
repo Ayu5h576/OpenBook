@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BookCardSkeleton } from '../components/Skeleton';
 import { useLibrary } from '../hooks/useLibrary';
 import { LibraryStatus } from '../services/api';
+import { BookCover } from '../components/BookCover';
 import { Library, LayoutGrid, List, BookOpen, Star } from 'lucide-react';
 
 const STATUS_TABS: { id: LibraryStatus | 'ALL'; label: string }[] = [
@@ -111,13 +112,14 @@ export const LibraryView: React.FC = () => {
                 onClick={() => navigate(`/book/${entry.book.id}`)}
                 className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl p-4 flex items-center gap-4 hover:shadow-warm-md transition-shadow cursor-pointer"
               >
-                {entry.book.coverImage ? (
-                  <img src={entry.book.coverImage} alt={entry.book.title} className="w-12 h-16 object-cover rounded-lg flex-shrink-0" />
-                ) : (
-                  <div className="w-12 h-16 bg-[var(--bg-beige)] rounded-lg flex items-center justify-center flex-shrink-0">
-                    <BookOpen className="w-5 h-5 text-[#A0522D]" />
-                  </div>
-                )}
+                <BookCover
+                  title={entry.book.title}
+                  author={entry.book.authors?.[0]}
+                  coverUrl={entry.book.coverImage}
+                  isbn13={entry.book.isbn13}
+                  isbn10={entry.book.isbn10}
+                  className="w-12 h-16 object-cover rounded-lg flex-shrink-0"
+                />
                 <div className="flex-1 min-w-0">
                   <p className="font-serif-title font-bold text-[var(--ink)] truncate">{entry.book.title}</p>
                   <p className="text-xs text-[var(--muted)] truncate">{entry.book.authors.join(', ')}</p>
@@ -156,13 +158,14 @@ export const LibraryView: React.FC = () => {
                 className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl overflow-hidden hover:shadow-warm-md transition-shadow group cursor-pointer"
               >
                 <div className="relative aspect-[2/3] overflow-hidden bg-[var(--bg-beige)]">
-                  {entry.book.coverImage ? (
-                    <img src={entry.book.coverImage} alt={entry.book.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <BookOpen className="w-10 h-10 text-[#A0522D]" />
-                    </div>
-                  )}
+                  <BookCover
+                    title={entry.book.title}
+                    author={entry.book.authors?.[0]}
+                    coverUrl={entry.book.coverImage}
+                    isbn13={entry.book.isbn13}
+                    isbn10={entry.book.isbn10}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
                   <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${badge.cls}`}>{badge.label}</span>
                 </div>
                 <div className="p-3">

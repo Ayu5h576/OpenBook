@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { BookOpen, ArrowLeft, Edit2, Save, X, Plus, Trash2, Search } from 'lucide-react';
 import { useCollections } from '../hooks/useCollections';
 import { ApiCollection } from '../services/api';
+import { BookCover } from '../components/BookCover';
 
 export const CollectionDetailView: React.FC = () => {
   const { id: collectionId } = useParams<{ id: string }>();
@@ -187,17 +188,14 @@ export const CollectionDetailView: React.FC = () => {
               className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl p-4 shadow-warm-sm hover:shadow-warm-md transition-shadow flex flex-col cursor-pointer"
             >
               <div className="flex gap-4 mb-4">
-                {cb.book.coverImage ? (
-                  <img
-                    src={cb.book.coverImage}
-                    alt={cb.book.title}
-                    className="w-16 h-24 object-cover rounded-lg"
-                  />
-                ) : (
-                  <div className="w-16 h-24 bg-[var(--bg-beige)] rounded-lg flex items-center justify-center">
-                    <BookOpen className="w-6 h-6 text-[#A0522D] opacity-40" />
-                  </div>
-                )}
+                <BookCover
+                  title={cb.book.title}
+                  author={cb.book.authors?.[0]}
+                  coverUrl={cb.book.coverImage}
+                  isbn13={cb.book.isbn13}
+                  isbn10={cb.book.isbn10}
+                  className="w-16 h-24 object-cover rounded-lg"
+                />
                 <div className="flex-1 min-w-0">
                   <h3 className="font-serif text-sm font-bold text-[var(--ink)] line-clamp-2 hover:text-[#A0522D] transition-colors">
                     {cb.book.title}

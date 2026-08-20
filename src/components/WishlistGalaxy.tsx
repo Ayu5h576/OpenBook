@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Book } from '../types';
+import { BookCover } from './BookCover';
 import { Sparkles, Orbit, Star, BookOpen, Bookmark } from 'lucide-react';
 
 interface WishlistGalaxyProps {
@@ -63,7 +64,13 @@ export const WishlistGalaxy: React.FC<WishlistGalaxyProps> = ({
               className="absolute z-20 cursor-pointer group transition-all duration-300 hover:scale-125"
             >
               <div className="w-14 h-20 rounded-lg overflow-hidden border-2 border-white/30 shadow-2xl group-hover:border-[#E0A96D] transition-colors">
-                <img src={book.cover} alt={book.title} className="w-full h-full object-cover" />
+                <BookCover
+                  title={book.title}
+                  author={book.author}
+                  coverUrl={book.cover}
+                  isbn13={book.isbn}
+                  className="w-full h-full object-cover"
+                />
               </div>
 
               {/* Star Glow */}
@@ -78,7 +85,13 @@ export const WishlistGalaxy: React.FC<WishlistGalaxyProps> = ({
         {hoveredBook ? (
           <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-4">
-              <img src={hoveredBook.cover} alt={hoveredBook.title} className="w-10 h-14 rounded object-cover" />
+              <BookCover
+                title={hoveredBook.title}
+                author={hoveredBook.author}
+                coverUrl={hoveredBook.cover}
+                isbn13={hoveredBook.isbn}
+                className="w-10 h-14 rounded object-cover"
+              />
               <div>
                 <h4 className="font-serif-title text-xl font-bold text-white">{hoveredBook.title}</h4>
                 <p className="text-xs text-[#A0A0A0]">by {hoveredBook.author} • {hoveredBook.price || 'In Library'}</p>
