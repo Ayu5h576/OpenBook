@@ -20,6 +20,10 @@ server.cjs
 .env.*backup*
 *.env.bak
 .claude/settings.local.json
+# Claude Code scratch worktrees are nested checkouts of this repo. Without this
+# they show up as untracked here, and a `git add -A` would commit a whole second
+# copy of the tree. `.claude/agents/` and `.claude/settings.json` stay tracked.
+.claude/worktrees/
 
 # Logs
 *.log
