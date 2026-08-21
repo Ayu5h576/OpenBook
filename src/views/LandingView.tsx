@@ -45,6 +45,31 @@ export const LandingView: React.FC<LandingViewProps> = ({
         </div>
       </header>
 
+      {/*
+        ── GSAP ScrollTrigger set-piece goes HERE (later pass) ──────────────────
+        This marketing page is the one place a scroll-driven cinematic earns its
+        keep, and it's the deliberate seam in our "Motion now, GSAP later" split.
+        Everything animated in the app today runs on Motion (see src/motion) —
+        route transitions, staggered grids, the shelf→modal cover flight — because
+        those are enter/exit and gesture states, which Motion expresses cleanly.
+
+        A hero like this wants something Motion does *not* do well: a timeline
+        SCRUBBED by scroll position. The intended set-piece pins this section and,
+        as the user scrolls through it, drives a single timeline — the spotlight
+        cover scaling/rotating toward the reader, the stats counting up, the
+        headline lines rising in sequence — all locked to scroll progress, then
+        released. GSAP's ScrollTrigger (pin + scrub + snap) is built for exactly
+        that; Motion's `whileInView` only fires discrete in/out triggers and can't
+        tie progress to the scrollbar.
+
+        When wiring it: lazy-load gsap + ScrollTrigger in an effect so they never
+        touch the app's main bundle (this landing route is already code-split),
+        scope everything to a gsap.context() rooted at this section's ref and
+        return ctx.revert() for cleanup, and gate the whole timeline behind our
+        existing useReducedMotion() so the motion-sensitive path stays a plain
+        static hero. Nothing below needs to change to accommodate it.
+      */}
+
       {/* Hero Section */}
       <section className="relative px-6 md:px-12 pt-32 pb-20 md:pb-28 max-w-7xl mx-auto overflow-hidden">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">

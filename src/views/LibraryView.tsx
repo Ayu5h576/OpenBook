@@ -5,6 +5,7 @@ import { useLibrary } from '../hooks/useLibrary';
 import { LibraryStatus } from '../services/api';
 import { BookCover } from '../components/BookCover';
 import { Library, LayoutGrid, List, BookOpen, Star } from 'lucide-react';
+import { m, staggerListContainer, staggerListItem, SPRING_GENTLE } from '../motion';
 
 const STATUS_TABS: { id: LibraryStatus | 'ALL'; label: string }[] = [
   { id: 'ALL', label: 'All Volumes' },
@@ -102,13 +103,17 @@ export const LibraryView: React.FC = () => {
           </p>
         </div>
       ) : viewMode === 'list' ? (
-        <div className="space-y-3">
+        <m.div className="space-y-3" variants={staggerListContainer} initial="initial" animate="animate">
           {entries.map((entry) => {
             const pct = progressPct(entry.currentPage, entry.book.pageCount);
             const badge = statusBadge(entry.status);
             return (
-              <div 
-                key={entry.id} 
+              <m.div
+                key={entry.id}
+                variants={staggerListItem}
+                whileHover={{ y: -3 }}
+                whileTap={{ scale: 0.99 }}
+                transition={SPRING_GENTLE}
                 onClick={() => navigate(`/book/${entry.book.id}`)}
                 className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl p-4 flex items-center gap-4 hover:shadow-warm-md transition-shadow cursor-pointer"
               >
@@ -136,24 +141,28 @@ export const LibraryView: React.FC = () => {
                     {Number(entry.book.averageRating).toFixed(1)}
                   </span>
                 )}
-                <button 
-                  onClick={(e) => { e.stopPropagation(); removeEntry(entry.id); }} 
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeEntry(entry.id); }}
                   className="text-xs text-red-400 hover:text-red-600 transition-colors ml-2"
                 >
                   Remove
                 </button>
-              </div>
+              </m.div>
             );
           })}
-        </div>
+        </m.div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <m.div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" variants={staggerListContainer} initial="initial" animate="animate">
           {entries.map((entry) => {
             const pct = progressPct(entry.currentPage, entry.book.pageCount);
             const badge = statusBadge(entry.status);
             return (
-              <div 
-                key={entry.id} 
+              <m.div
+                key={entry.id}
+                variants={staggerListItem}
+                whileHover={{ y: -4 }}
+                whileTap={{ scale: 0.985 }}
+                transition={SPRING_GENTLE}
                 onClick={() => navigate(`/book/${entry.book.id}`)}
                 className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl overflow-hidden hover:shadow-warm-md transition-shadow group cursor-pointer"
               >
@@ -183,10 +192,10 @@ export const LibraryView: React.FC = () => {
                     Remove
                   </button>
                 </div>
-              </div>
+              </m.div>
             );
           })}
-        </div>
+        </m.div>
       )}
     </div>
   );

@@ -1,7 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Book } from '../types';
 import { BookCover } from './BookCover';
 import { ambientEngine } from '../utils/audioSynth';
+import { m, EASE_OUT } from '../motion';
+import { useTilt } from '../motion/useTilt';
 import { Sparkles, MoveRight, BookOpen, Layers, Maximize2, Play, ArrowLeft, Volume2, Bookmark, Star } from 'lucide-react';
 
 interface InteractiveBookshelf3DProps {
@@ -19,8 +21,15 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
   const [animatingBookId, setAnimatingBookId] = useState<string | null>(null);
   const [isCameraZooming, setIsCameraZooming] = useState<boolean>(false);
   const [isOpenCinematic, setIsOpenCinematic] = useState<boolean>(false);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
+  // The book's on-screen box at click time, so the shared-element cover can begin
+  // exactly where the spine sat before flying into the modal (see below).
+  const [originRect, setOriginRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+
+  // Pointer tilt driven by motion values, not React state — see useTilt for why
+  // (the old useState version re-rendered the whole shelf on every mousemove).
+  const tilt = useTilt({ maxDeg: 6 });
+
+  const selectedBook = selectedBookId ? books.find((b) => b.id === selectedBookId) ?? null : null;
 
   // Group books onto multiple wooden shelves
   const shelf1 = books.filter((b) => b.status === 'reading' || b.favorite);
@@ -28,15 +37,16 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
   const shelf3 = books.filter((b) => b.status === 'wishlist' || b.status === 'owned' || b.status === 'paused');
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current || isCameraZooming) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 12; // -6deg to +6deg tilt
-    const y = ((e.clientY - rect.top) / rect.height - 0.5) * -12;
-    setMousePos({ x, y });
+    // The zoom animation owns the transform while a book is pulled; don't fight it.
+    if (isCameraZooming) return;
+    tilt.onMouseMove(e);
   };
 
-  const handleBookClick = (book: Book) => {
+  const handleBookClick = (book: Book, e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setOriginRect({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
     ambientEngine.playPageTurnSound();
+    tilt.reset(); // flatten the stage so the zoom starts from rest
     setAnimatingBookId(book.id);
     setSelectedBookId(book.id);
     setIsCameraZooming(true);
@@ -53,6 +63,7 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
       setIsCameraZooming(false);
       setAnimatingBookId(null);
       setSelectedBookId(null);
+      setOriginRect(null);
     }, 400);
   };
 
@@ -79,7 +90,7 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
             return (
               <div
                 key={book.id}
-                onClick={() => handleBookClick(book)}
+                onClick={(e) => handleBookClick(book, e)}
                 style={{
                   width: `${Math.max(34, book.thickness || 38)}px`,
                   height: '185px',
@@ -146,8 +157,8 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
 
   return (
     <div
-      ref={containerRef}
       onMouseMove={handleMouseMove}
+      onMouseLeave={tilt.reset}
       className="w-full min-h-[80vh] bg-[var(--bg-ivory)] p-4 md:p-8 rounded-3xl border border-[var(--border-light)] relative overflow-hidden perspective-1000"
     >
       {/* 3D Camera Focus Indicator Banner when Zooming */}
@@ -158,14 +169,14 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
         </div>
       )}
 
-      {/* Parallax & Camera Stage Container */}
-      <div
-        className="transition-transform duration-700 ease-out transform-style-3d"
-        style={{
-          transform: isCameraZooming
-            ? 'scale(1.15) translate3d(0, 15px, 160px)'
-            : `rotateX(${mousePos.y}deg) rotateY(${mousePos.x}deg)`,
-        }}
+      {/* Parallax & Camera Stage Container. rotateX/rotateY are spring-driven
+          motion values (tilt); scale/y/z animate declaratively for the zoom.
+          Motion composes both into one transform matrix. */}
+      <m.div
+        className="transform-style-3d"
+        style={{ rotateX: tilt.rotateX, rotateY: tilt.rotateY }}
+        animate={isCameraZooming ? { scale: 1.15, y: 15, z: 160 } : { scale: 1, y: 0, z: 0 }}
+        transition={{ duration: 0.7, ease: EASE_OUT }}
       >
         {/* Header */}
         <div className="max-w-4xl mx-auto text-center mb-10">
@@ -187,7 +198,7 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
           {renderShelf('Completed Volumes', shelf2, 'shelf-2')}
           {renderShelf('Saved & Wishlist Volumes', shelf3, 'shelf-3')}
         </div>
-      </div>
+      </m.div>
 
       {/* Cinematic 3D Book Inspection Overlay Modal */}
       {selectedBookId && (
@@ -199,13 +210,14 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
               return (
                 <div className="flex flex-col items-center">
                   <div className="relative group/cover mb-6">
-                    <div className="w-44 h-64 rounded-xl overflow-hidden shadow-2xl transform hover:rotate-3 hover:scale-105 transition-all duration-300 border-4 border-[var(--white)]">
+                    <div className="w-44 h-64 rounded-xl shadow-2xl transform hover:rotate-3 hover:scale-105 transition-all duration-300 border-4 border-[var(--white)]">
                       <BookCover
                         title={book.title}
                         author={book.author}
                         coverUrl={book.cover}
                         isbn13={book.isbn}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover rounded-lg"
+                        layoutId={isOpenCinematic ? `shelf-cover-${book.id}` : undefined}
                       />
                     </div>
                     <div className="absolute top-2 right-2 bg-[var(--ink)]/80 backdrop-blur-md text-[var(--bg-ivory)] text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
@@ -248,6 +260,28 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
               );
             })()}
           </div>
+        </div>
+      )}
+
+      {/* Shared-element cover. This fixed, face-on plate carries the same layoutId
+          as the modal's cover, so Motion flies the jacket between shelf and modal
+          instead of cross-fading. It's mounted only while the book is pulling from
+          the shelf (before the modal claims the id) and again on the way back.
+          Deliberately NOT inside the 3D stage — a face-on flight reads far better
+          than one that rotates edge-on through the parallax transform. */}
+      {originRect && selectedBook && !isOpenCinematic && (
+        <div
+          className="fixed z-[60] pointer-events-none"
+          style={{ top: originRect.top, left: originRect.left, width: originRect.width, height: originRect.height }}
+        >
+          <BookCover
+            title={selectedBook.title}
+            author={selectedBook.author}
+            coverUrl={selectedBook.cover}
+            isbn13={selectedBook.isbn}
+            className="w-full h-full object-cover rounded-sm shadow-2xl"
+            layoutId={`shelf-cover-${selectedBook.id}`}
+          />
         </div>
       )}
     </div>

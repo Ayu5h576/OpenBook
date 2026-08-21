@@ -1,5 +1,5 @@
-import React, { useState, useContext } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useContext, Suspense } from 'react';
+import { useOutlet, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 import { RightSidebar } from './RightSidebar';
@@ -7,6 +7,8 @@ import { AuthContext } from '../context/AuthContext';
 import { useAnalytics } from '../hooks/useAnalytics';
 import { useActivityFeed } from '../hooks/useActivityFeed';
 import { sampleQuotes } from '../data/mockData';
+import { PageLoader } from './PageLoader';
+import { m, AnimatePresence, pageVariants } from '../motion';
 
 export function AppLayout() {
   const auth = useContext(AuthContext);
@@ -19,6 +21,14 @@ export function AppLayout() {
   // Live analytics and activity feed for RightSidebar
   const { stats: analyticsStats, goal: readingGoal } = useAnalytics();
   const { activities: feedActivities } = useActivityFeed('following', 5);
+
+  // Freeze the matched child route as an element so AnimatePresence can hold the
+  // *outgoing* page mounted through its exit while the next one enters. A live
+  // <Outlet/> would render the current match in both the exiting and entering
+  // copies; useOutlet captures it per-render, and the differing key below keeps
+  // the old subtree alive for the duration of the transition. The outlet context
+  // is preserved by passing it here, exactly as the old <Outlet context> did.
+  const outlet = useOutlet({ searchQuery, setSearchQuery });
 
   if (!auth?.isAuthenticated) {
     return null; // App.tsx routing will handle redirects
@@ -59,8 +69,24 @@ export function AppLayout() {
           onClose={() => setIsSidebarOpen(false)}
         />
 
-        <main className="flex-1 min-w-0 animate-fade-up">
-          <Outlet context={{ searchQuery, setSearchQuery }} />
+        <main className="flex-1 min-w-0">
+          {/* Only the routed content transitions — the navbar, sidebar, and
+              right rail stay mounted so navigation feels like turning a page,
+              not reloading the app. The inner Suspense keeps that chrome up
+              while a lazy route chunk loads, rather than dropping to the
+              full-screen loader in App.tsx. */}
+          <AnimatePresence mode="wait" initial={false}>
+            <m.div
+              key={location.pathname}
+              variants={pageVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="min-w-0"
+            >
+              <Suspense fallback={<PageLoader />}>{outlet}</Suspense>
+            </m.div>
+          </AnimatePresence>
         </main>
 
         {showRightSidebar && (

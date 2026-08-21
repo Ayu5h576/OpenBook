@@ -5,6 +5,7 @@ import { useBookMedia, useBookOffers } from '../hooks/useBookExtras';
 import { PurchasePanel } from './PurchasePanel';
 import { ScrapbookPanel } from './ScrapbookPanel';
 import { Globe, X } from 'lucide-react';
+import { m } from '../motion';
 
 interface BookSpreadProps {
   /** Local (UUID) book id — the offers and media endpoints key off this. */
@@ -85,17 +86,25 @@ export const BookSpread: React.FC<BookSpreadProps> = ({
   }, [handleKeyDown]);
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex flex-col items-center justify-center p-2 sm:p-5 animate-fade-in"
+    <m.div
+      className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex flex-col items-center justify-center p-2 sm:p-5"
       onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
     >
-      <div
+      <m.div
         ref={containerRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="book-spread-title"
-        className="w-full max-w-[1180px] flex flex-col max-h-full animate-scale-in"
+        className="w-full max-w-[1180px] flex flex-col max-h-full"
         onClick={(event) => event.stopPropagation()}
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.97, y: 8 }}
+        transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
       >
         {/* Header sits on the backdrop so the album pages stay uncluttered. */}
         <div className="flex items-center justify-between gap-4 px-1 sm:px-2 pb-3 flex-shrink-0">
@@ -178,8 +187,8 @@ export const BookSpread: React.FC<BookSpreadProps> = ({
             />
           </div>
         </div>
-      </div>
-    </div>,
+      </m.div>
+    </m.div>,
     document.body
   );
 };

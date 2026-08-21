@@ -12,6 +12,7 @@ import { BookApiService, LocalBook } from '../services/api';
 import { googleBookToApp, stripHtml } from '../utils/bookMapper';
 import { ProgressTracker } from '../components/ProgressTracker';
 import { BookSpread } from '../components/BookSpread';
+import { AnimatePresence } from '../motion';
 import { BookCover } from '../components/BookCover';
 import { BookOpen, Heart, Bookmark, Share2, Star, ArrowLeft, Play, Sparkles, MessageSquare, Send, RefreshCw, FolderHeart, Check, X, Info } from 'lucide-react';
 
@@ -654,16 +655,20 @@ export const BookDetailView: React.FC = () => {
       )}
 
       {/* More Info Spread — buying options + cover scrapbook.
-          Needs the local UUID, so it only opens once the book has resolved. */}
-      {showSpread && realUuid && (
-        <BookSpread
-          bookId={realUuid}
-          title={book.title}
-          author={book.author}
-          description={cleanDescription}
-          onClose={() => setShowSpread(false)}
-        />
-      )}
+          Needs the local UUID, so it only opens once the book has resolved.
+          Wrapped in AnimatePresence so the album animates *closed*, not just open. */}
+      <AnimatePresence>
+        {showSpread && realUuid && (
+          <BookSpread
+            key="book-spread"
+            bookId={realUuid}
+            title={book.title}
+            author={book.author}
+            description={cleanDescription}
+            onClose={() => setShowSpread(false)}
+          />
+        )}
+      </AnimatePresence>
 
     </div>
   );

@@ -7,6 +7,7 @@ import App from './App.tsx';
 import { AuthProvider } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import { ToastStack } from './components/Toast';
+import { MotionProvider } from './motion';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -25,7 +26,9 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <ToastProvider>
           <AuthProvider>
-            <App />
+            <MotionProvider>
+              <App />
+            </MotionProvider>
           </AuthProvider>
           <ToastStack />
         </ToastProvider>
