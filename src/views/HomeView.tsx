@@ -13,6 +13,7 @@ import { useWishlist } from '../hooks/useWishlist';
 import { BookApiService } from '../services/api';
 import { googleBookToApp, libraryEntryToApp } from '../utils/bookMapper';
 import { Sparkles, ArrowRight, BookOpen, Flame, Compass, Star, RefreshCw } from 'lucide-react';
+import { m, staggerListContainer, staggerListItem } from '../motion';
 
 export const HomeView: React.FC = () => {
   const navigate = useNavigate();
@@ -247,11 +248,18 @@ export const HomeView: React.FC = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <m.div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+            variants={staggerListContainer}
+            initial="initial"
+            animate="animate"
+          >
             {recentlyOpened.map((book) => (
-              <BookCard3D key={book.id} book={book} onSelect={handleSelectBook} />
+              <m.div key={book.id} variants={staggerListItem} whileTap={{ scale: 0.985 }}>
+                <BookCard3D book={book} onSelect={handleSelectBook} />
+              </m.div>
             ))}
-          </div>
+          </m.div>
         </section>
       )}
 
@@ -262,11 +270,18 @@ export const HomeView: React.FC = () => {
             <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">New Releases</h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <m.div
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            variants={staggerListContainer}
+            initial="initial"
+            animate="animate"
+          >
             {newReleases.map((book) => (
-              <BookCard3D key={book.id} book={book} onSelect={handleSelectBook} layout="horizontal" />
+              <m.div key={book.id} variants={staggerListItem} whileTap={{ scale: 0.985 }}>
+                <BookCard3D book={book} onSelect={handleSelectBook} layout="horizontal" />
+              </m.div>
             ))}
-          </div>
+          </m.div>
         </section>
       )}
 

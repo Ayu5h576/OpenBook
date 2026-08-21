@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { m } from '../motion';
 
 /**
  * Book cover with an honest fallback chain.
@@ -42,6 +43,14 @@ interface BookCoverProps {
    * 400KB-per-card mistake, not a cosmetic one.
    */
   size?: CoverSize;
+  /**
+   * Opt-in shared-element id. When two mounted BookCovers carry the same
+   * `layoutId` and one replaces the other, Motion flies the cover between their
+   * positions (see the bookshelf → cinematic-modal handoff). Omitted everywhere
+   * else, so the common case renders a bare <img>/<svg> with no wrapper — the
+   * sizing every existing call site relies on is untouched.
+   */
+  layoutId?: string;
 }
 
 // ─── Placeholder detection ────────────────────────────────────────────────────
@@ -283,6 +292,7 @@ export const BookCover: React.FC<BookCoverProps> = ({
   className,
   eager,
   size = 'thumb',
+  layoutId,
 }: BookCoverProps) => {
   const candidates = useMemo(() => {
     const urls: string[] = [];
@@ -303,9 +313,9 @@ export const BookCover: React.FC<BookCoverProps> = ({
 
   const src = candidates[index];
 
-  if (!src) return <DrawnCover title={title} author={author} className={className} />;
-
-  return (
+  const inner = !src ? (
+    <DrawnCover title={title} author={author} className={className} />
+  ) : (
     <img
       // Keyed by URL so React swaps the element rather than reusing one that has
       // already fired onError for the previous candidate.
@@ -319,5 +329,16 @@ export const BookCover: React.FC<BookCoverProps> = ({
         if (!hasPlausibleCoverShape(event.currentTarget)) setIndex((i) => i + 1);
       }}
     />
+  );
+
+  // No layoutId → return the bare element, exactly as before (no extra wrapper,
+  // so callers' object-cover / sizing on `className` behaves identically). With
+  // a layoutId, the shared-element wrapper fills its parent and the cover fills
+  // the wrapper, so the flight box tracks the rendered cover.
+  if (!layoutId) return inner;
+  return (
+    <m.div layoutId={layoutId} className="w-full h-full">
+      {inner}
+    </m.div>
   );
 };

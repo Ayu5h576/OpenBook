@@ -11,6 +11,7 @@ import { googleBookToApp } from '../utils/bookMapper';
 import { Search, Compass, BookOpen, Plus, Star } from 'lucide-react';
 
 import { useLibrary } from '../hooks/useLibrary';
+import { m, staggerListContainer, staggerListItem } from '../motion';
 
 // Renders a card for a live Google Books result
 function GoogleBookCard({
@@ -226,25 +227,37 @@ export const ExploreView: React.FC = () => {
         </div>
       ) : isSearching ? (
         /* Live Google Books results */
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <m.div
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+          variants={staggerListContainer}
+          initial="initial"
+          animate="animate"
+        >
           {apiResults.map((book) => (
-            <div key={book.googleBooksId}>
+            <m.div key={book.googleBooksId} variants={staggerListItem} whileTap={{ scale: 0.985 }}>
               <GoogleBookCard
                 book={book}
                 onImport={handleImport}
                 onSelect={handleSelectGoogleBook}
                 importing={importingId === book.googleBooksId}
               />
-            </div>
+            </m.div>
           ))}
-        </div>
+        </m.div>
       ) : (
         /* Browse mode — local books */
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <m.div
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+          variants={staggerListContainer}
+          initial="initial"
+          animate="animate"
+        >
           {filteredBooks.map((book) => (
-            <BookCard3D key={book.id} book={book} onSelect={handleSelectBook} />
+            <m.div key={book.id} variants={staggerListItem} whileTap={{ scale: 0.985 }}>
+              <BookCard3D book={book} onSelect={handleSelectBook} />
+            </m.div>
           ))}
-        </div>
+        </m.div>
       )}
 
       {/* Empty states */}
