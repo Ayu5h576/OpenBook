@@ -500,12 +500,26 @@ export interface ApiReview {
   id: string;
   userId: string;
   bookId: string;
-  rating: number;
-  title?: string;
-  body?: string;
+  /**
+   * `Decimal(3,1)` in Postgres, so this arrives as a **string** ("4.5") on the
+   * wire, not a number. Coerce with `normalizeRating` from utils/reviewStats
+   * before doing arithmetic or rendering.
+   */
+  rating: number | string;
+  title?: string | null;
+  body?: string | null;
   isPrivate: boolean;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Present on the public list only — `getMyReview` and `upsertReview` return a
+   * bare row with no author join. `profile` is nullable in the schema, so a user
+   * without one has no username.
+   */
+  user?: {
+    id: string;
+    profile: { username: string; avatar: string | null } | null;
+  } | null;
 }
 
 export const ReviewApiService = {

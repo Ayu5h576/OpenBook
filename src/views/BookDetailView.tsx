@@ -12,6 +12,7 @@ import { BookApiService, LocalBook } from '../services/api';
 import { googleBookToApp, stripHtml } from '../utils/bookMapper';
 import { ProgressTracker } from '../components/ProgressTracker';
 import { BookSpread } from '../components/BookSpread';
+import { ReviewsSection } from '../components/reviews/ReviewsSection';
 import { AnimatePresence } from '../motion';
 import { BookCover } from '../components/BookCover';
 import { BookOpen, Heart, Bookmark, Share2, Star, ArrowLeft, Play, Sparkles, MessageSquare, Send, RefreshCw, FolderHeart, Check, X, Info } from 'lucide-react';
@@ -276,12 +277,22 @@ export const BookDetailView: React.FC = () => {
 
             {/* Rating Stars & Metadata Grid */}
             <div className="flex items-center gap-4 my-4 text-xs">
-              <div className="flex items-center gap-1.5 text-[#B8860B] font-bold bg-[#FFF8E7] px-3 py-1 rounded-full">
-                <Star className="w-4 h-4 fill-current" />
-                <span>{book.rating}</span>
-                <span className="text-[var(--muted)] font-normal">({book.reviewCount} reviews)</span>
-              </div>
-              <span className="text-[var(--muted)]">•</span>
+              {/* Gated on a real rating count: `book.rating` falls back to 4.0,
+                  so an unrated book used to show a fabricated score in the most
+                  prominent spot on the page. */}
+              {book.reviewCount > 0 && (
+                <>
+                  <button
+                    onClick={() => document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="flex items-center gap-1.5 text-[#B8860B] font-bold bg-[#FFF8E7] px-3 py-1 rounded-full hover:bg-[#FDF0D5] transition-colors"
+                  >
+                    <Star className="w-4 h-4 fill-current" />
+                    <span>{book.rating}</span>
+                    <span className="text-[var(--muted)] font-normal">({book.reviewCount} reviews)</span>
+                  </button>
+                  <span className="text-[var(--muted)]">•</span>
+                </>
+              )}
               <span className="text-[var(--muted)]">{book.pages} pages</span>
               <span className="text-[var(--muted)]">•</span>
               <span className="text-[var(--muted)]">{book.language}</span>
@@ -494,6 +505,18 @@ export const BookDetailView: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Reviews — the external aggregate and member-written reviews, kept
+          visibly apart so a Google Books score is never read as a peer's
+          opinion. External figures come straight off `localBook`, not the
+          mapped `book`, which fills a placeholder rating in. */}
+      <ReviewsSection
+        id="reviews"
+        className="scroll-mt-24"
+        bookId={realUuid}
+        externalRating={localBook?.averageRating}
+        externalCount={localBook?.ratingsCount}
+      />
 
       {/* Next Step Recommendations */}
       {relatedBooks && relatedBooks.length > 0 && (

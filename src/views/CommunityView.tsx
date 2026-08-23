@@ -10,22 +10,10 @@ import { useActivityFeed, FeedScope } from '../hooks/useActivityFeed';
 import type { ActivityItem, ActivityType, UserSummary } from '../services/api';
 import { ClubCardSkeleton, ActivityItemSkeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
+import { timeAgo } from '../utils/timeAgo';
 import { ErrorBanner } from '../components/ErrorBanner';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function timeAgo(iso: string): string {
-  const then = new Date(iso).getTime();
-  const secs = Math.max(1, Math.floor((Date.now() - then) / 1000));
-  if (secs < 60) return `${secs}s ago`;
-  const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString();
-}
 
 const ACTIVITY_ICON: Record<ActivityType, React.ComponentType<{ className?: string }>> = {
   FINISHED_BOOK: BookOpen,

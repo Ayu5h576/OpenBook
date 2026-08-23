@@ -2,6 +2,8 @@ import React from 'react';
 import { Quote } from '../types';
 import { Flame, Calendar, Sparkles, Trophy, ArrowRight } from 'lucide-react';
 import type { User, AnalyticsStats, ReadingGoal, ActivityItem } from '../services/api';
+import { Avatar } from './Avatar';
+import { timeAgo } from '../utils/timeAgo';
 
 /**
  * Describes the activity verbs for each type so the feed reads naturally.
@@ -19,17 +21,6 @@ function activityVerb(type: ActivityItem['type']): string {
     case 'UNLOCKED_ACHIEVEMENT': return 'unlocked an achievement';
     default: return 'did something';
   }
-}
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
 }
 
 interface RightSidebarProps {
@@ -136,17 +127,13 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
           )}
           {activities.slice(0, 3).map((act) => (
             <div key={act.id} className="flex items-start gap-3">
-              {act.actor.avatar ? (
-                <img
-                  src={act.actor.avatar}
-                  alt={act.actor.username}
-                  className="w-8 h-8 rounded-full object-cover mt-0.5"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] flex items-center justify-center text-xs font-bold mt-0.5">
-                  {act.actor.username.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <Avatar
+                username={act.actor.username}
+                avatar={act.actor.avatar}
+                shape="rounded-full"
+                initialClass="text-[var(--ink)]"
+                className="mt-0.5"
+              />
               <div className="flex-1 text-xs">
                 <span className="font-semibold text-[var(--ink)]">{act.actor.username}</span>
                 <p className="text-[var(--muted)]">
@@ -155,7 +142,9 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                     <> <span className="italic text-[var(--ink)]">{act.book.title}</span></>
                   )}
                 </p>
-                <span className="text-[10px] text-[#A0A0A0]">{timeAgo(act.createdAt)}</span>
+                <span className="text-[10px] text-[#A0A0A0]">
+                  {timeAgo(act.createdAt, { granularity: 'justNow', absoluteAfterDays: Infinity })}
+                </span>
               </div>
             </div>
           ))}

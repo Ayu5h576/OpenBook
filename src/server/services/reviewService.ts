@@ -7,7 +7,11 @@ export class ReviewService {
   async getBookReviews(bookId: string) {
     return prisma.review.findMany({
       where: { bookId, isPrivate: false },
-      include: { user: { include: { profile: { select: { username: true, avatar: true } } } } },
+      // `select`, never `include`: an include on `user` returns every User
+      // scalar — email and passwordHash included — and this endpoint is public.
+      include: {
+        user: { select: { id: true, profile: { select: { username: true, avatar: true } } } },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

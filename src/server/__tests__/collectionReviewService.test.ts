@@ -161,6 +161,26 @@ describe('ReviewService', () => {
     );
   });
 
+  it('never exposes author credentials on the public review list', async () => {
+    // This route has no authMiddleware, so whatever the author join returns is
+    // world-readable. A Prisma `include` on `user` would return every User
+    // scalar — email and passwordHash among them. Pin the narrow `select`.
+    (prisma.review.findMany as any).mockResolvedValue([]);
+
+    await reviews.getBookReviews(BOOK);
+
+    const arg = (prisma.review.findMany as any).mock.calls[0][0];
+    const userJoin = arg.include.user;
+
+    expect(userJoin.include).toBeUndefined();
+    expect(userJoin.select).toEqual({
+      id: true,
+      profile: { select: { username: true, avatar: true } },
+    });
+    expect(Object.keys(userJoin.select)).not.toContain('email');
+    expect(Object.keys(userJoin.select)).not.toContain('passwordHash');
+  });
+
   it('announces a first-time public review to the feed', async () => {
     (prisma.review.findUnique as any).mockResolvedValue(null); // no existing review
     (prisma.review.upsert as any).mockResolvedValue({ id: 'rev-1' });
