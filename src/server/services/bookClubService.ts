@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma';
 import { NotFoundError, ConflictError, AuthorizationError, mapPrismaError } from '../utils/errors';
 import { recordActivity } from './socialService';
+import { notify } from './notificationService';
 import type { CreateClubInput, UpdateClubInput, CreateDiscussionInput, CreateCommentInput } from '../validators/social';
 
 const clubInclude = {
@@ -131,7 +132,7 @@ export class BookClubService {
   async joinClub(userId: string, clubId: string) {
     const club = await prisma.bookClub.findUnique({
       where: { id: clubId },
-      select: { id: true, name: true, isPrivate: true, currentBookId: true },
+      select: { id: true, name: true, isPrivate: true, currentBookId: true, ownerId: true },
     });
     if (!club) throw new NotFoundError('Book club');
     if (club.isPrivate) {
@@ -148,6 +149,15 @@ export class BookClubService {
     const profile = await prisma.profile.findUnique({ where: { id: userId }, select: { username: true } });
     await recordActivity(userId, 'JOINED_CLUB', {
       bookId: club.currentBookId,
+      metadata: {
+        actorUsername: profile?.username ?? 'Someone',
+        clubId: club.id,
+        clubName: club.name,
+      },
+    });
+
+    await notify(club.ownerId, 'JOINED_YOUR_CLUB', {
+      actorId: userId,
       metadata: {
         actorUsername: profile?.username ?? 'Someone',
         clubId: club.id,
@@ -249,13 +259,25 @@ export class BookClubService {
     await this.requireRole(userId, clubId, ['OWNER', 'MODERATOR', 'MEMBER']);
     const discussion = await prisma.discussion.findFirst({
       where: { id: discussionId, clubId },
-      select: { id: true },
+      select: { id: true, userId: true, title: true },
     });
     if (!discussion) throw new NotFoundError('Discussion');
 
     const comment = await prisma.discussionComment.create({
       data: { discussionId, userId, body: input.body },
       include: { user: { include: { profile: { select: { username: true, avatar: true } } } } },
+    });
+
+    // Ping the thread author. notify() drops self-directed rows, so replying
+    // to your own discussion stays silent.
+    await notify(discussion.userId, 'COMMENTED_ON_DISCUSSION', {
+      actorId: userId,
+      metadata: {
+        actorUsername: comment.user.profile?.username ?? 'Someone',
+        clubId,
+        discussionId,
+        discussionTitle: discussion.title,
+      },
     });
 
     return {

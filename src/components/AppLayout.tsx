@@ -20,7 +20,7 @@ export function AppLayout() {
 
   // Live analytics and activity feed for RightSidebar
   const { stats: analyticsStats, goal: readingGoal } = useAnalytics();
-  const { activities: feedActivities } = useActivityFeed('following', 5);
+  const { activities: feedActivities } = useActivityFeed('circle', 5);
 
   // Freeze the matched child route as an element so AnimatePresence can hold the
   // *outgoing* page mounted through its exit while the next one enters. A live

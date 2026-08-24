@@ -2,9 +2,13 @@ import { useCallback } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { SocialApiService } from '../services/api';
 
-export type FeedScope = 'following' | 'me' | 'global';
+/**
+ * `circle` = you + everyone you follow + your club co-members.
+ * `me` = only your own activity. There is no "everyone" feed by design.
+ */
+export type FeedScope = 'circle' | 'me';
 
-export function useActivityFeed(scope: FeedScope = 'following', limit = 20) {
+export function useActivityFeed(scope: FeedScope = 'circle', limit = 20) {
   const {
     data,
     isLoading: loading,

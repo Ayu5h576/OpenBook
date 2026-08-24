@@ -786,6 +786,8 @@ export interface ActivityItem {
   actor: { id: string; username: string; avatar?: string | null };
   book?: { id: string; title: string; authors: string[]; coverImage?: string | null } | null;
   metadata: Record<string, any>;
+  /** Why this row is in the circle feed — "You follow priya", "Fellow club member", or null for your own activity. */
+  reason?: string | null;
   createdAt: string;
 }
 
@@ -794,11 +796,27 @@ export interface ActivityFeed {
   nextCursor: string | null;
 }
 
+/** A reader surfaced by search or suggestions, annotated for the follow button. */
+export interface DiscoveredReader extends UserSummary {
+  isFollowing: boolean;
+  /** Why this reader was suggested; null for plain search hits. */
+  reason?: string | null;
+}
+
 export const SocialApiService = {
-  getFeed(scope: 'following' | 'me' | 'global' = 'following', limit = 20, cursor?: string) {
+  getFeed(scope: 'circle' | 'me' = 'circle', limit = 20, cursor?: string) {
     const params = new URLSearchParams({ scope, limit: String(limit) });
     if (cursor) params.set('cursor', cursor);
     return apiClient.get<ActivityFeed>(`/api/social/feed?${params}`);
+  },
+
+  searchReaders(q: string, limit = 20) {
+    const params = new URLSearchParams({ q, limit: String(limit) });
+    return apiClient.get<{ users: DiscoveredReader[] }>(`/api/social/search?${params}`);
+  },
+
+  getSuggestedReaders(limit = 8) {
+    return apiClient.get<{ users: DiscoveredReader[] }>(`/api/social/suggested?limit=${limit}`);
   },
 
   getStats(userId?: string) {
@@ -958,6 +976,49 @@ export interface AchievementsResponse {
 export const AchievementApiService = {
   getAchievements() {
     return apiClient.get<AchievementsResponse>('/api/achievements');
+  },
+};
+
+// ─── Notifications ──────────────────────────────────────────────────────────────
+
+export type NotificationType =
+  | 'FOLLOWED_YOU'
+  | 'COMMENTED_ON_DISCUSSION'
+  | 'JOINED_YOUR_CLUB';
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  /** Null when the actor's account has since been deleted. */
+  actor: { id: string; username: string; avatar?: string | null } | null;
+  metadata: Record<string, any>;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface NotificationFeed {
+  notifications: AppNotification[];
+  nextCursor: string | null;
+}
+
+export const NotificationApiService = {
+  list(limit = 20, cursor?: string, unreadOnly = false) {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (cursor) params.set('cursor', cursor);
+    if (unreadOnly) params.set('unreadOnly', 'true');
+    return apiClient.get<NotificationFeed>(`/api/notifications?${params}`);
+  },
+
+  getUnreadCount() {
+    return apiClient.get<{ unread: number }>('/api/notifications/unread-count');
+  },
+
+  markRead(id: string) {
+    return apiClient.post<{ read: boolean }>(`/api/notifications/${id}/read`, {});
+  },
+
+  markAllRead() {
+    return apiClient.post<{ updated: number }>('/api/notifications/read-all', {});
   },
 };
 

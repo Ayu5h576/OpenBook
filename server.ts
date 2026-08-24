@@ -21,6 +21,7 @@ import aiRoutes from './src/server/routes/aiRoutes';
 import socialRoutes from './src/server/routes/socialRoutes';
 import bookClubRoutes from './src/server/routes/bookClubRoutes';
 import achievementRoutes from './src/server/routes/achievementRoutes';
+import notificationRoutes from './src/server/routes/notificationRoutes';
 import { errorHandlerMiddleware } from './src/server/middlewares/errorHandler';
 
 // ---------------------------------------------------------------------------
@@ -121,6 +122,7 @@ export async function buildApp(): Promise<Express> {
   app.use('/api/social', socialRoutes);
   app.use('/api/clubs', bookClubRoutes);
   app.use('/api/achievements', achievementRoutes);
+  app.use('/api/notifications', notificationRoutes);
 
   // Legacy AI endpoints (deprecated - kept for backward compatibility)
   app.post('/api/ai/analyze-legacy', async (req, res) => {

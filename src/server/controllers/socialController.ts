@@ -3,7 +3,7 @@ import { AuthenticatedRequest } from '../types/index';
 import { socialService } from '../services/socialService';
 import { AuthenticationError } from '../utils/errors';
 import { validateData } from '../validators/auth';
-import { feedQuerySchema } from '../validators/social';
+import { feedQuerySchema, userSearchSchema, suggestedReadersSchema } from '../validators/social';
 
 function requireUser(req: AuthenticatedRequest): string {
   if (!req.userId) throw new AuthenticationError();
@@ -49,6 +49,20 @@ export class SocialController {
     const query = validateData(feedQuerySchema, req.query);
     const feed = await socialService.getFeed(userId, query);
     res.json(feed);
+  }
+
+  async searchUsers(req: AuthenticatedRequest, res: Response) {
+    const userId = requireUser(req);
+    const query = validateData(userSearchSchema, req.query);
+    const users = await socialService.searchUsers(userId, query);
+    res.json({ users });
+  }
+
+  async getSuggestedReaders(req: AuthenticatedRequest, res: Response) {
+    const userId = requireUser(req);
+    const { limit } = validateData(suggestedReadersSchema, req.query);
+    const users = await socialService.getSuggestedReaders(userId, limit);
+    res.json({ users });
   }
 }
 

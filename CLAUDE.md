@@ -26,6 +26,16 @@
 - `bookMediaService.ts` collects collage images from Open Library (work → editions → distinct cover ids) plus an author portrait from Open Library or Wikipedia. Every external call is individually try/caught and the service **never throws** — a third-party outage must still leave the local cover on the page. Cover URLs carry `?default=false` so missing covers 404 and the client can drop them.
 - Cache TTLs: offers 6h, media 7d, Google Play `saleInfo` 6h (keyed per country). Null results are cached inside an envelope object, because `cacheService` treats a cached `null` as a miss.
 
+### Readers Community (the circle feed, discovery, notifications)
+
+Activity is visible only to readers who share a connection with the actor. **There is deliberately no "everyone" feed** — `feedQuerySchema` accepts `circle | me` and nothing else, and removing that constraint would silently publish every user's reading activity to every other user. `socialService.getFeed` builds `circle` as the union of the caller, everyone they follow, and their club co-members, so the no-follows/no-clubs case must resolve to `where: { userId: { in: [me] } }` — never an unfiltered `where: {}`. A test in `socialService.test.ts` asserts exactly that; if you touch `getFeed`, keep it passing.
+
+- Because `circle` merges two relationships, every row carries a `reason` ("You follow priya" / "Fellow club member", `null` for your own activity). Club peers are written into `relationByActor` **before** follows, so a direct follow overwrites the weaker label.
+- De-globalizing the feed creates a cold-start problem: a new user's circle is just themselves. `GET /api/social/search` (username substring) and `GET /api/social/suggested` exist to solve it. Suggestions are tiered — club co-members, then second-degree follows, then most-followed as a fallback — and anyone already followed is excluded at every tier. Both routes are declared **before** the `/:userId` group in `socialRoutes.ts` or the literal segments get captured as a user id.
+- Notifications (`FOLLOWED_YOU`, `COMMENTED_ON_DISCUSSION`, `JOINED_YOUR_CLUB`) are written by `notify()`, which mirrors `recordActivity`: best-effort, logs and swallows, so a notification write can never break the action that triggered it. It also **drops self-directed rows** — replying to your own discussion must not ping you. `markRead` looks the row up with `findFirst({ where: { id, userId } })` so one user cannot mark another's notification read.
+- `notificationQuerySchema` keeps `unreadOnly` as the literal string `'true' | 'false'` and the controller converts it. This is not an oversight: `validateData<T>(schema: z.ZodSchema<T>, ...)` resolves to `ZodType<T, ZodTypeDef, T>`, so a `.transform()` that changes the output type fails to type-check. Same reason applies to any future boolean query param.
+- Which discussion thread is open lives in the URL (`/clubs/:id?discussion=<id>`), not local state, so a reply notification can deep-link to the thread.
+
 ### Environment Variables
 Required:
 - `DATABASE_URL`: PostgreSQL connection
@@ -46,6 +56,7 @@ Optional:
 - [x] Reading room (distraction-free reader) implementation — `ReadingRoom.tsx` on live library data with session tracking (PDF rendering still outstanding, see below)
 - [x] Club detail UI (discussions + comments threads) — `ClubDetailView` + `useBookClub`/`useDiscussion`, opened from CommunityView
 - [x] User profile pages with follow buttons + follower/following lists — `ProfileView` + `useProfile`, reachable from the activity feed, club members/owner/discussion authors, and the Navbar "My Profile" menu
+- [x] Readers community loop — scoped "My Circle" feed, reader discovery, notifications (see below)
 - [ ] Live data streaming for analytics dashboard
 
 ### Technical Debt / Blockers

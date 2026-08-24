@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Users, MessageSquare, Loader2, Lock, Crown, Shield, UserCheck,
   Plus, Send, Sparkles,
@@ -223,7 +223,17 @@ export const ClubDetailView: React.FC = () => {
   const navigate = useNavigate();
   // We can safely cast clubId because the route is only matched if the id exists
   const { club, discussions, loading, error, join, leave, createDiscussion } = useBookClub(clubId as string);
-  const [selectedDiscussionId, setSelectedDiscussionId] = useState<string | null>(null);
+  // Which thread is open lives in the URL (?discussion=<id>) so a reply
+  // notification can deep-link straight to it, and Back leaves the thread
+  // rather than the club.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedDiscussionId = searchParams.get('discussion');
+  const setSelectedDiscussionId = (id: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set('discussion', id);
+    else next.delete('discussion');
+    setSearchParams(next, { replace: true });
+  };
   const [showNewDiscussion, setShowNewDiscussion] = useState(false);
   const [busy, setBusy] = useState(false);
 
