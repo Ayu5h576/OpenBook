@@ -6,10 +6,11 @@ import { ApiCollection } from '../services/api';
 import { BookCover } from '../components/BookCover';
 import { CollectionCardSkeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
+import { LoadMore } from '../components/LoadMore';
 
 export const CollectionsView: React.FC = () => {
   const navigate = useNavigate();
-  const { collections, loading, createCollection, deleteCollection } = useCollections();
+  const { collections, loading, loadingMore, hasMore, loadMore, createCollection, deleteCollection } = useCollections();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -110,8 +111,10 @@ export const CollectionsView: React.FC = () => {
               className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 shadow-warm-sm hover:shadow-warm-md transition-all flex flex-col justify-between cursor-pointer hover:border-[#A0522D]">
               <div>
                 <div className="flex items-center justify-between mb-3">
+                  {/* `books` is only a six-cover preview, so the size has to
+                      come from the server's count. */}
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D]">
-                    {col.books.length} Volumes
+                    {col.bookCount} Volumes
                   </span>
                   <button
                     onClick={(e) => {
@@ -147,6 +150,10 @@ export const CollectionsView: React.FC = () => {
             </div>
           ))}
         </div>
+      )}
+
+      {!loading && collections.length > 0 && (
+        <LoadMore hasMore={hasMore} loadingMore={loadingMore} onLoadMore={loadMore} />
       )}
 
     </div>

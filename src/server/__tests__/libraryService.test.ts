@@ -17,6 +17,7 @@ vi.mock('../config/prisma', () => ({
       findMany: vi.fn(),
       findUnique: vi.fn(),
       findFirst: vi.fn(),
+      count: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -25,6 +26,7 @@ vi.mock('../config/prisma', () => ({
       findMany: vi.fn(),
       findUnique: vi.fn(),
       findFirst: vi.fn(),
+      count: vi.fn(),
       create: vi.fn(),
       delete: vi.fn(),
     },
@@ -84,12 +86,19 @@ describe('LibraryService', () => {
 
   // ---- getUserLibrary ------------------------------------------------------
   describe('getUserLibrary', () => {
-    it('returns all entries for a user', async () => {
+    /** The controller always hands the service a fully-defaulted query object. */
+    const query = (over: Record<string, any> = {}) => ({ limit: 24, ...over }) as any;
+
+    it('returns a page plus the real size of the filtered set', async () => {
       const entries = [fakeEntry(), fakeEntry({ id: 'entry-2' })];
       vi.mocked(prisma.libraryEntry.findMany).mockResolvedValue(entries as any);
+      vi.mocked(prisma.libraryEntry.count).mockResolvedValue(2);
 
-      const result = await service.getUserLibrary('user-1');
-      expect(result).toHaveLength(2);
+      const result = await service.getUserLibrary('user-1', query());
+
+      expect(result.entries).toHaveLength(2);
+      expect(result.total).toBe(2);
+      expect(result.nextCursor).toBeNull();
       expect(prisma.libraryEntry.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: { userId: 'user-1' } })
       );
@@ -97,11 +106,63 @@ describe('LibraryService', () => {
 
     it('filters by status when provided', async () => {
       vi.mocked(prisma.libraryEntry.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.libraryEntry.count).mockResolvedValue(0);
 
-      await service.getUserLibrary('user-1', 'COMPLETED' as any);
+      await service.getUserLibrary('user-1', query({ status: 'COMPLETED' }));
+
+      const where = { userId: 'user-1', status: 'COMPLETED' };
+      expect(prisma.libraryEntry.findMany).toHaveBeenCalledWith(expect.objectContaining({ where }));
+      // `total` is the size of the *filtered* set — the header would lie otherwise.
+      expect(prisma.libraryEntry.count).toHaveBeenCalledWith({ where });
+    });
+
+    it('narrows to a single book so the book page never has to scan a page', async () => {
+      vi.mocked(prisma.libraryEntry.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.libraryEntry.count).mockResolvedValue(0);
+
+      await service.getUserLibrary('user-1', query({ bookId: 'book-9' }));
+
       expect(prisma.libraryEntry.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { userId: 'user-1', status: 'COMPLETED' } })
+        expect.objectContaining({ where: { userId: 'user-1', bookId: 'book-9' } })
       );
+    });
+
+    it('over-fetches by one, then trims it and reports the last kept id as the cursor', async () => {
+      const rows = [fakeEntry(), fakeEntry({ id: 'entry-2' }), fakeEntry({ id: 'entry-3' })];
+      vi.mocked(prisma.libraryEntry.findMany).mockResolvedValue(rows as any);
+      vi.mocked(prisma.libraryEntry.count).mockResolvedValue(3);
+
+      const result = await service.getUserLibrary('user-1', query({ limit: 2 }));
+
+      expect(prisma.libraryEntry.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 3 }));
+      expect(result.entries.map((e) => e.id)).toEqual(['entry-1', 'entry-2']);
+      expect(result.nextCursor).toBe('entry-2');
+      expect(result.total).toBe(3);
+    });
+
+    it('skips the cursor row so a page never repeats its anchor', async () => {
+      vi.mocked(prisma.libraryEntry.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.libraryEntry.count).mockResolvedValue(0);
+
+      await service.getUserLibrary('user-1', query({ cursor: 'entry-2' }));
+
+      expect(prisma.libraryEntry.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ cursor: { id: 'entry-2' }, skip: 1 })
+      );
+    });
+
+    it('sorts on a total order, with never-opened books last', async () => {
+      vi.mocked(prisma.libraryEntry.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.libraryEntry.count).mockResolvedValue(0);
+
+      await service.getUserLibrary('user-1', query());
+
+      const { orderBy } = vi.mocked(prisma.libraryEntry.findMany).mock.calls[0][0] as any;
+      // Postgres sorts NULLs first for DESC; without `nulls: 'last'` every
+      // untouched book outranks the one being read.
+      expect(orderBy).toContainEqual({ lastReadAt: { sort: 'desc', nulls: 'last' } });
+      // A non-unique sort key lets cursor pages repeat or drop rows.
+      expect(orderBy[orderBy.length - 1]).toEqual({ id: 'desc' });
     });
   });
 
@@ -287,6 +348,37 @@ describe('LibraryService', () => {
   });
 
   // ---- wishlist operations -------------------------------------------------
+  describe('getWishlist', () => {
+    it('paginates the same way the library does', async () => {
+      const rows = [
+        { id: 'wish-1', book: FAKE_BOOK },
+        { id: 'wish-2', book: FAKE_BOOK },
+      ];
+      vi.mocked(prisma.wishlistEntry.findMany).mockResolvedValue(rows as any);
+      vi.mocked(prisma.wishlistEntry.count).mockResolvedValue(2);
+
+      const result = await service.getWishlist('user-1', { limit: 1 } as any);
+
+      expect(result.entries.map((e) => e.id)).toEqual(['wish-1']);
+      expect(result.nextCursor).toBe('wish-1');
+      expect(result.total).toBe(2);
+
+      const { orderBy } = vi.mocked(prisma.wishlistEntry.findMany).mock.calls[0][0] as any;
+      expect(orderBy[orderBy.length - 1]).toEqual({ id: 'desc' });
+    });
+
+    it('narrows to a single book for the book page', async () => {
+      vi.mocked(prisma.wishlistEntry.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.wishlistEntry.count).mockResolvedValue(0);
+
+      await service.getWishlist('user-1', { limit: 24, bookId: 'book-9' } as any);
+
+      expect(prisma.wishlistEntry.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 'user-1', bookId: 'book-9' } })
+      );
+    });
+  });
+
   describe('addToWishlist / removeFromWishlist', () => {
     it('adds a book to the wishlist', async () => {
       vi.mocked(prisma.wishlistEntry.findUnique).mockResolvedValue(null);

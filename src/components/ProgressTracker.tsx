@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { BookOpen, Check, Clock, Loader2, Pencil, Play, Square, Timer, X } from 'lucide-react';
-import { useLibrary } from '../hooks/useLibrary';
+import { useLibraryMutations } from '../hooks/useLibrary';
 import { formatDuration, useReadingSession } from '../hooks/useReadingSession';
 import { useToast } from '../context/ToastContext';
 import type { LibraryEntry, LibraryStatus } from '../services/api';
@@ -59,7 +59,7 @@ const THEMES = {
 export const ProgressTracker: React.FC<ProgressTrackerProps> = ({ entry, variant = 'light', className = '' }) => {
   const theme = THEMES[variant];
   const toast = useToast();
-  const { updateEntry, logSession, savingProgress } = useLibrary();
+  const { updateEntry, logSession, savingProgress } = useLibraryMutations();
   const { session, isActive, isActiveElsewhere, elapsedSecs, start, clear } = useReadingSession(entry.id);
 
   const pageCount = entry.book.pageCount ?? null;

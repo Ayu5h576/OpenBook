@@ -13,6 +13,9 @@ interface ReadingRoomProps {
   onOpenReader: (book: Book) => void;
 }
 
+/** Rows pulled for the reading-room carousel. */
+const READING_ROOM_PAGE = 60;
+
 /**
  * Convert a LibraryEntry to the Book shape needed by onOpenReader.
  */
@@ -48,7 +51,12 @@ function entryToBook(entry: LibraryEntry): Book {
 }
 
 export const ReadingRoom: React.FC<ReadingRoomProps> = ({ books: _legacyBooks, onOpenReader }) => {
-  const { entries, loading } = useLibrary();
+  // A bounded page rather than infinite scroll: the room is a carousel you step
+  // through one book at a time, and LIBRARY_ORDER surfaces pinned and
+  // most-recently-read rows first — so the books a reader would actually sit
+  // down with are on page one. Not filtered to READING server-side because of
+  // the fallback below.
+  const { entries, loading } = useLibrary(undefined, READING_ROOM_PAGE);
 
   // Filter to currently-reading books, then all others
   const readingEntries = entries.filter((e) => e.status === 'READING');

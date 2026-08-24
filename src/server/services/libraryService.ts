@@ -1,17 +1,77 @@
-import { LibraryStatus } from '@prisma/client';
+import { LibraryStatus, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { ConflictError, NotFoundError, mapPrismaError } from '../utils/errors';
 import { recordActivity } from './socialService';
 import { invalidateUserStats } from './analyticsService';
-import type { AddToLibraryInput, UpdateLibraryEntryInput, LogSessionInput } from '../validators/books';
+import type {
+  AddToLibraryInput,
+  UpdateLibraryEntryInput,
+  LogSessionInput,
+  LibraryQueryInput,
+  WishlistQueryInput,
+} from '../validators/books';
+
+/**
+ * Pinned first, then most recently read. Two keys here are load-bearing:
+ *
+ *  - `nulls: 'last'` on `lastReadAt`. Postgres sorts NULLs *first* for DESC, so
+ *    without it every never-opened book floats above the one you are actually
+ *    reading. That was merely odd while the whole shelf came back in a single
+ *    response; now that only the first page does, it would starve "Continue
+ *    reading" and "Recently opened" of anything in progress.
+ *  - `id` as the final key. Prisma resolves a cursor as "the rows after this id
+ *    in this order", so a non-total order lets rows with equal keys repeat or
+ *    vanish between pages. `isPinned`, `lastReadAt` and `createdAt` are all
+ *    non-unique; `id` makes the order total.
+ */
+const LIBRARY_ORDER: Prisma.LibraryEntryOrderByWithRelationInput[] = [
+  { isPinned: 'desc' },
+  { lastReadAt: { sort: 'desc', nulls: 'last' } },
+  { createdAt: 'desc' },
+  { id: 'desc' },
+];
+
+/** Same total-order requirement as LIBRARY_ORDER; priority is an enum, so HIGH first. */
+const WISHLIST_ORDER: Prisma.WishlistEntryOrderByWithRelationInput[] = [
+  { priority: 'asc' },
+  { createdAt: 'desc' },
+  { id: 'desc' },
+];
 
 export class LibraryService {
-  async getUserLibrary(userId: string, status?: LibraryStatus) {
-    return prisma.libraryEntry.findMany({
-      where: { userId, ...(status ? { status } : {}) },
-      include: { book: true },
-      orderBy: [{ isPinned: 'desc' }, { lastReadAt: 'desc' }, { createdAt: 'desc' }],
-    });
+  /**
+   * One cursor-paginated page of the reader's shelf, newest activity first.
+   *
+   * `total` is the real size of the filtered set, not the page — the library
+   * header reads "N Total Volumes Curated", which would otherwise silently
+   * degrade into "N loaded so far".
+   */
+  async getUserLibrary(userId: string, { status, bookId, limit, cursor }: LibraryQueryInput) {
+    const where: Prisma.LibraryEntryWhereInput = {
+      userId,
+      ...(status && { status: status as LibraryStatus }),
+      ...(bookId && { bookId }),
+    };
+
+    const [rows, total] = await Promise.all([
+      prisma.libraryEntry.findMany({
+        where,
+        include: { book: true },
+        orderBy: LIBRARY_ORDER,
+        take: limit + 1,
+        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+      }),
+      prisma.libraryEntry.count({ where }),
+    ]);
+
+    const hasMore = rows.length > limit;
+    const entries = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      entries,
+      nextCursor: hasMore ? entries[entries.length - 1].id : null,
+      total,
+    };
   }
 
   async addToLibrary(userId: string, input: AddToLibraryInput) {
@@ -134,12 +194,28 @@ export class LibraryService {
     return entry;
   }
 
-  async getWishlist(userId: string) {
-    return prisma.wishlistEntry.findMany({
-      where: { userId },
-      include: { book: true },
-      orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }],
-    });
+  async getWishlist(userId: string, { bookId, limit, cursor }: WishlistQueryInput) {
+    const where: Prisma.WishlistEntryWhereInput = { userId, ...(bookId && { bookId }) };
+
+    const [rows, total] = await Promise.all([
+      prisma.wishlistEntry.findMany({
+        where,
+        include: { book: true },
+        orderBy: WISHLIST_ORDER,
+        take: limit + 1,
+        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+      }),
+      prisma.wishlistEntry.count({ where }),
+    ]);
+
+    const hasMore = rows.length > limit;
+    const entries = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      entries,
+      nextCursor: hasMore ? entries[entries.length - 1].id : null,
+      total,
+    };
   }
 
   async addToWishlist(userId: string, bookId: string, priority: string, notes?: string) {

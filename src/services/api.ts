@@ -387,10 +387,41 @@ export interface ReadingSession {
   endedAt: string;
 }
 
+/**
+ * One page of a personal list. `total` is the size of the whole filtered set,
+ * not of `items` — the library and wishlist headers quote it, and they would
+ * silently start reading "N loaded so far" if they counted the page instead.
+ */
+export interface PagedList {
+  /** Pass back as `cursor` to fetch the next page; null when the list is exhausted. */
+  nextCursor: string | null;
+  total: number;
+}
+
+export interface LibraryPage extends PagedList {
+  entries: LibraryEntry[];
+}
+
+/** Query for one page of the shelf. `bookId` narrows to a membership check. */
+export interface LibraryQuery {
+  status?: LibraryStatus;
+  bookId?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+function listParams(query: Record<string, string | number | undefined>) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== '') params.set(key, String(value));
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
 export const LibraryApiService = {
-  async getLibrary(status?: LibraryStatus) {
-    const params = status ? `?status=${status}` : '';
-    return apiClient.get<{ entries: LibraryEntry[] }>(`/api/library${params}`);
+  getLibrary({ status, bookId, limit, cursor }: LibraryQuery = {}) {
+    return apiClient.get<LibraryPage>(`/api/library${listParams({ status, bookId, limit, cursor })}`);
   },
 
   async getEntry(entryId: string) {
@@ -427,9 +458,13 @@ export interface WishlistEntry {
   createdAt: string;
 }
 
+export interface WishlistPage extends PagedList {
+  entries: WishlistEntry[];
+}
+
 export const WishlistApiService = {
-  async getWishlist() {
-    return apiClient.get<{ entries: WishlistEntry[] }>('/api/wishlist');
+  getWishlist({ bookId, limit, cursor }: { bookId?: string; limit?: number; cursor?: string } = {}) {
+    return apiClient.get<WishlistPage>(`/api/wishlist${listParams({ bookId, limit, cursor })}`);
   },
 
   async addToWishlist(bookId: string, priority: 'HIGH' | 'MEDIUM' | 'LOW' = 'MEDIUM', notes?: string) {
@@ -459,14 +494,23 @@ export interface ApiCollection {
   description?: string;
   coverImage?: string;
   isPublic: boolean;
+  /**
+   * On the list endpoint this is a **cover preview** capped at six books, not the
+   * contents — use `bookCount` for the size and `getCollection` for the rest.
+   */
   books: CollectionBook[];
+  bookCount: number;
   createdAt: string;
   updatedAt: string;
 }
 
+export interface CollectionPage extends PagedList {
+  collections: ApiCollection[];
+}
+
 export const CollectionApiService = {
-  async getCollections() {
-    return apiClient.get<{ collections: ApiCollection[] }>('/api/collections');
+  getCollections({ limit, cursor }: { limit?: number; cursor?: string } = {}) {
+    return apiClient.get<CollectionPage>(`/api/collections${listParams({ limit, cursor })}`);
   },
 
   async getCollection(id: string) {

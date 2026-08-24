@@ -7,9 +7,10 @@ import {
   updateLibraryEntrySchema,
   logSessionSchema,
   addToWishlistSchema,
+  libraryQuerySchema,
+  wishlistQuerySchema,
 } from '../validators/books';
 import { AuthenticationError } from '../utils/errors';
-import { LibraryStatus } from '@prisma/client';
 
 function requireUser(req: AuthenticatedRequest): string {
   if (!req.userId) throw new AuthenticationError();
@@ -17,11 +18,17 @@ function requireUser(req: AuthenticatedRequest): string {
 }
 
 export class LibraryController {
+  /**
+   * Responds `{ entries, nextCursor, total }`.
+   *
+   * `status` used to be read straight off `req.query` and cast to LibraryStatus,
+   * which handed an unknown value to Prisma and surfaced as a 500; validating it
+   * makes that a 400.
+   */
   async getLibrary(req: AuthenticatedRequest, res: Response) {
     const userId = requireUser(req);
-    const status = req.query.status as LibraryStatus | undefined;
-    const entries = await libraryService.getUserLibrary(userId, status);
-    res.json({ entries });
+    const query = validateData(libraryQuerySchema, req.query);
+    res.json(await libraryService.getUserLibrary(userId, query));
   }
 
   async getEntry(req: AuthenticatedRequest, res: Response) {
@@ -59,8 +66,8 @@ export class LibraryController {
 
   async getWishlist(req: AuthenticatedRequest, res: Response) {
     const userId = requireUser(req);
-    const entries = await libraryService.getWishlist(userId);
-    res.json({ entries });
+    const query = validateData(wishlistQuerySchema, req.query);
+    res.json(await libraryService.getWishlist(userId, query));
   }
 
   async addToWishlist(req: AuthenticatedRequest, res: Response) {

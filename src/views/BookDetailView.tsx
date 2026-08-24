@@ -5,8 +5,8 @@ import { Book } from '../types';
 import { BookDetailSkeleton } from '../components/Skeleton';
 import { useAIBookDetail } from '../hooks/useAI';
 import { useCollections } from '../hooks/useCollections';
-import { useLibrary } from '../hooks/useLibrary';
-import { useWishlist } from '../hooks/useWishlist';
+import { useLibraryMutations, useLibraryEntryForBook } from '../hooks/useLibrary';
+import { useWishlistMutations, useWishlistEntryForBook } from '../hooks/useWishlist';
 import { useToast } from '../context/ToastContext';
 import { BookApiService, LocalBook } from '../services/api';
 import { googleBookToApp, stripHtml } from '../utils/bookMapper';
@@ -15,6 +15,7 @@ import { BookSpread } from '../components/BookSpread';
 import { ReviewsSection } from '../components/reviews/ReviewsSection';
 import { AnimatePresence } from '../motion';
 import { BookCover } from '../components/BookCover';
+import { LoadMore } from '../components/LoadMore';
 import { BookOpen, Heart, Bookmark, Share2, Star, ArrowLeft, Play, Sparkles, MessageSquare, Send, RefreshCw, FolderHeart, Check, X, Info } from 'lucide-react';
 
 import { createPortal } from 'react-dom';
@@ -44,11 +45,13 @@ export const BookDetailView: React.FC = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { entries: libEntries, addBook: addLibraryBook } = useLibrary();
-  const { entries: wishEntries, addBook: addWishlist, removeBook: removeWishlist } = useWishlist();
-
-  const libEntry = localBook ? libEntries.find(e => e.book.id === localBook.id) : undefined;
-  const wishEntry = localBook ? wishEntries.find(e => e.book.id === localBook.id) : undefined;
+  // Asked of the server per book rather than searched for in a page of the
+  // library/wishlist: those lists are paginated now, so a book on page 3 would
+  // read as "not in your library" and the Add button would 409.
+  const { addBook: addLibraryBook } = useLibraryMutations();
+  const { addBook: addWishlist, removeBook: removeWishlist } = useWishlistMutations();
+  const { entry: libEntry } = useLibraryEntryForBook(localBook?.id);
+  const { entry: wishEntry } = useWishlistEntryForBook(localBook?.id);
 
   const isFavorite = libEntry?.isFavorite || false;
   const isWishlist = !!wishEntry;
@@ -109,7 +112,14 @@ export const BookDetailView: React.FC = () => {
 
   const realUuid = localBook?.id;
   const ai = useAIBookDetail(realUuid);
-  const { collections, loading: collectionsLoading, addBook: addBookToCollection } = useCollections();
+  const {
+    collections,
+    loading: collectionsLoading,
+    loadingMore: loadingMoreCollections,
+    hasMore: hasMoreCollections,
+    loadMore: loadMoreCollections,
+    addBook: addBookToCollection,
+  } = useCollections();
 
   if (isBookLoading || !book) {
     return (
@@ -645,10 +655,17 @@ export const BookDetailView: React.FC = () => {
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-xs text-[var(--ink)]">{collection.name}</p>
-                      <p className="text-[10px] text-[var(--muted)]">{collection.books?.length ?? 0} books</p>
+                      <p className="text-[10px] text-[var(--muted)]">{collection.bookCount} books</p>
                     </div>
                   </label>
                 ))}
+                {/* The picker paginates like the Collections page, so a reader
+                    with more collections than one page can still reach them. */}
+                <LoadMore
+                  hasMore={hasMoreCollections}
+                  loadingMore={loadingMoreCollections}
+                  onLoadMore={loadMoreCollections}
+                />
               </div>
             )}
 

@@ -1,20 +1,16 @@
 import { useCallback } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CollectionApiService, ApiCollection } from '../services/api';
 
-export function useCollections() {
+/**
+ * Create / update / delete / add-book / remove-book, shared by the list and the
+ * detail hook so both invalidate identically. Everything lives under the
+ * `['collections']` prefix, so one invalidation refreshes the list *and* any
+ * open detail query.
+ */
+function useCollectionMutations() {
   const queryClient = useQueryClient();
-
-  const { data: collections = [], isLoading: loading, error: queryError, refetch } = useQuery({
-    queryKey: ['collections'],
-    queryFn: async () => {
-      const res = await CollectionApiService.getCollections();
-      if (res.error) throw new Error(res.error);
-      return res.data?.collections ?? [];
-    },
-  });
-
-  const error = queryError ? queryError.message : null;
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['collections'] });
 
   const createMutation = useMutation({
     mutationFn: async (data: Parameters<typeof CollectionApiService.createCollection>[0]) => {
@@ -22,9 +18,7 @@ export function useCollections() {
       if (res.error) throw new Error(res.error);
       return res.data!.collection;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['collections'] });
-    },
+    onSuccess: invalidate,
   });
 
   const updateMutation = useMutation({
@@ -33,9 +27,7 @@ export function useCollections() {
       if (res.error) throw new Error(res.error);
       return res.data!.collection;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['collections'] });
-    },
+    onSuccess: invalidate,
   });
 
   const deleteMutation = useMutation({
@@ -43,9 +35,7 @@ export function useCollections() {
       const res = await CollectionApiService.deleteCollection(id);
       if (res.error) throw new Error(res.error);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['collections'] });
-    },
+    onSuccess: invalidate,
   });
 
   const addBookMutation = useMutation({
@@ -53,9 +43,7 @@ export function useCollections() {
       const res = await CollectionApiService.addBook(collectionId, bookId);
       if (res.error) throw new Error(res.error);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['collections'] });
-    },
+    onSuccess: invalidate,
   });
 
   const removeBookMutation = useMutation({
@@ -63,9 +51,7 @@ export function useCollections() {
       const res = await CollectionApiService.removeBook(collectionId, bookId);
       if (res.error) throw new Error(res.error);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['collections'] });
-    },
+    onSuccess: invalidate,
   });
 
   const createCollection = useCallback(
@@ -93,6 +79,82 @@ export function useCollections() {
     [removeBookMutation]
   );
 
-  return { collections, loading, error, refetch, createCollection, updateCollection, deleteCollection, addBook, removeBook };
+  return { createCollection, updateCollection, deleteCollection, addBook, removeBook };
 }
 
+/**
+ * One cursor-paginated page of collections at a time.
+ *
+ * Each collection's `books` is a **six-cover preview**, not its contents — read
+ * `bookCount` for the size, and use {@link useCollection} when you need every
+ * book. `total` is the number of collections on the server.
+ */
+export function useCollections(limit?: number) {
+  const mutations = useCollectionMutations();
+  const {
+    data,
+    isLoading: loading,
+    isFetchingNextPage: loadingMore,
+    error: queryError,
+    hasNextPage,
+    fetchNextPage,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ['collections', 'list', limit ?? null],
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) => {
+      const res = await CollectionApiService.getCollections({ limit, cursor: pageParam });
+      if (res.error) throw new Error(res.error);
+      return res.data!;
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+  });
+
+  const error = queryError ? queryError.message : null;
+  const collections = data?.pages.flatMap((page) => page.collections) ?? [];
+  const total = data?.pages[0]?.total ?? collections.length;
+
+  const loadMore = useCallback(async () => {
+    if (hasNextPage && !loadingMore) await fetchNextPage();
+  }, [hasNextPage, loadingMore, fetchNextPage]);
+
+  return {
+    collections,
+    /** Number of collections on the server, not in `collections`. */
+    total,
+    loading,
+    loadingMore,
+    error,
+    hasMore: !!hasNextPage,
+    loadMore,
+    refetch,
+    ...mutations,
+  };
+}
+
+/**
+ * One collection with **every** book in it.
+ *
+ * The detail page used to pick its collection out of the list response; since
+ * that list now carries only a cover preview, it has to be fetched on its own.
+ */
+export function useCollection(collectionId?: string) {
+  const mutations = useCollectionMutations();
+  const { data: collection, isLoading: loading, error: queryError, refetch } = useQuery({
+    queryKey: ['collections', 'detail', collectionId],
+    enabled: !!collectionId,
+    queryFn: async (): Promise<ApiCollection> => {
+      const res = await CollectionApiService.getCollection(collectionId!);
+      if (res.error) throw new Error(res.error);
+      return res.data!.collection;
+    },
+  });
+
+  return {
+    collection,
+    loading,
+    error: queryError ? queryError.message : null,
+    refetch,
+    ...mutations,
+  };
+}

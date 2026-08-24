@@ -10,7 +10,7 @@ import { BookApiService, GoogleBookResult } from '../services/api';
 import { googleBookToApp } from '../utils/bookMapper';
 import { Search, Compass, BookOpen, Plus, Star } from 'lucide-react';
 
-import { useLibrary } from '../hooks/useLibrary';
+import { useLibraryMutations } from '../hooks/useLibrary';
 import { m, staggerListContainer, staggerListItem } from '../motion';
 
 // Renders a card for a live Google Books result
@@ -77,7 +77,7 @@ export const ExploreView: React.FC = () => {
   const [importError, setImportError] = useState<string | null>(null);
 
   const { query, setQuery, results: apiResults, totalItems, loading: searchLoading, error: searchError } = useBookSearch();
-  const { addBook } = useLibrary();
+  const { addBook } = useLibraryMutations();
 
   // Fetch initial featured books when not searching
   const { data: featuredBooks = [], isLoading: featuredLoading } = useQuery({
