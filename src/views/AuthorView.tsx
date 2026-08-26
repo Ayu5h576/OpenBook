@@ -1,14 +1,12 @@
 import React from 'react';
-import { Book } from '../types';
 import { User, Construction } from 'lucide-react';
 
-interface AuthorViewProps {
-  author: any; // Kept for prop compatibility in App.tsx
-  authorBooks: Book[];
-  onSelectBook: (book: Book) => void;
-}
-
-export const AuthorView: React.FC<AuthorViewProps> = () => {
+/**
+ * A deliberate placeholder: author profiles are not built yet. It took props
+ * only to satisfy the old call site in App.tsx and never read them, so both
+ * sides are gone — the route renders it bare.
+ */
+export const AuthorView: React.FC = () => {
   return (
     <div className="space-y-8 pb-12 h-full min-h-[70vh] flex flex-col items-center justify-center">
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-8 md:p-12 shadow-warm-lg max-w-lg text-center flex flex-col items-center gap-5">

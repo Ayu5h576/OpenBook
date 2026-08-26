@@ -160,16 +160,20 @@ export function App() {
             <Route path="/settings" element={<SettingsView />} />
             <Route path="/book/:id" element={<BookDetailView />} />
             
-            {/* The rest of the routes (currently placeholder props until views are refactored) */}
-            <Route path="/bookshelf-3d" element={<InteractiveBookshelf3D books={[]} onSelectBook={()=>{}} onOpenReader={()=>{}} />} />
+            {/* The visualization views fetch their own data through hooks, so they
+                take no props. They used to be fed mock arrays from here; passing
+                `books={[]}` now would be silently ignored rather than rejected,
+                because excess-property checking does not fire against React.FC's
+                default `{}` — which is how the dead props survived the refactor. */}
+            <Route path="/bookshelf-3d" element={<InteractiveBookshelf3D />} />
             <Route path="/reading-room" element={<ReadingRoom />} />
-            <Route path="/wishlist-galaxy" element={<WishlistGalaxy wishlistBooks={[]} onSelectBook={()=>{}} />} />
-            <Route path="/book-dna" element={<BookDNA books={[]} />} />
-            <Route path="/reading-compass" element={<ReadingCompass allBooks={[]} onSelectBook={()=>{}} />} />
-            <Route path="/book-memories" element={<BookMemories completedBooks={[]} />} />
-            <Route path="/quote-wall" element={<QuoteWall quotes={[]} />} />
+            <Route path="/wishlist-galaxy" element={<WishlistGalaxy />} />
+            <Route path="/book-dna" element={<BookDNA />} />
+            <Route path="/reading-compass" element={<ReadingCompass />} />
+            <Route path="/book-memories" element={<BookMemories />} />
+            <Route path="/quote-wall" element={<QuoteWall />} />
             <Route path="/smart-planner" element={<SmartPlanner />} />
-            <Route path="/author/:id" element={<AuthorView author={undefined as any} authorBooks={[]} onSelectBook={()=>{}} />} />
+            <Route path="/author/:id" element={<AuthorView />} />
           </Route>
 
           {/* Standalone Route (no layout) */}
