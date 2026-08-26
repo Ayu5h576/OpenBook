@@ -143,6 +143,39 @@ export const upsertGoalSchema = z.object({
   targetPages: z.number().int().min(1).optional(),
 });
 
+/**
+ * The reader's own commonplace book. Everything here is scoped to the caller —
+ * a quote is never visible to another user — so there is no author or visibility
+ * field to validate.
+ *
+ * `favorite` stays the literal string `'true' | 'false'` for the same reason
+ * `notificationQuerySchema.unreadOnly` does: `validateData<T>` resolves to
+ * `ZodSchema<T, ZodTypeDef, T>`, so a `.transform()` to boolean would change the
+ * output type and fail to type-check. The controller converts it.
+ */
+export const quoteQuerySchema = z.object({
+  ...paginationShape,
+  category: z.string().min(1).max(100).optional(),
+  favorite: z.enum(['true', 'false']).optional(),
+  bookId: z.string().uuid().optional(),
+});
+
+export const createQuoteSchema = z.object({
+  text: z.string().min(1).max(2000),
+  // Optional: a quote can be something the reader wrote down without attaching
+  // it to a book on their shelf.
+  bookId: z.string().uuid().optional(),
+  page: z.number().int().min(1).optional(),
+  category: z.string().min(1).max(100).optional(),
+});
+
+export const updateQuoteSchema = z.object({
+  text: z.string().min(1).max(2000).optional(),
+  page: z.number().int().min(1).optional(),
+  category: z.string().min(1).max(100).optional(),
+  isFavorite: z.boolean().optional(),
+});
+
 export type SearchBooksInput = z.infer<typeof searchBooksSchema>;
 export type ImportBookInput = z.infer<typeof importBookSchema>;
 export type OffersQueryInput = z.infer<typeof offersQuerySchema>;
@@ -161,3 +194,6 @@ export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;
 export type CreateHighlightInput = z.infer<typeof createHighlightSchema>;
 export type AddToWishlistInput = z.infer<typeof addToWishlistSchema>;
 export type UpsertGoalInput = z.infer<typeof upsertGoalSchema>;
+export type QuoteQueryInput = z.infer<typeof quoteQuerySchema>;
+export type CreateQuoteInput = z.infer<typeof createQuoteSchema>;
+export type UpdateQuoteInput = z.infer<typeof updateQuoteSchema>;

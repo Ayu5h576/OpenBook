@@ -445,7 +445,38 @@ export const LibraryApiService = {
   async logSession(entryId: string, session: { startPage: number; endPage: number; durationSecs: number; startedAt: string; endedAt: string }) {
     return apiClient.post<{ session: ReadingSession }>(`/api/library/${entryId}/sessions`, session);
   },
+
+  getMemories({ limit, cursor }: { limit?: number; cursor?: string } = {}) {
+    return apiClient.get<MemoriesPage>(`/api/library/memories${listParams({ limit, cursor })}`);
+  },
 };
+
+/**
+ * One finished book, and what the reader kept from it.
+ *
+ * Every field past the book is nullable on purpose: the server assembles these
+ * from real rows — a review, a saved quote, a note, the book's own categories —
+ * and never invents filler for a book that was simply read and closed. Render
+ * the pieces that are present and omit the rest.
+ */
+export interface MemoryCard {
+  entryId: string;
+  book: LocalBook;
+  finishedDate: string;
+  /** Out of 5, from the reader's own review. */
+  rating: number | null;
+  /** A saved quote if there is one, otherwise a highlight. */
+  quote: string | null;
+  /** The review body if written, otherwise the most recent note. */
+  topTakeaway: string | null;
+  /** The book's first category — a label, not a judgement. */
+  moodTag: string | null;
+  isFavorite: boolean;
+}
+
+export interface MemoriesPage extends PagedList {
+  memories: MemoryCard[];
+}
 
 // ─── Wishlist ─────────────────────────────────────────────────────────────────
 
@@ -473,6 +504,82 @@ export const WishlistApiService = {
 
   async removeFromWishlist(entryId: string) {
     return apiClient.delete(`/api/wishlist/${entryId}`);
+  },
+};
+
+// ─── Quotes (the quote wall) ───────────────────────────────────────────────────
+
+/** Only the book fields a quote card renders — the server selects exactly these. */
+export interface QuoteBook {
+  id: string;
+  title: string;
+  authors: string[];
+  coverImage?: string;
+}
+
+export interface UserQuote {
+  id: string;
+  text: string;
+  page: number | null;
+  category: string | null;
+  /**
+   * The reader's own star. Not a public like count: quotes are private rows, so
+   * there is nobody else who could have liked one.
+   */
+  isFavorite: boolean;
+  /** Null for a quote jotted down without attaching it to a book on the shelf. */
+  bookId: string | null;
+  book: QuoteBook | null;
+  createdAt: string;
+}
+
+export interface QuotePage extends PagedList {
+  quotes: UserQuote[];
+}
+
+export interface QuoteCategory {
+  category: string;
+  count: number;
+}
+
+export const QuoteApiService = {
+  getQuotes({ category, favorite, bookId, limit, cursor }: {
+    category?: string;
+    favorite?: boolean;
+    bookId?: string;
+    limit?: number;
+    cursor?: string;
+  } = {}) {
+    return apiClient.get<QuotePage>(
+      // `favorite` is stringified rather than passed through: listParams only
+      // takes strings and numbers, and the server reads the literal 'true'/'false'.
+      `/api/quotes${listParams({
+        category,
+        favorite: favorite === undefined ? undefined : String(favorite),
+        bookId,
+        limit,
+        cursor,
+      })}`
+    );
+  },
+
+  getCategories() {
+    return apiClient.get<{ categories: QuoteCategory[] }>('/api/quotes/categories');
+  },
+
+  createQuote(input: { text: string; bookId?: string; page?: number; category?: string }) {
+    return apiClient.post<{ quote: UserQuote }>('/api/quotes', input);
+  },
+
+  updateQuote(
+    quoteId: string,
+    data: Partial<Pick<UserQuote, 'text' | 'page' | 'category' | 'isFavorite'>>
+  ) {
+    return apiClient.put<{ quote: UserQuote }>(`/api/quotes/${quoteId}`, data);
+  },
+
+  deleteQuote(quoteId: string) {
+    return apiClient.delete(`/api/quotes/${quoteId}`);
   },
 };
 

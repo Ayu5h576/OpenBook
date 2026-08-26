@@ -295,6 +295,10 @@ model UserQuote {
   text      String   @db.Text
   page      Int?
   category  String?
+  // Quotes are the reader's own commonplace book, private to them, so a
+  // cross-user "like" count would have nothing to count. A per-owner favourite
+  // is the honest model, and it is what the wall's heart button writes.
+  isFavorite Boolean @default(false) @map("is_favorite")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId])

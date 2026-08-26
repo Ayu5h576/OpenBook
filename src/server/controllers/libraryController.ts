@@ -9,6 +9,7 @@ import {
   addToWishlistSchema,
   libraryQuerySchema,
   wishlistQuerySchema,
+  listQuerySchema,
 } from '../validators/books';
 import { AuthenticationError } from '../utils/errors';
 
@@ -35,6 +36,13 @@ export class LibraryController {
     const userId = requireUser(req);
     const entry = await libraryService.getEntry(userId, req.params.entryId);
     res.json({ entry });
+  }
+
+  /** Responds `{ memories, nextCursor, total }` for the finished shelf. */
+  async getMemories(req: AuthenticatedRequest, res: Response) {
+    const userId = requireUser(req);
+    const query = validateData(listQuerySchema, req.query);
+    res.json(await libraryService.getMemories(userId, query));
   }
 
   async addToLibrary(req: AuthenticatedRequest, res: Response) {

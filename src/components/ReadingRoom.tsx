@@ -1,56 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Book, ReadingRoomSettings } from '../types';
+import { useNavigate } from 'react-router-dom';
+import { ReadingRoomSettings } from '../types';
 import { ambientEngine } from '../utils/audioSynth';
 import { useLibrary } from '../hooks/useLibrary';
 import { formatDuration, useReadingSession } from '../hooks/useReadingSession';
 import { ProgressTracker } from './ProgressTracker';
 import { BookCover } from './BookCover';
-import type { LibraryEntry } from '../services/api';
 import { Coffee, Flame, CloudRain, Lamp, BookOpen, Clock } from 'lucide-react';
-
-interface ReadingRoomProps {
-  books: Book[];
-  onOpenReader: (book: Book) => void;
-}
 
 /** Rows pulled for the reading-room carousel. */
 const READING_ROOM_PAGE = 60;
 
-/**
- * Convert a LibraryEntry to the Book shape needed by onOpenReader.
- */
-function entryToBook(entry: LibraryEntry): Book {
-  const b = entry.book;
-  return {
-    id: b.id,
-    title: b.title,
-    author: b.authors?.[0] || 'Unknown Author',
-    authorId: `auth-${b.id}`,
-    cover: b.coverImage || '',
-    spineColor: '#1D1D1D',
-    thickness: Math.max(20, Math.min(60, (b.pageCount || 300) / 10)),
-    pages: b.pageCount || 300,
-    pagesRead: entry.currentPage,
-    publisher: b.publisher || 'Independent',
-    publishedYear: b.publishedDate ? parseInt(b.publishedDate.substring(0, 4)) : 2024,
-    language: b.language || 'English',
-    isbn: b.isbn13 || b.isbn10 || `978-${b.id.substring(0, 9)}`,
-    rating: b.averageRating || 4.0,
-    reviewCount: b.ratingsCount || 0,
-    genres: b.categories || ['Fiction'],
-    description: b.description || '',
-    status: entry.status.toLowerCase() as any,
-    favorite: entry.isFavorite,
-    progress: b.pageCount ? Math.round((entry.currentPage / b.pageCount) * 100) : 0,
-    lastOpened: entry.lastReadAt || entry.updatedAt,
-    chapters: [{ id: 1, title: 'Chapter 1', content: '' }],
-    notes: [],
-    highlights: [],
-    comments: [],
-  };
-}
-
-export const ReadingRoom: React.FC<ReadingRoomProps> = ({ books: _legacyBooks, onOpenReader }) => {
+export const ReadingRoom: React.FC = () => {
+  const navigate = useNavigate();
   // A bounded page rather than infinite scroll: the room is a carousel you step
   // through one book at a time, and LIBRARY_ORDER surfaces pinned and
   // most-recently-read rows first — so the books a reader would actually sit

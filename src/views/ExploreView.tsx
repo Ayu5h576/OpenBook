@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useOutletContext, useNavigate } from 'react-router-dom';
+import { useOutletContext, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Book } from '../types';
 import { BookCard3D } from '../components/BookCard3D';
@@ -69,6 +69,7 @@ function GoogleBookCard({
 
 export const ExploreView: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { searchQuery, setSearchQuery } = useOutletContext<{ searchQuery: string, setSearchQuery: (q: string) => void }>();
 
   const [selectedGenre, setSelectedGenre] = useState<string>('All');
@@ -93,6 +94,17 @@ export const ExploreView: React.FC = () => {
   React.useEffect(() => {
     setQuery(searchQuery);
   }, [searchQuery, setQuery]);
+
+  // `/explore?q=…` seeds the navbar box, so anything elsewhere in the app can
+  // hand the reader a search — the Reading Compass links a recommended title
+  // here rather than to a book id that may not exist locally.
+  //
+  // Keyed on the URL alone and deliberately not on `searchQuery`: re-running
+  // when that changes would refill the box a reader had just cleared.
+  const urlQuery = searchParams.get('q') ?? '';
+  React.useEffect(() => {
+    if (urlQuery) setSearchQuery(urlQuery);
+  }, [urlQuery, setSearchQuery]);
 
   // When there is a live search query, show Google Books results.
   // When empty, fall back to local browsing of the mock/library books.

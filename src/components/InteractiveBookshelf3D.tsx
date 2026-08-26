@@ -1,22 +1,35 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Book } from '../types';
 import { BookCover } from './BookCover';
 import { ambientEngine } from '../utils/audioSynth';
+import { libraryEntryToApp, wishlistEntryToApp } from '../utils/bookMapper';
+import { useLibrary } from '../hooks/useLibrary';
+import { useWishlist } from '../hooks/useWishlist';
 import { m, EASE_OUT } from '../motion';
 import { useTilt } from '../motion/useTilt';
-import { Sparkles, MoveRight, BookOpen, Layers, Maximize2, Play, ArrowLeft, Volume2, Bookmark, Star } from 'lucide-react';
+import { Sparkles, MoveRight, BookOpen, Loader2, Star } from 'lucide-react';
 
-interface InteractiveBookshelf3DProps {
-  books: Book[];
-  onSelectBook: (book: Book) => void;
-  onOpenReader: (book: Book) => void;
-}
+/**
+ * How many rows each plank is built from. A bounded page rather than infinite
+ * scroll: the shelf is a stage you look at, and `LIBRARY_ORDER` puts pinned and
+ * recently-read books first, so page one is the shelf a reader recognises.
+ */
+const SHELF_PAGE = 60;
 
-export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
-  books,
-  onSelectBook,
-  onOpenReader,
-}) => {
+export const InteractiveBookshelf3D: React.FC = () => {
+  const navigate = useNavigate();
+
+  // Unfiltered, because all three planks are cut from one page — asking the
+  // server per status would triple the round trips for the same rows.
+  const { entries, loading } = useLibrary(undefined, SHELF_PAGE);
+  const { entries: wishlistEntries } = useWishlist(SHELF_PAGE);
+
+  const books = useMemo(
+    () => [...entries.map(libraryEntryToApp), ...wishlistEntries.map(wishlistEntryToApp)],
+    [entries, wishlistEntries]
+  );
+
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
   const [animatingBookId, setAnimatingBookId] = useState<string | null>(null);
   const [isCameraZooming, setIsCameraZooming] = useState<boolean>(false);
@@ -194,9 +207,32 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
 
         {/* Shelves */}
         <div className="max-w-6xl mx-auto space-y-4">
-          {renderShelf('Currently Reading & Favorites', shelf1, 'shelf-1')}
-          {renderShelf('Completed Volumes', shelf2, 'shelf-2')}
-          {renderShelf('Saved & Wishlist Volumes', shelf3, 'shelf-3')}
+          {loading ? (
+            <div className="flex justify-center py-24">
+              <Loader2 className="w-7 h-7 animate-spin text-[#A0522D]" />
+            </div>
+          ) : books.length === 0 ? (
+            <div className="text-center py-20 max-w-md mx-auto">
+              <BookOpen className="w-12 h-12 text-[var(--border-light)] mx-auto mb-3" />
+              <p className="font-serif-title text-2xl text-[var(--ink)]">The planks are bare.</p>
+              <p className="text-xs text-[var(--muted)] mt-1 mb-5">
+                Every volume you add to your library or wishlist gets a spine on this shelf.
+              </p>
+              <button
+                onClick={() => navigate('/explore')}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-semibold text-sm hover:bg-[#333333] transition-all shadow-warm-md"
+              >
+                <span>Find books to shelve</span>
+                <MoveRight className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <>
+              {renderShelf('Currently Reading & Favorites', shelf1, 'shelf-1')}
+              {renderShelf('Completed Volumes', shelf2, 'shelf-2')}
+              {renderShelf('Saved & Wishlist Volumes', shelf3, 'shelf-3')}
+            </>
+          )}
         </div>
       </m.div>
 
@@ -235,15 +271,19 @@ export const InteractiveBookshelf3D: React.FC<InteractiveBookshelf3DProps> = ({
                   </p>
 
                   <div className="flex flex-wrap items-center justify-center gap-3">
+                    {/* A wishlist book isn't on the shelf yet, so there is nothing
+                        to open — its only honest action is the detail page. */}
+                    {book.status !== 'wishlist' && (
+                      <button
+                        onClick={() => navigate(`/reader/${book.id}`)}
+                        className="flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-semibold text-sm hover:bg-[#333333] transition-all shadow-warm-md"
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        <span>Enter Reader Mode</span>
+                      </button>
+                    )}
                     <button
-                      onClick={() => onOpenReader(book)}
-                      className="flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-semibold text-sm hover:bg-[#333333] transition-all shadow-warm-md"
-                    >
-                      <BookOpen className="w-4 h-4" />
-                      <span>Enter Reader Mode</span>
-                    </button>
-                    <button
-                      onClick={() => onSelectBook(book)}
+                      onClick={() => navigate(`/book/${book.id}`)}
                       className="flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--white)] border border-[var(--border-light)] text-[var(--ink)] font-semibold text-sm hover:bg-[var(--bg-beige)] transition-all shadow-warm-sm"
                     >
                       <span>Volume Details</span>

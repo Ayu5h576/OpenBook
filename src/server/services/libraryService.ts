@@ -9,6 +9,7 @@ import type {
   LogSessionInput,
   LibraryQueryInput,
   WishlistQueryInput,
+  ListQueryInput,
 } from '../validators/books';
 
 /**
@@ -35,6 +36,18 @@ const LIBRARY_ORDER: Prisma.LibraryEntryOrderByWithRelationInput[] = [
 const WISHLIST_ORDER: Prisma.WishlistEntryOrderByWithRelationInput[] = [
   { priority: 'asc' },
   { createdAt: 'desc' },
+  { id: 'desc' },
+];
+
+/**
+ * Memory cards are a chronology of finishing books, so `finishedAt` leads.
+ * `nulls: 'last'` for the same reason as LIBRARY_ORDER — Postgres sorts NULLs
+ * first on DESC, which would float books marked COMPLETED before the column
+ * existed above everything actually finished recently.
+ */
+const MEMORY_ORDER: Prisma.LibraryEntryOrderByWithRelationInput[] = [
+  { finishedAt: { sort: 'desc', nulls: 'last' } },
+  { updatedAt: 'desc' },
   { id: 'desc' },
 ];
 
@@ -192,6 +205,93 @@ export class LibraryService {
     });
     if (!entry) throw new NotFoundError('Library entry');
     return entry;
+  }
+
+  /**
+   * The finished shelf as memory cards: what the reader kept from each book.
+   *
+   * Every field is read off a real row and is nullable — there are deliberately
+   * no placeholder strings. A book the reader never annotated yields a card with
+   * a cover, a title and a date, and the client hides the parts that are absent.
+   * Inventing a takeaway would be the same mistake as synthesizing a price.
+   */
+  async getMemories(userId: string, { limit, cursor }: ListQueryInput) {
+    const where: Prisma.LibraryEntryWhereInput = { userId, status: LibraryStatus.COMPLETED };
+
+    const [rows, total] = await Promise.all([
+      prisma.libraryEntry.findMany({
+        where,
+        include: {
+          book: true,
+          // One each: the card has room for a single quote and a single takeaway.
+          notes: { orderBy: { createdAt: 'desc' }, take: 1 },
+          highlights: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+        orderBy: MEMORY_ORDER,
+        take: limit + 1,
+        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+      }),
+      prisma.libraryEntry.count({ where }),
+    ]);
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+    const bookIds = page.map((entry) => entry.bookId);
+
+    // Nothing finished on this page, so nothing to join against.
+    if (!bookIds.length) return { memories: [], nextCursor: null, total };
+
+    // Reviews and quotes hang off (userId, bookId), not off LibraryEntry, so they
+    // cannot come from the include above. Two batched queries keyed on the page's
+    // book ids rather than one pair per card.
+    const [reviews, quotes] = await Promise.all([
+      prisma.review.findMany({
+        where: { userId, bookId: { in: bookIds } },
+        select: { bookId: true, rating: true, body: true },
+      }),
+      prisma.userQuote.findMany({
+        where: { userId, bookId: { in: bookIds } },
+        // Favourites first, so the quote the reader starred is the one that makes
+        // the card.
+        orderBy: [{ isFavorite: 'desc' }, { createdAt: 'desc' }],
+        select: { bookId: true, text: true },
+      }),
+    ]);
+
+    const reviewByBook = new Map(reviews.map((review) => [review.bookId, review] as const));
+
+    const quoteByBook = new Map<string, string>();
+    for (const quote of quotes) {
+      if (quote.bookId && !quoteByBook.has(quote.bookId)) quoteByBook.set(quote.bookId, quote.text);
+    }
+
+    const memories = page.map((entry) => {
+      const review = reviewByBook.get(entry.bookId);
+      return {
+        entryId: entry.id,
+        book: entry.book,
+        // finishedAt can be null on rows marked COMPLETED before it was written;
+        // updatedAt is the closest honest stand-in for when that happened.
+        finishedDate: entry.finishedAt ?? entry.updatedAt,
+        // Prisma hands back a Decimal, which serializes as an object rather than
+        // a number — the client renders stars from this, so coerce it here.
+        rating: review ? Number(review.rating) : null,
+        // A saved quote outranks a highlight: filing it was a deliberate act,
+        // while a highlight is just a swipe over some text.
+        quote: quoteByBook.get(entry.bookId) ?? entry.highlights[0]?.text ?? null,
+        // The review body is the reader's considered verdict; failing that, their
+        // most recent note is the nearest thing to one.
+        topTakeaway: review?.body ?? entry.notes[0]?.text ?? null,
+        moodTag: entry.book.categories[0] ?? null,
+        isFavorite: entry.isFavorite,
+      };
+    });
+
+    return {
+      memories,
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+      total,
+    };
   }
 
   async getWishlist(userId: string, { bookId, limit, cursor }: WishlistQueryInput) {

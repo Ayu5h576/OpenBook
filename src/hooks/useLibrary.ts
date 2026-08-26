@@ -34,6 +34,8 @@ export function useLibraryMutations() {
       queryClient.invalidateQueries({ queryKey: ['library'] });
       // Page and status changes feed every reading stat.
       queryClient.invalidateQueries({ queryKey: ['analytics'] });
+      // Marking a book COMPLETED is what puts it on the memories shelf.
+      queryClient.invalidateQueries({ queryKey: ['memories'] });
     },
   });
 

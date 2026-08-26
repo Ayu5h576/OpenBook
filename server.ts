@@ -17,6 +17,7 @@ import collectionRoutes from './src/server/routes/collectionRoutes';
 import reviewRoutes from './src/server/routes/reviewRoutes';
 import wishlistRoutes from './src/server/routes/wishlistRoutes';
 import analyticsRoutes from './src/server/routes/analyticsRoutes';
+import quoteRoutes from './src/server/routes/quoteRoutes';
 import aiRoutes from './src/server/routes/aiRoutes';
 import socialRoutes from './src/server/routes/socialRoutes';
 import bookClubRoutes from './src/server/routes/bookClubRoutes';
@@ -123,6 +124,9 @@ export async function buildApp(): Promise<Express> {
   app.use('/api/clubs', bookClubRoutes);
   app.use('/api/achievements', achievementRoutes);
   app.use('/api/notifications', notificationRoutes);
+
+  // Phase 6: Quote wall
+  app.use('/api/quotes', quoteRoutes);
 
   // Legacy AI endpoints (deprecated - kept for backward compatibility)
   app.post('/api/ai/analyze-legacy', async (req, res) => {
