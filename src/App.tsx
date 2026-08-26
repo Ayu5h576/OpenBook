@@ -162,7 +162,7 @@ export function App() {
             
             {/* The rest of the routes (currently placeholder props until views are refactored) */}
             <Route path="/bookshelf-3d" element={<InteractiveBookshelf3D books={[]} onSelectBook={()=>{}} onOpenReader={()=>{}} />} />
-            <Route path="/reading-room" element={<ReadingRoom books={[]} onOpenReader={()=>{}} />} />
+            <Route path="/reading-room" element={<ReadingRoom />} />
             <Route path="/wishlist-galaxy" element={<WishlistGalaxy wishlistBooks={[]} onSelectBook={()=>{}} />} />
             <Route path="/book-dna" element={<BookDNA books={[]} />} />
             <Route path="/reading-compass" element={<ReadingCompass allBooks={[]} onSelectBook={()=>{}} />} />

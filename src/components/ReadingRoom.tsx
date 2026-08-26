@@ -235,7 +235,7 @@ export const ReadingRoom: React.FC = () => {
 
           <div className="pt-4 flex flex-wrap items-center justify-center md:justify-start gap-4">
             <button
-              onClick={() => onOpenReader(entryToBook(activeEntry))}
+              onClick={() => navigate(`/reader/${book.id}`)}
               className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#E0A96D] text-[var(--ink)] font-bold text-sm hover:bg-[#D49A5B] transition-all shadow-warm-lg"
             >
               <BookOpen className="w-4 h-4" />
