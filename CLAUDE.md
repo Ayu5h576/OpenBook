@@ -36,6 +36,18 @@ Activity is visible only to readers who share a connection with the actor. **The
 - `notificationQuerySchema` keeps `unreadOnly` as the literal string `'true' | 'false'` and the controller converts it. This is not an oversight: `validateData<T>(schema: z.ZodSchema<T>, ...)` resolves to `ZodType<T, ZodTypeDef, T>`, so a `.transform()` that changes the output type fails to type-check. Same reason applies to any future boolean query param.
 - Which discussion thread is open lives in the URL (`/clubs/:id?discussion=<id>`), not local state, so a reply notification can deep-link to the thread.
 
+### Live Analytics Streaming (the dashboard's "Live" badge)
+
+`GET /api/analytics/stream` is a Server-Sent Events endpoint that pushes a fresh stats snapshot whenever a reader's numbers change. `statsEvents.ts` is the bus; `analyticsController.streamStats` is the connection; `useAnalyticsStream.ts` is the client.
+
+- **`invalidateUserStats` is the single trigger.** It was already the app's one "these stats are stale" signal (four `libraryService` paths plus `upsertGoal`), so `publishStatsChanged` hangs off it and no call site needed editing. The publish happens **after** the cache delete — a listener reacts by calling `getStats()`, which must miss the cache rather than re-read the stale entry.
+- **The client is `fetch` + `ReadableStream`, deliberately not `EventSource`.** `EventSource` cannot set an `Authorization` header, and the alternative — the access token in the query string — would write a live credential into every proxy and server access log. `useAnalyticsStream` parses the SSE framing by hand and handles a 401 by calling `refreshAccessToken()`, which shares `ApiClient`'s single-flight refresh guard; rotating separately would let two refreshes invalidate each other.
+- **After `flushHeaders()` the handler owns every error.** `errorHandlerMiddleware` always answers with `res.status().json()`, which throws on a response that is already streaming. So `streamStats` calls `requireUser` *before* the flush (an auth failure still returns a normal JSON 401) and afterwards reports failures as an `event: stream-error` frame while keeping the connection open.
+- **Change events are coalesced over 250ms** because `getStats` is the heaviest read in the app — a bulk import fires one invalidation per book, and recomputing per event would turn a burst into a stall. A change arriving mid-recompute sets `missedWhileBusy` so the loop runs once more rather than dropping it.
+- Redis pub/sub fans out across replicas when `REDIS_URL` is set, over a dedicated `client.duplicate()` connection (a client in subscriber mode cannot issue ordinary commands). Payloads carry an `origin` instance id so a publisher discards its own looped-back message. Every Redis path **fails open**, like `cacheService` and the rate limiters: with the broker down the dashboard degrades to its ordinary refetch, and finishing a book still succeeds.
+- A `: ping` comment frame every 25s keeps idle proxies (which commonly reap silent connections at 30–60s) from closing the stream. `X-Accel-Buffering: no` and `Cache-Control: no-transform` stop intermediaries buffering it. **Do not add `compression` middleware to `server.ts`** — it is the classic way to silently break SSE.
+- `useAnalytics({ live: true })` is opt-in and **off by default**: `AppLayout` calls the hook on every page, so a default of `true` would give every signed-in reader a permanent connection. Only `StatisticsView` opts in — and because pushes land in the shared React Query cache under `['analytics','stats']`, the layout's numbers update live anyway while the dashboard is open.
+
 ### Environment Variables
 Required:
 - `DATABASE_URL`: PostgreSQL connection
@@ -57,7 +69,7 @@ Optional:
 - [x] Club detail UI (discussions + comments threads) — `ClubDetailView` + `useBookClub`/`useDiscussion`, opened from CommunityView
 - [x] User profile pages with follow buttons + follower/following lists — `ProfileView` + `useProfile`, reachable from the activity feed, club members/owner/discussion authors, and the Navbar "My Profile" menu
 - [x] Readers community loop — scoped "My Circle" feed, reader discovery, notifications (see below)
-- [ ] Live data streaming for analytics dashboard
+- [x] Live data streaming for analytics dashboard — SSE `GET /api/analytics/stream` + `useAnalyticsStream`, opted into by `StatisticsView` (see above)
 
 ### Technical Debt / Blockers
 - PDF reader not yet implemented (reading room)

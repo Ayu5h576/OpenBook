@@ -162,9 +162,28 @@ class ApiClient {
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>('DELETE', endpoint);
   }
+
+  /**
+   * Rotate the access token on demand. The SSE stream is not routed through
+   * `request()` (it reads a response body incrementally rather than parsing one
+   * JSON payload), so it needs its own way to recover from a 401 — and it must
+   * share this instance's single-flight guard rather than POST /refresh itself,
+   * or two concurrent rotations would invalidate each other.
+   */
+  async refreshAccessToken(): Promise<boolean> {
+    return this.refreshSession();
+  }
 }
 
 const apiClient = new ApiClient(API_BASE_URL);
+
+/**
+ * Rotate the access token, sharing the client's single-flight guard. Exposed for
+ * the SSE stream, which cannot go through `request()`.
+ */
+export function refreshAccessToken(): Promise<boolean> {
+  return apiClient.refreshAccessToken();
+}
 
 export interface User {
   id: string;
@@ -787,6 +806,25 @@ export const AnalyticsApiService = {
 
   async upsertGoal(data: { year: number; targetBooks: number; targetPages?: number }) {
     return apiClient.post<{ goal: ReadingGoal }>('/api/analytics/goal', data);
+  },
+
+  /**
+   * Opens the live stats stream and hands back the raw Response so the caller can
+   * read the body incrementally. Deliberately not `EventSource`: that API cannot
+   * send an Authorization header, and the alternative — the access token in the
+   * query string — would put a credential into every proxy and server log.
+   */
+  async openStatsStream(signal: AbortSignal): Promise<Response> {
+    const token = getAccessToken();
+    return fetch(`${API_BASE_URL}/api/analytics/stream`, {
+      method: 'GET',
+      headers: {
+        Accept: 'text/event-stream',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      credentials: 'include',
+      signal,
+    });
   },
 };
 

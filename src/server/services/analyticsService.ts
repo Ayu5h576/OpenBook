@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma';
 import { cacheService } from '../cache/cacheService';
+import { publishStatsChanged } from './statsEvents';
 import type { UpsertGoalInput } from '../validators/books';
 
 /**
@@ -12,13 +13,23 @@ const STATS_TTL_MS = 5 * 60 * 1000;
 
 export const statsCacheKey = (userId: string) => `analytics:stats:${userId}`;
 
-/** Drop a user's cached stats. Best-effort: never throws into the caller. */
+/**
+ * Drop a user's cached stats and tell any open dashboard to pull fresh numbers.
+ * Best-effort: never throws into the caller, so a cache or broker problem cannot
+ * fail the write (finishing a book, logging a session) that triggered it.
+ */
 export async function invalidateUserStats(userId: string): Promise<void> {
   try {
     await cacheService.del(statsCacheKey(userId));
   } catch (err) {
     console.error('[Analytics] Failed to invalidate stats cache:', err);
   }
+
+  // Deliberately after the delete: a listener reacting to this will call
+  // getStats(), and it must miss the cache rather than re-read the stale entry.
+  // Outside the try above so a cache failure still notifies — the recompute
+  // would just be served fresh anyway.
+  publishStatsChanged(userId);
 }
 
 export class AnalyticsService {

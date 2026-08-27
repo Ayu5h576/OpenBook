@@ -8,7 +8,9 @@ import { EmptyState } from '../components/EmptyState';
 const GENRE_COLORS = ['#A0522D', '#E0A96D', '#4A3B32', '#2D4030', '#1B263B', '#6B4F3A', '#8B7355', '#556B2F'];
 
 export const StatisticsView: React.FC = () => {
-  const { stats, goal, loading } = useAnalytics();
+  // The dashboard is the one screen that opts into streaming — see the note on
+  // UseAnalyticsOptions.live for why it is not the default.
+  const { stats, goal, loading, stream } = useAnalytics({ live: true });
   const year = new Date().getFullYear();
 
   if (loading) {
@@ -44,6 +46,33 @@ export const StatisticsView: React.FC = () => {
           </div>
           <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">Reading Statistics</h1>
           <p className="text-xs text-[var(--muted)] mt-1">Detailed metric breakdown of pages turned, hours logged, and genre resonance.</p>
+        </div>
+
+        {/* Live stream state. Announced politely so a dropped connection is not
+            something a screen-reader user has to discover by re-reading numbers. */}
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--bg-beige)] border border-[var(--border-light)] shrink-0"
+        >
+          <span className="relative flex h-2 w-2" aria-hidden="true">
+            {stream.live && (
+              <span className="absolute inline-flex h-full w-full rounded-full bg-[#2D4030] opacity-60 animate-ping" />
+            )}
+            <span
+              className={`relative inline-flex h-2 w-2 rounded-full ${
+                stream.live ? 'bg-[#2D4030]' : 'bg-[var(--muted)]'
+              }`}
+            />
+          </span>
+          <span className="text-[11px] font-semibold text-[var(--ink)]">
+            {stream.live ? 'Live' : 'Reconnecting'}
+          </span>
+          {stream.live && stream.lastUpdateAt && (
+            <span className="text-[10px] text-[var(--muted)] tabular-nums">
+              {new Date(stream.lastUpdateAt).toLocaleTimeString()}
+            </span>
+          )}
         </div>
       </div>
 

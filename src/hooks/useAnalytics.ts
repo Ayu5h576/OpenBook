@@ -1,9 +1,26 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AnalyticsApiService, AnalyticsStats, ReadingGoal } from '../services/api';
+import { useAnalyticsStream } from './useAnalyticsStream';
 
-export function useAnalytics() {
+export interface UseAnalyticsOptions {
+  /**
+   * Hold an SSE connection and apply pushed stats.
+   *
+   * Off by default on purpose: `AppLayout` calls this hook and is mounted on
+   * every page, so defaulting to true would give every signed-in reader a
+   * permanent stream regardless of what they are looking at. The dashboard opts
+   * in instead — and because pushes land in the shared React Query cache, the
+   * layout's numbers still update live while the dashboard is open.
+   */
+  live?: boolean;
+}
+
+export function useAnalytics(options: UseAnalyticsOptions = {}) {
+  const { live = false } = options;
   const queryClient = useQueryClient();
+
+  const stream = useAnalyticsStream(live);
 
   const { data: statsData, isLoading: loadingStats, error: statsError, refetch: refetchStats } = useQuery({
     queryKey: ['analytics', 'stats'],
@@ -46,5 +63,14 @@ export function useAnalytics() {
     await Promise.all([refetchStats(), refetchGoal()]);
   }, [refetchStats, refetchGoal]);
 
-  return { stats: statsData ?? null, goal: goalData ?? null, loading, error, refetch: fetchAll, upsertGoal };
+  return {
+    stats: statsData ?? null,
+    goal: goalData ?? null,
+    loading,
+    error,
+    refetch: fetchAll,
+    upsertGoal,
+    /** SSE connection state. Inert unless `live` was requested. */
+    stream,
+  };
 }
