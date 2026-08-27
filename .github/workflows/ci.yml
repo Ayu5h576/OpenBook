@@ -1,10 +1,14 @@
 name: CI
 
 on:
+  # `dev` is where the work actually lands — main sits behind it — so gating only
+  # [main, master] meant these four jobs never ran on the branch being committed
+  # to. a4980e4 pushed a tsc failure to dev and nothing caught it; the Lint job
+  # below would have, and Build needs it to pass.
   push:
-    branches: [main, master]
+    branches: [main, master, dev]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, dev]
 
 jobs:
   # --------------------------------------------------------------------------
