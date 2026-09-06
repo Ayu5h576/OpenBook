@@ -15,6 +15,7 @@ router.post('/', asyncHandler((req: any, res: any) => libraryController.addToLib
 // Before `/:entryId` — a param route registered first would capture `memories`
 // as an entry id and 404 on it.
 router.get('/memories', asyncHandler((req: any, res: any) => libraryController.getMemories(req, res)));
+router.get('/by-book/:bookId', asyncHandler((req: any, res: any) => libraryController.resolveEntry(req, res)));
 router.get('/:entryId', asyncHandler((req: any, res: any) => libraryController.getEntry(req, res)));
 router.put('/:entryId', asyncHandler((req: any, res: any) => libraryController.updateEntry(req, res)));
 router.delete('/:entryId', asyncHandler((req: any, res: any) => libraryController.removeFromLibrary(req, res)));

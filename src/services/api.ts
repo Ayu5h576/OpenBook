@@ -449,6 +449,11 @@ export const LibraryApiService = {
     );
   },
 
+  /** The caller's LibraryEntry for a book, or null when it is not in their library. */
+  resolveEntryByBook(bookId: string) {
+    return apiClient.get<{ entry: LibraryEntry | null }>(`/api/library/by-book/${bookId}`);
+  },
+
   async addToLibrary(bookId: string, status: LibraryStatus = 'OWNED', currentPage = 0) {
     return apiClient.post<{ entry: LibraryEntry }>('/api/library', { bookId, status, currentPage });
   },
@@ -883,7 +888,35 @@ export interface SummaryResponse {
 export interface ChatResponse {
   response: string;
   conversationId?: string;
+  /** Saved highlight/note passages the answer drew on (study-chat only). */
+  citations?: string[];
   generatedAt: string;
+}
+
+export interface StudyTerm {
+  term: string;
+  definition: string;
+}
+
+export interface StudyQuizItem {
+  question: string;
+  answer: string;
+}
+
+/** Chapter-scoped summary, key ideas, glossary, and quiz from the AI companion. */
+export interface StudyPack {
+  bookId: string;
+  chapterNum: number;
+  summary: string;
+  keyIdeas: string[];
+  terms: StudyTerm[];
+  quiz: StudyQuizItem[];
+}
+
+export interface StudyPackResponse {
+  pack: StudyPack;
+  generatedAt: string;
+  fromCache?: boolean;
 }
 
 export interface PersonalInsights {
@@ -901,6 +934,20 @@ export interface PersonalInsights {
 
 export interface InsightsResponse {
   insights: PersonalInsights;
+  generatedAt: string;
+  fromCache?: boolean;
+}
+
+export interface AuthorInsight {
+  author: string;
+  insight: string;
+  connections: string[];
+  /** Dropped server-side unless it names a real title from the bibliography. */
+  startWith?: { title: string; why: string };
+}
+
+export interface AuthorInsightResponse {
+  insight: AuthorInsight;
   generatedAt: string;
   fromCache?: boolean;
 }
@@ -936,8 +983,39 @@ export const AIApiService = {
     return apiClient.post<ChatResponse>('/api/ai/chat', data);
   },
 
+  /** Chapter-scoped study pack. `chapterText` is client-supplied (the reader synthesizes chapters). */
+  getStudyPack(bookId: string, chapterNum: number, chapterText: string, chapterTitle?: string) {
+    return apiClient.post<StudyPackResponse>('/api/ai/study-pack', {
+      bookId,
+      chapterNum,
+      chapterText,
+      chapterTitle,
+    });
+  },
+
+  /** Q&A grounded in the reader's own highlights/notes for a library entry. */
+  studyChat(data: {
+    message: string;
+    bookId?: string;
+    context?: string;
+    conversationId?: string;
+    entryId?: string;
+    chapterNum?: number;
+  }) {
+    return apiClient.post<ChatResponse>('/api/ai/study-chat', data);
+  },
+
   getInsights(useCache = true) {
     return apiClient.post<InsightsResponse>('/api/ai/insights', { useCache });
+  },
+
+  /**
+   * "Why you might like this author." Sends only the name: the server rebuilds
+   * the reader's history from their own library rather than trusting the client
+   * with the facts the model reasons over.
+   */
+  getAuthorInsight(author: string) {
+    return apiClient.post<AuthorInsightResponse>('/api/ai/author-insight', { author });
   },
 
   getPlanner(bookId: string, dailyAvailableMinutes = 60) {
@@ -1208,6 +1286,84 @@ export const NotificationApiService = {
 
   markAllRead() {
     return apiClient.post<{ updated: number }>('/api/notifications/read-all', {});
+  },
+};
+
+// ─── Phase 6: Author profiles ───────────────────────────────────────────────────
+
+export interface AuthorSource {
+  name: string;
+  url: string;
+}
+
+export interface AuthorBio {
+  name: string;
+  /** Absent when no source had one — never invented, so render the gap. */
+  bio?: string;
+  portraitUrl?: string;
+  birthDate?: string;
+  deathDate?: string;
+  topWork?: string;
+  workCount?: number;
+  subjects: string[];
+  /** Attribution for the CC-licensed text and portrait above; show it. */
+  sources: AuthorSource[];
+}
+
+export interface AuthorBook {
+  id?: string;
+  googleBooksId?: string;
+  title: string;
+  authors: string[];
+  coverImage?: string;
+  publishedDate?: string;
+  pageCount?: number;
+  categories: string[];
+  averageRating?: number;
+  entryId?: string;
+  status?: string;
+  currentPage?: number;
+  isFavorite?: boolean;
+  myRating?: number;
+}
+
+export interface AuthorHistory {
+  booksInLibrary: number;
+  booksCompleted: number;
+  booksReading: number;
+  pagesRead: number;
+  favorites: number;
+  averageRating: number | null;
+  ratedCount: number;
+  firstReadAt: string | null;
+  lastReadAt: string | null;
+}
+
+export interface RelatedAuthor {
+  name: string;
+  reason: string;
+  sharedGenres: string[];
+  weight: number;
+}
+
+export interface AuthorProfile {
+  author: AuthorBio;
+  history: AuthorHistory;
+  booksInLibrary: AuthorBook[];
+  moreByAuthor: AuthorBook[];
+  relatedAuthors: RelatedAuthor[];
+  genres: string[];
+  /** False means the "more by" rail failed to load — not that it is empty. */
+  bibliographyAvailable: boolean;
+}
+
+export const AuthorApiService = {
+  /**
+   * `name` is the author's name. Legacy `auth-<uuid>` links still resolve
+   * server-side, so old hrefs keep working — encode whatever we were given.
+   */
+  getProfile(name: string) {
+    return apiClient.get<AuthorProfile>(`/api/authors/${encodeURIComponent(name)}`);
   },
 };
 

@@ -347,6 +347,31 @@ describe('LibraryService', () => {
     });
   });
 
+  // ---- resolve entry by book ----------------------------------------------
+  describe('getEntryByBook', () => {
+    it('returns the caller’s entry for a book they own', async () => {
+      const entry = fakeEntry({ bookId: 'book-1' });
+      vi.mocked(prisma.libraryEntry.findFirst).mockResolvedValue(entry as any);
+
+      const result = await service.getEntryByBook('user-1', 'book-1');
+
+      // Ownership is part of the where — this is how one reader cannot resolve
+      // another's copy.
+      expect(prisma.libraryEntry.findFirst).toHaveBeenCalledWith({
+        where: { userId: 'user-1', bookId: 'book-1' },
+      });
+      expect(result).toEqual(entry);
+    });
+
+    it('returns null (not an error) when the book is not in the library', async () => {
+      vi.mocked(prisma.libraryEntry.findFirst).mockResolvedValue(null);
+
+      const result = await service.getEntryByBook('user-1', 'not-owned');
+
+      expect(result).toBeNull();
+    });
+  });
+
   // ---- wishlist operations -------------------------------------------------
   describe('getWishlist', () => {
     it('paginates the same way the library does', async () => {

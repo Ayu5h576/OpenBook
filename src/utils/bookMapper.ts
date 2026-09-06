@@ -49,11 +49,15 @@ export function stripHtml(value?: string | null): string {
 
 export function googleBookToApp(gb: any): Book {
   const id = gb.googleBooksId || `book-${Date.now()}`;
+  const author = gb.authors?.[0] || 'Unknown Author';
   return {
     id,
     title: gb.title || 'Untitled',
-    author: gb.authors?.[0] || 'Unknown Author',
-    authorId: `auth-${gb.googleBooksId}`,
+    author,
+    // Authors are identified by name — it is the key Google Books, Open Library
+    // and Wikipedia all accept. The old `auth-<book id>` form was a book id
+    // wearing an author prefix and could not identify an author at all.
+    authorId: author,
     // Empty, not a stock photo: BookCover draws a real cover from the title and
     // author when there's no artwork, which beats showing someone else's shelf.
     cover: gb.coverImage || '',
@@ -90,7 +94,8 @@ export function libraryEntryToApp(entry: LibraryEntry): Book {
     id: localBook.id,
     title: localBook.title,
     author: localBook.authors?.[0] || 'Unknown',
-    authorId: `auth-${localBook.id}`,
+    // See googleBookToApp: authors are keyed by name.
+    authorId: localBook.authors?.[0] || 'Unknown',
     cover: localBook.coverImage || '',
     spineColor: spineColorFor(localBook.id),
     thickness: thicknessFor(localBook.pageCount),
@@ -134,7 +139,8 @@ export function wishlistEntryToApp(entry: WishlistEntry): Book {
     id: localBook.id,
     title: localBook.title,
     author: localBook.authors?.[0] || 'Unknown',
-    authorId: `auth-${localBook.id}`,
+    // See googleBookToApp: authors are keyed by name.
+    authorId: localBook.authors?.[0] || 'Unknown',
     cover: localBook.coverImage || '',
     spineColor: spineColorFor(localBook.id),
     thickness: thicknessFor(localBook.pageCount),

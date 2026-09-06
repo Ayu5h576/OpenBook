@@ -38,6 +38,13 @@ export class LibraryController {
     res.json({ entry });
   }
 
+  /** Resolves the caller's LibraryEntry for a book id — `{ entry: null }` when the book is not in their library. */
+  async resolveEntry(req: AuthenticatedRequest, res: Response) {
+    const userId = requireUser(req);
+    const entry = await libraryService.getEntryByBook(userId, req.params.bookId);
+    res.json({ entry });
+  }
+
   /** Responds `{ memories, nextCursor, total }` for the finished shelf. */
   async getMemories(req: AuthenticatedRequest, res: Response) {
     const userId = requireUser(req);

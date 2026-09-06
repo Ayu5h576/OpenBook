@@ -62,7 +62,8 @@ export const BookDetailView: React.FC = () => {
     id: localBook.id,
     title: localBook.title,
     author: localBook.authors[0] || 'Unknown',
-    authorId: `auth-${localBook.id}`,
+    // Authors are identified by name (see bookMapper.googleBookToApp).
+    authorId: localBook.authors[0] || 'Unknown',
     cover: localBook.coverImage || '',
     spineColor: '#1D1D1D',
     thickness: 30,
@@ -282,7 +283,18 @@ export const BookDetailView: React.FC = () => {
             </h1>
 
             <p className="text-base text-[var(--muted)] font-medium">
-              by <span className="text-[var(--ink)] font-bold underline cursor-pointer" onClick={() => navigate(`/author/${book.authorId}`)}>{book.author}</span>
+              by{' '}
+              {book.author && book.author !== 'Unknown' ? (
+                // Names carry spaces and periods, so the segment must be encoded.
+                <span
+                  className="text-[var(--ink)] font-bold underline cursor-pointer"
+                  onClick={() => navigate(`/author/${encodeURIComponent(book.authorId)}`)}
+                >
+                  {book.author}
+                </span>
+              ) : (
+                <span className="text-[var(--ink)] font-bold">{book.author}</span>
+              )}
             </p>
 
             {/* Rating Stars & Metadata Grid */}

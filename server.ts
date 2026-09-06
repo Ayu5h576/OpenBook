@@ -23,6 +23,7 @@ import socialRoutes from './src/server/routes/socialRoutes';
 import bookClubRoutes from './src/server/routes/bookClubRoutes';
 import achievementRoutes from './src/server/routes/achievementRoutes';
 import notificationRoutes from './src/server/routes/notificationRoutes';
+import authorRoutes from './src/server/routes/authorRoutes';
 import { errorHandlerMiddleware } from './src/server/middlewares/errorHandler';
 
 // ---------------------------------------------------------------------------
@@ -127,6 +128,9 @@ export async function buildApp(): Promise<Express> {
 
   // Phase 6: Quote wall
   app.use('/api/quotes', quoteRoutes);
+
+  // Phase 6: Author profiles
+  app.use('/api/authors', authorRoutes);
 
   // Legacy AI endpoints (deprecated - kept for backward compatibility)
   app.post('/api/ai/analyze-legacy', async (req, res) => {

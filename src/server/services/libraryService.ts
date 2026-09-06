@@ -208,6 +208,16 @@ export class LibraryService {
   }
 
   /**
+   * The user's copy of a book, if they have one. Returns null rather than
+   * throwing so the reader can branch on ownership (annotate vs. offer to add
+   * the book) without an exception round-trip. Ownership is enforced by `userId`
+   * in the where clause — one reader can never resolve another's entry.
+   */
+  async getEntryByBook(userId: string, bookId: string) {
+    return prisma.libraryEntry.findFirst({ where: { userId, bookId } });
+  }
+
+  /**
    * The finished shelf as memory cards: what the reader kept from each book.
    *
    * Every field is read off a real row and is nullable — there are deliberately
