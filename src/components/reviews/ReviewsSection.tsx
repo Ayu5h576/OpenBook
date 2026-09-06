@@ -107,7 +107,11 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
   // router state it bounces straight to /community.
   const openProfile = (u: UserSummary) => navigate(`/profile/${u.id}`, { state: { user: u } });
 
-  const hasExternal = Boolean(externalCount && externalCount > 0 && externalRating);
+  // `Book.averageRating` is `Decimal(3,2)`, and Prisma serializes a Decimal to a
+  // JSON *string* — so this arrives as `"4.5"` despite being typed `number`.
+  // Coerce up front, or `.toFixed` below throws and unmounts the section.
+  const external = Number(externalRating ?? 0);
+  const hasExternal = external > 0 && Number(externalCount ?? 0) > 0;
 
   return (
     <section
@@ -134,12 +138,12 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
         {hasExternal ? (
           <>
             <div className="flex items-center gap-2 mt-3">
-              <StarRating value={externalRating!} />
+              <StarRating value={external} />
               <span className="text-sm font-bold text-[var(--ink)] tabular-nums">
-                {externalRating!.toFixed(1)}
+                {external.toFixed(1)}
               </span>
               <span className="text-xs text-[var(--muted)]">
-                · {externalCount!.toLocaleString()} {externalCount === 1 ? 'rating' : 'ratings'}
+                · {Number(externalCount ?? 0).toLocaleString()} {externalCount === 1 ? 'rating' : 'ratings'}
               </span>
             </div>
             <p className="text-xs text-[var(--muted)] mt-2">
