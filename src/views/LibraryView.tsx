@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookCardSkeleton } from '../components/Skeleton';
+import { LoadMore } from '../components/LoadMore';
 import { useLibrary } from '../hooks/useLibrary';
 import { LibraryStatus } from '../services/api';
 import { BookCover } from '../components/BookCover';
@@ -29,7 +30,7 @@ export const LibraryView: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const filter = activeTab === 'ALL' ? undefined : activeTab;
-  const { entries, loading, error, removeEntry } = useLibrary(filter);
+  const { entries, total, loading, loadingMore, error, hasMore, loadMore, removeEntry } = useLibrary(filter);
 
   const progressPct = (currentPage: number, pageCount?: number | null) => {
     if (!pageCount || pageCount === 0) return 0;
@@ -47,7 +48,9 @@ export const LibraryView: React.FC = () => {
             <span>Personal Sanctuary Shelf</span>
           </div>
           <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">My Personal Library</h1>
-          <p className="text-xs text-[var(--muted)] mt-1">{entries.length} Total Volumes Curated</p>
+          {/* The server's count of the whole filtered shelf, not of the pages
+              loaded so far. */}
+          <p className="text-xs text-[var(--muted)] mt-1">{total} Total Volumes Curated</p>
         </div>
         <div className="flex items-center bg-[var(--bg-ivory)] p-1 rounded-2xl border border-[var(--border-light)]">
           {(['grid', 'list'] as const).map((m) => (
@@ -196,6 +199,10 @@ export const LibraryView: React.FC = () => {
             );
           })}
         </m.div>
+      )}
+
+      {!loading && entries.length > 0 && (
+        <LoadMore hasMore={hasMore} loadingMore={loadingMore} onLoadMore={loadMore} />
       )}
     </div>
   );

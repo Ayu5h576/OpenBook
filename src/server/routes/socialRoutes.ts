@@ -7,8 +7,13 @@ const router = Router();
 
 router.use(authMiddleware);
 
-// Activity feed for the authenticated user (scope: following | me | global)
+// Activity feed for the authenticated user (scope: circle | me)
 router.get('/feed', asyncHandler((req: any, res: any) => socialController.getFeed(req, res)));
+
+// Reader discovery. Declared before the /:userId group so the literal
+// segments are never captured as a user id.
+router.get('/search', asyncHandler((req: any, res: any) => socialController.searchUsers(req, res)));
+router.get('/suggested', asyncHandler((req: any, res: any) => socialController.getSuggestedReaders(req, res)));
 
 // The caller's own social graph
 router.get('/stats', asyncHandler((req: any, res: any) => socialController.getStats(req, res)));

@@ -162,9 +162,28 @@ class ApiClient {
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>('DELETE', endpoint);
   }
+
+  /**
+   * Rotate the access token on demand. The SSE stream is not routed through
+   * `request()` (it reads a response body incrementally rather than parsing one
+   * JSON payload), so it needs its own way to recover from a 401 — and it must
+   * share this instance's single-flight guard rather than POST /refresh itself,
+   * or two concurrent rotations would invalidate each other.
+   */
+  async refreshAccessToken(): Promise<boolean> {
+    return this.refreshSession();
+  }
 }
 
 const apiClient = new ApiClient(API_BASE_URL);
+
+/**
+ * Rotate the access token, sharing the client's single-flight guard. Exposed for
+ * the SSE stream, which cannot go through `request()`.
+ */
+export function refreshAccessToken(): Promise<boolean> {
+  return apiClient.refreshAccessToken();
+}
 
 export interface User {
   id: string;
@@ -387,16 +406,52 @@ export interface ReadingSession {
   endedAt: string;
 }
 
+/**
+ * One page of a personal list. `total` is the size of the whole filtered set,
+ * not of `items` — the library and wishlist headers quote it, and they would
+ * silently start reading "N loaded so far" if they counted the page instead.
+ */
+export interface PagedList {
+  /** Pass back as `cursor` to fetch the next page; null when the list is exhausted. */
+  nextCursor: string | null;
+  total: number;
+}
+
+export interface LibraryPage extends PagedList {
+  entries: LibraryEntry[];
+}
+
+/** Query for one page of the shelf. `bookId` narrows to a membership check. */
+export interface LibraryQuery {
+  status?: LibraryStatus;
+  bookId?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+function listParams(query: Record<string, string | number | undefined>) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== '') params.set(key, String(value));
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
 export const LibraryApiService = {
-  async getLibrary(status?: LibraryStatus) {
-    const params = status ? `?status=${status}` : '';
-    return apiClient.get<{ entries: LibraryEntry[] }>(`/api/library${params}`);
+  getLibrary({ status, bookId, limit, cursor }: LibraryQuery = {}) {
+    return apiClient.get<LibraryPage>(`/api/library${listParams({ status, bookId, limit, cursor })}`);
   },
 
   async getEntry(entryId: string) {
     return apiClient.get<{ entry: LibraryEntry & { readingSessions: ReadingSession[] } }>(
       `/api/library/${entryId}`
     );
+  },
+
+  /** The caller's LibraryEntry for a book, or null when it is not in their library. */
+  resolveEntryByBook(bookId: string) {
+    return apiClient.get<{ entry: LibraryEntry | null }>(`/api/library/by-book/${bookId}`);
   },
 
   async addToLibrary(bookId: string, status: LibraryStatus = 'OWNED', currentPage = 0) {
@@ -414,7 +469,38 @@ export const LibraryApiService = {
   async logSession(entryId: string, session: { startPage: number; endPage: number; durationSecs: number; startedAt: string; endedAt: string }) {
     return apiClient.post<{ session: ReadingSession }>(`/api/library/${entryId}/sessions`, session);
   },
+
+  getMemories({ limit, cursor }: { limit?: number; cursor?: string } = {}) {
+    return apiClient.get<MemoriesPage>(`/api/library/memories${listParams({ limit, cursor })}`);
+  },
 };
+
+/**
+ * One finished book, and what the reader kept from it.
+ *
+ * Every field past the book is nullable on purpose: the server assembles these
+ * from real rows — a review, a saved quote, a note, the book's own categories —
+ * and never invents filler for a book that was simply read and closed. Render
+ * the pieces that are present and omit the rest.
+ */
+export interface MemoryCard {
+  entryId: string;
+  book: LocalBook;
+  finishedDate: string;
+  /** Out of 5, from the reader's own review. */
+  rating: number | null;
+  /** A saved quote if there is one, otherwise a highlight. */
+  quote: string | null;
+  /** The review body if written, otherwise the most recent note. */
+  topTakeaway: string | null;
+  /** The book's first category — a label, not a judgement. */
+  moodTag: string | null;
+  isFavorite: boolean;
+}
+
+export interface MemoriesPage extends PagedList {
+  memories: MemoryCard[];
+}
 
 // ─── Wishlist ─────────────────────────────────────────────────────────────────
 
@@ -427,9 +513,13 @@ export interface WishlistEntry {
   createdAt: string;
 }
 
+export interface WishlistPage extends PagedList {
+  entries: WishlistEntry[];
+}
+
 export const WishlistApiService = {
-  async getWishlist() {
-    return apiClient.get<{ entries: WishlistEntry[] }>('/api/wishlist');
+  getWishlist({ bookId, limit, cursor }: { bookId?: string; limit?: number; cursor?: string } = {}) {
+    return apiClient.get<WishlistPage>(`/api/wishlist${listParams({ bookId, limit, cursor })}`);
   },
 
   async addToWishlist(bookId: string, priority: 'HIGH' | 'MEDIUM' | 'LOW' = 'MEDIUM', notes?: string) {
@@ -438,6 +528,82 @@ export const WishlistApiService = {
 
   async removeFromWishlist(entryId: string) {
     return apiClient.delete(`/api/wishlist/${entryId}`);
+  },
+};
+
+// ─── Quotes (the quote wall) ───────────────────────────────────────────────────
+
+/** Only the book fields a quote card renders — the server selects exactly these. */
+export interface QuoteBook {
+  id: string;
+  title: string;
+  authors: string[];
+  coverImage?: string;
+}
+
+export interface UserQuote {
+  id: string;
+  text: string;
+  page: number | null;
+  category: string | null;
+  /**
+   * The reader's own star. Not a public like count: quotes are private rows, so
+   * there is nobody else who could have liked one.
+   */
+  isFavorite: boolean;
+  /** Null for a quote jotted down without attaching it to a book on the shelf. */
+  bookId: string | null;
+  book: QuoteBook | null;
+  createdAt: string;
+}
+
+export interface QuotePage extends PagedList {
+  quotes: UserQuote[];
+}
+
+export interface QuoteCategory {
+  category: string;
+  count: number;
+}
+
+export const QuoteApiService = {
+  getQuotes({ category, favorite, bookId, limit, cursor }: {
+    category?: string;
+    favorite?: boolean;
+    bookId?: string;
+    limit?: number;
+    cursor?: string;
+  } = {}) {
+    return apiClient.get<QuotePage>(
+      // `favorite` is stringified rather than passed through: listParams only
+      // takes strings and numbers, and the server reads the literal 'true'/'false'.
+      `/api/quotes${listParams({
+        category,
+        favorite: favorite === undefined ? undefined : String(favorite),
+        bookId,
+        limit,
+        cursor,
+      })}`
+    );
+  },
+
+  getCategories() {
+    return apiClient.get<{ categories: QuoteCategory[] }>('/api/quotes/categories');
+  },
+
+  createQuote(input: { text: string; bookId?: string; page?: number; category?: string }) {
+    return apiClient.post<{ quote: UserQuote }>('/api/quotes', input);
+  },
+
+  updateQuote(
+    quoteId: string,
+    data: Partial<Pick<UserQuote, 'text' | 'page' | 'category' | 'isFavorite'>>
+  ) {
+    return apiClient.put<{ quote: UserQuote }>(`/api/quotes/${quoteId}`, data);
+  },
+
+  deleteQuote(quoteId: string) {
+    return apiClient.delete(`/api/quotes/${quoteId}`);
   },
 };
 
@@ -459,14 +625,23 @@ export interface ApiCollection {
   description?: string;
   coverImage?: string;
   isPublic: boolean;
+  /**
+   * On the list endpoint this is a **cover preview** capped at six books, not the
+   * contents — use `bookCount` for the size and `getCollection` for the rest.
+   */
   books: CollectionBook[];
+  bookCount: number;
   createdAt: string;
   updatedAt: string;
 }
 
+export interface CollectionPage extends PagedList {
+  collections: ApiCollection[];
+}
+
 export const CollectionApiService = {
-  async getCollections() {
-    return apiClient.get<{ collections: ApiCollection[] }>('/api/collections');
+  getCollections({ limit, cursor }: { limit?: number; cursor?: string } = {}) {
+    return apiClient.get<CollectionPage>(`/api/collections${listParams({ limit, cursor })}`);
   },
 
   async getCollection(id: string) {
@@ -500,12 +675,26 @@ export interface ApiReview {
   id: string;
   userId: string;
   bookId: string;
-  rating: number;
-  title?: string;
-  body?: string;
+  /**
+   * `Decimal(3,1)` in Postgres, so this arrives as a **string** ("4.5") on the
+   * wire, not a number. Coerce with `normalizeRating` from utils/reviewStats
+   * before doing arithmetic or rendering.
+   */
+  rating: number | string;
+  title?: string | null;
+  body?: string | null;
   isPrivate: boolean;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Present on the public list only — `getMyReview` and `upsertReview` return a
+   * bare row with no author join. `profile` is nullable in the schema, so a user
+   * without one has no username.
+   */
+  user?: {
+    id: string;
+    profile: { username: string; avatar: string | null } | null;
+  } | null;
 }
 
 export const ReviewApiService = {
@@ -623,6 +812,25 @@ export const AnalyticsApiService = {
   async upsertGoal(data: { year: number; targetBooks: number; targetPages?: number }) {
     return apiClient.post<{ goal: ReadingGoal }>('/api/analytics/goal', data);
   },
+
+  /**
+   * Opens the live stats stream and hands back the raw Response so the caller can
+   * read the body incrementally. Deliberately not `EventSource`: that API cannot
+   * send an Authorization header, and the alternative — the access token in the
+   * query string — would put a credential into every proxy and server log.
+   */
+  async openStatsStream(signal: AbortSignal): Promise<Response> {
+    const token = getAccessToken();
+    return fetch(`${API_BASE_URL}/api/analytics/stream`, {
+      method: 'GET',
+      headers: {
+        Accept: 'text/event-stream',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      credentials: 'include',
+      signal,
+    });
+  },
 };
 
 // AI Reading Companion
@@ -680,7 +888,35 @@ export interface SummaryResponse {
 export interface ChatResponse {
   response: string;
   conversationId?: string;
+  /** Saved highlight/note passages the answer drew on (study-chat only). */
+  citations?: string[];
   generatedAt: string;
+}
+
+export interface StudyTerm {
+  term: string;
+  definition: string;
+}
+
+export interface StudyQuizItem {
+  question: string;
+  answer: string;
+}
+
+/** Chapter-scoped summary, key ideas, glossary, and quiz from the AI companion. */
+export interface StudyPack {
+  bookId: string;
+  chapterNum: number;
+  summary: string;
+  keyIdeas: string[];
+  terms: StudyTerm[];
+  quiz: StudyQuizItem[];
+}
+
+export interface StudyPackResponse {
+  pack: StudyPack;
+  generatedAt: string;
+  fromCache?: boolean;
 }
 
 export interface PersonalInsights {
@@ -698,6 +934,20 @@ export interface PersonalInsights {
 
 export interface InsightsResponse {
   insights: PersonalInsights;
+  generatedAt: string;
+  fromCache?: boolean;
+}
+
+export interface AuthorInsight {
+  author: string;
+  insight: string;
+  connections: string[];
+  /** Dropped server-side unless it names a real title from the bibliography. */
+  startWith?: { title: string; why: string };
+}
+
+export interface AuthorInsightResponse {
+  insight: AuthorInsight;
   generatedAt: string;
   fromCache?: boolean;
 }
@@ -733,8 +983,39 @@ export const AIApiService = {
     return apiClient.post<ChatResponse>('/api/ai/chat', data);
   },
 
+  /** Chapter-scoped study pack. `chapterText` is client-supplied (the reader synthesizes chapters). */
+  getStudyPack(bookId: string, chapterNum: number, chapterText: string, chapterTitle?: string) {
+    return apiClient.post<StudyPackResponse>('/api/ai/study-pack', {
+      bookId,
+      chapterNum,
+      chapterText,
+      chapterTitle,
+    });
+  },
+
+  /** Q&A grounded in the reader's own highlights/notes for a library entry. */
+  studyChat(data: {
+    message: string;
+    bookId?: string;
+    context?: string;
+    conversationId?: string;
+    entryId?: string;
+    chapterNum?: number;
+  }) {
+    return apiClient.post<ChatResponse>('/api/ai/study-chat', data);
+  },
+
   getInsights(useCache = true) {
     return apiClient.post<InsightsResponse>('/api/ai/insights', { useCache });
+  },
+
+  /**
+   * "Why you might like this author." Sends only the name: the server rebuilds
+   * the reader's history from their own library rather than trusting the client
+   * with the facts the model reasons over.
+   */
+  getAuthorInsight(author: string) {
+    return apiClient.post<AuthorInsightResponse>('/api/ai/author-insight', { author });
   },
 
   getPlanner(bookId: string, dailyAvailableMinutes = 60) {
@@ -772,6 +1053,8 @@ export interface ActivityItem {
   actor: { id: string; username: string; avatar?: string | null };
   book?: { id: string; title: string; authors: string[]; coverImage?: string | null } | null;
   metadata: Record<string, any>;
+  /** Why this row is in the circle feed — "You follow priya", "Fellow club member", or null for your own activity. */
+  reason?: string | null;
   createdAt: string;
 }
 
@@ -780,11 +1063,27 @@ export interface ActivityFeed {
   nextCursor: string | null;
 }
 
+/** A reader surfaced by search or suggestions, annotated for the follow button. */
+export interface DiscoveredReader extends UserSummary {
+  isFollowing: boolean;
+  /** Why this reader was suggested; null for plain search hits. */
+  reason?: string | null;
+}
+
 export const SocialApiService = {
-  getFeed(scope: 'following' | 'me' | 'global' = 'following', limit = 20, cursor?: string) {
+  getFeed(scope: 'circle' | 'me' = 'circle', limit = 20, cursor?: string) {
     const params = new URLSearchParams({ scope, limit: String(limit) });
     if (cursor) params.set('cursor', cursor);
     return apiClient.get<ActivityFeed>(`/api/social/feed?${params}`);
+  },
+
+  searchReaders(q: string, limit = 20) {
+    const params = new URLSearchParams({ q, limit: String(limit) });
+    return apiClient.get<{ users: DiscoveredReader[] }>(`/api/social/search?${params}`);
+  },
+
+  getSuggestedReaders(limit = 8) {
+    return apiClient.get<{ users: DiscoveredReader[] }>(`/api/social/suggested?limit=${limit}`);
   },
 
   getStats(userId?: string) {
@@ -944,6 +1243,127 @@ export interface AchievementsResponse {
 export const AchievementApiService = {
   getAchievements() {
     return apiClient.get<AchievementsResponse>('/api/achievements');
+  },
+};
+
+// ─── Notifications ──────────────────────────────────────────────────────────────
+
+export type NotificationType =
+  | 'FOLLOWED_YOU'
+  | 'COMMENTED_ON_DISCUSSION'
+  | 'JOINED_YOUR_CLUB';
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  /** Null when the actor's account has since been deleted. */
+  actor: { id: string; username: string; avatar?: string | null } | null;
+  metadata: Record<string, any>;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface NotificationFeed {
+  notifications: AppNotification[];
+  nextCursor: string | null;
+}
+
+export const NotificationApiService = {
+  list(limit = 20, cursor?: string, unreadOnly = false) {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (cursor) params.set('cursor', cursor);
+    if (unreadOnly) params.set('unreadOnly', 'true');
+    return apiClient.get<NotificationFeed>(`/api/notifications?${params}`);
+  },
+
+  getUnreadCount() {
+    return apiClient.get<{ unread: number }>('/api/notifications/unread-count');
+  },
+
+  markRead(id: string) {
+    return apiClient.post<{ read: boolean }>(`/api/notifications/${id}/read`, {});
+  },
+
+  markAllRead() {
+    return apiClient.post<{ updated: number }>('/api/notifications/read-all', {});
+  },
+};
+
+// ─── Phase 6: Author profiles ───────────────────────────────────────────────────
+
+export interface AuthorSource {
+  name: string;
+  url: string;
+}
+
+export interface AuthorBio {
+  name: string;
+  /** Absent when no source had one — never invented, so render the gap. */
+  bio?: string;
+  portraitUrl?: string;
+  birthDate?: string;
+  deathDate?: string;
+  topWork?: string;
+  workCount?: number;
+  subjects: string[];
+  /** Attribution for the CC-licensed text and portrait above; show it. */
+  sources: AuthorSource[];
+}
+
+export interface AuthorBook {
+  id?: string;
+  googleBooksId?: string;
+  title: string;
+  authors: string[];
+  coverImage?: string;
+  publishedDate?: string;
+  pageCount?: number;
+  categories: string[];
+  averageRating?: number;
+  entryId?: string;
+  status?: string;
+  currentPage?: number;
+  isFavorite?: boolean;
+  myRating?: number;
+}
+
+export interface AuthorHistory {
+  booksInLibrary: number;
+  booksCompleted: number;
+  booksReading: number;
+  pagesRead: number;
+  favorites: number;
+  averageRating: number | null;
+  ratedCount: number;
+  firstReadAt: string | null;
+  lastReadAt: string | null;
+}
+
+export interface RelatedAuthor {
+  name: string;
+  reason: string;
+  sharedGenres: string[];
+  weight: number;
+}
+
+export interface AuthorProfile {
+  author: AuthorBio;
+  history: AuthorHistory;
+  booksInLibrary: AuthorBook[];
+  moreByAuthor: AuthorBook[];
+  relatedAuthors: RelatedAuthor[];
+  genres: string[];
+  /** False means the "more by" rail failed to load — not that it is empty. */
+  bibliographyAvailable: boolean;
+}
+
+export const AuthorApiService = {
+  /**
+   * `name` is the author's name. Legacy `auth-<uuid>` links still resolve
+   * server-side, so old hrefs keep working — encode whatever we were given.
+   */
+  getProfile(name: string) {
+    return apiClient.get<AuthorProfile>(`/api/authors/${encodeURIComponent(name)}`);
   },
 };
 

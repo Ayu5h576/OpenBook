@@ -26,6 +26,28 @@
 - `bookMediaService.ts` collects collage images from Open Library (work → editions → distinct cover ids) plus an author portrait from Open Library or Wikipedia. Every external call is individually try/caught and the service **never throws** — a third-party outage must still leave the local cover on the page. Cover URLs carry `?default=false` so missing covers 404 and the client can drop them.
 - Cache TTLs: offers 6h, media 7d, Google Play `saleInfo` 6h (keyed per country). Null results are cached inside an envelope object, because `cacheService` treats a cached `null` as a miss.
 
+### Readers Community (the circle feed, discovery, notifications)
+
+Activity is visible only to readers who share a connection with the actor. **There is deliberately no "everyone" feed** — `feedQuerySchema` accepts `circle | me` and nothing else, and removing that constraint would silently publish every user's reading activity to every other user. `socialService.getFeed` builds `circle` as the union of the caller, everyone they follow, and their club co-members, so the no-follows/no-clubs case must resolve to `where: { userId: { in: [me] } }` — never an unfiltered `where: {}`. A test in `socialService.test.ts` asserts exactly that; if you touch `getFeed`, keep it passing.
+
+- Because `circle` merges two relationships, every row carries a `reason` ("You follow priya" / "Fellow club member", `null` for your own activity). Club peers are written into `relationByActor` **before** follows, so a direct follow overwrites the weaker label.
+- De-globalizing the feed creates a cold-start problem: a new user's circle is just themselves. `GET /api/social/search` (username substring) and `GET /api/social/suggested` exist to solve it. Suggestions are tiered — club co-members, then second-degree follows, then most-followed as a fallback — and anyone already followed is excluded at every tier. Both routes are declared **before** the `/:userId` group in `socialRoutes.ts` or the literal segments get captured as a user id.
+- Notifications (`FOLLOWED_YOU`, `COMMENTED_ON_DISCUSSION`, `JOINED_YOUR_CLUB`) are written by `notify()`, which mirrors `recordActivity`: best-effort, logs and swallows, so a notification write can never break the action that triggered it. It also **drops self-directed rows** — replying to your own discussion must not ping you. `markRead` looks the row up with `findFirst({ where: { id, userId } })` so one user cannot mark another's notification read.
+- `notificationQuerySchema` keeps `unreadOnly` as the literal string `'true' | 'false'` and the controller converts it. This is not an oversight: `validateData<T>(schema: z.ZodSchema<T>, ...)` resolves to `ZodType<T, ZodTypeDef, T>`, so a `.transform()` that changes the output type fails to type-check. Same reason applies to any future boolean query param.
+- Which discussion thread is open lives in the URL (`/clubs/:id?discussion=<id>`), not local state, so a reply notification can deep-link to the thread.
+
+### Live Analytics Streaming (the dashboard's "Live" badge)
+
+`GET /api/analytics/stream` is a Server-Sent Events endpoint that pushes a fresh stats snapshot whenever a reader's numbers change. `statsEvents.ts` is the bus; `analyticsController.streamStats` is the connection; `useAnalyticsStream.ts` is the client.
+
+- **`invalidateUserStats` is the single trigger.** It was already the app's one "these stats are stale" signal (four `libraryService` paths plus `upsertGoal`), so `publishStatsChanged` hangs off it and no call site needed editing. The publish happens **after** the cache delete — a listener reacts by calling `getStats()`, which must miss the cache rather than re-read the stale entry.
+- **The client is `fetch` + `ReadableStream`, deliberately not `EventSource`.** `EventSource` cannot set an `Authorization` header, and the alternative — the access token in the query string — would write a live credential into every proxy and server access log. `useAnalyticsStream` parses the SSE framing by hand and handles a 401 by calling `refreshAccessToken()`, which shares `ApiClient`'s single-flight refresh guard; rotating separately would let two refreshes invalidate each other.
+- **After `flushHeaders()` the handler owns every error.** `errorHandlerMiddleware` always answers with `res.status().json()`, which throws on a response that is already streaming. So `streamStats` calls `requireUser` *before* the flush (an auth failure still returns a normal JSON 401) and afterwards reports failures as an `event: stream-error` frame while keeping the connection open.
+- **Change events are coalesced over 250ms** because `getStats` is the heaviest read in the app — a bulk import fires one invalidation per book, and recomputing per event would turn a burst into a stall. A change arriving mid-recompute sets `missedWhileBusy` so the loop runs once more rather than dropping it.
+- Redis pub/sub fans out across replicas when `REDIS_URL` is set, over a dedicated `client.duplicate()` connection (a client in subscriber mode cannot issue ordinary commands). Payloads carry an `origin` instance id so a publisher discards its own looped-back message. Every Redis path **fails open**, like `cacheService` and the rate limiters: with the broker down the dashboard degrades to its ordinary refetch, and finishing a book still succeeds.
+- A `: ping` comment frame every 25s keeps idle proxies (which commonly reap silent connections at 30–60s) from closing the stream. `X-Accel-Buffering: no` and `Cache-Control: no-transform` stop intermediaries buffering it. **Do not add `compression` middleware to `server.ts`** — it is the classic way to silently break SSE.
+- `useAnalytics({ live: true })` is opt-in and **off by default**: `AppLayout` calls the hook on every page, so a default of `true` would give every signed-in reader a permanent connection. Only `StatisticsView` opts in — and because pushes land in the shared React Query cache under `['analytics','stats']`, the layout's numbers update live anyway while the dashboard is open.
+
 ### Environment Variables
 Required:
 - `DATABASE_URL`: PostgreSQL connection
@@ -46,7 +68,8 @@ Optional:
 - [x] Reading room (distraction-free reader) implementation — `ReadingRoom.tsx` on live library data with session tracking (PDF rendering still outstanding, see below)
 - [x] Club detail UI (discussions + comments threads) — `ClubDetailView` + `useBookClub`/`useDiscussion`, opened from CommunityView
 - [x] User profile pages with follow buttons + follower/following lists — `ProfileView` + `useProfile`, reachable from the activity feed, club members/owner/discussion authors, and the Navbar "My Profile" menu
-- [ ] Live data streaming for analytics dashboard
+- [x] Readers community loop — scoped "My Circle" feed, reader discovery, notifications (see below)
+- [x] Live data streaming for analytics dashboard — SSE `GET /api/analytics/stream` + `useAnalyticsStream`, opted into by `StatisticsView` (see above)
 
 ### Technical Debt / Blockers
 - PDF reader not yet implemented (reading room)
@@ -56,6 +79,7 @@ Optional:
 - **Leaked credentials (public repo).** Two separate leaks, both now removed from the tree and gated by `npm run scan:secrets`, but **removal is not a fix — a published key can only be revoked at the provider**:
   - `.env.supabase-backup` (committed in `5c72a5b`, still tracked at HEAD until `e01977f` because an earlier `filter-branch` was never pushed): Supabase service key, Supabase JWT secret, anon key, Gemini key. File deleted — nothing in the codebase references Supabase any more. Since the **JWT secret** itself leaked, anyone can mint arbitrary tokens for project `mypdvrjtqkcjewtgiwks`; rotating the service key alone is not enough, the JWT secret must be rotated (which invalidates all its keys).
   - `.claude/settings.json` (present since the initial commit `8f9d091`): a plaintext third-party `ANTHROPIC_API_KEY` for `cc.freemodel.dev` plus an `apiKeyHelper` echoing the same literal.
+  - Keeping it that way: the Claude Code gateway token now lives **only outside the repo**, in `~/.claude/settings.json`, with the account list in `~/.claude/agentrouter-accounts.json` and `~\.claude\claude-account.ps1 <name>` to swap between them (restart `claude` after — `env` is read at startup). Neither `.claude/settings.json` (tracked, permissions only) nor `.claude/settings.local.json` (gitignored, model prefs only) may carry an auth token: a project-level `env` silently overrides user settings, so a stale token there both defeats the switcher and puts a live credential one `git add -f` away from a public repo. `scan-secrets.sh`'s strict tier already matches `sk-[A-Za-z0-9_-]{30,}` and `"apiKeyHelper"`, so CI fails if one lands in a tracked file.
   - Status: `GEMINI_API_KEY` and `JWT_SECRET` verified rotated (local values differ from the leaked ones). **Still to revoke: the Supabase JWT secret / service key, and the `fe_oa_…` freemodel key.** Both remain in git history; history was deliberately *not* rewritten, since force-pushing cannot un-publish them.
 
 ### Performance Considerations

@@ -63,7 +63,7 @@ export function App() {
             id: 'landing-featured',
             title: 'The Secret History',
             author: 'Donna Tartt',
-            authorId: 'auth-donnatartt',
+            authorId: 'Donna Tartt',
             cover: '',
             spineColor: '#1D1D1D',
             thickness: 40,
@@ -90,7 +90,7 @@ export function App() {
               id: 'trending-1',
               title: 'The Secret History',
               author: 'Donna Tartt',
-              authorId: 'auth-donnatartt',
+              authorId: 'Donna Tartt',
               cover: '',
               spineColor: '#1D1D1D',
               thickness: 40,
@@ -117,7 +117,7 @@ export function App() {
               id: 'trending-2',
               title: 'Dune',
               author: 'Frank Herbert',
-              authorId: 'auth-frankherbert',
+              authorId: 'Frank Herbert',
               cover: '',
               spineColor: '#1D1D1D',
               thickness: 40,
@@ -162,14 +162,14 @@ export function App() {
             
             {/* The rest of the routes (currently placeholder props until views are refactored) */}
             <Route path="/bookshelf-3d" element={<InteractiveBookshelf3D books={[]} onSelectBook={()=>{}} onOpenReader={()=>{}} />} />
-            <Route path="/reading-room" element={<ReadingRoom books={[]} onOpenReader={()=>{}} />} />
+            <Route path="/reading-room" element={<ReadingRoom />} />
             <Route path="/wishlist-galaxy" element={<WishlistGalaxy wishlistBooks={[]} onSelectBook={()=>{}} />} />
             <Route path="/book-dna" element={<BookDNA books={[]} />} />
             <Route path="/reading-compass" element={<ReadingCompass allBooks={[]} onSelectBook={()=>{}} />} />
             <Route path="/book-memories" element={<BookMemories completedBooks={[]} />} />
             <Route path="/quote-wall" element={<QuoteWall quotes={[]} />} />
             <Route path="/smart-planner" element={<SmartPlanner />} />
-            <Route path="/author/:id" element={<AuthorView author={undefined as any} authorBooks={[]} onSelectBook={()=>{}} />} />
+            <Route path="/author/:name" element={<AuthorView />} />
           </Route>
 
           {/* Standalone Route (no layout) */}

@@ -1,26 +1,15 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Users, MessageSquare, Loader2, Lock, Crown, Shield, UserCheck,
   Plus, Send, Sparkles,
 } from 'lucide-react';
 import { useBookClub, useDiscussion } from '../hooks/useBookClub';
 import type { UserSummary } from '../services/api';
+import { Avatar } from '../components/Avatar';
+import { timeAgo } from '../utils/timeAgo';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function timeAgo(iso: string): string {
-  const then = new Date(iso).getTime();
-  const secs = Math.max(1, Math.floor((Date.now() - then) / 1000));
-  if (secs < 60) return `${secs}s ago`;
-  const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString();
-}
 
 const ROLE_BADGE: Record<string, { icon: React.ComponentType<{ className?: string }>; label: string }> = {
   OWNER: { icon: Crown, label: 'Owner' },
@@ -36,16 +25,6 @@ const BackButton: React.FC<{ onBack: () => void; label?: string }> = ({ onBack, 
     <ArrowLeft className="w-4 h-4" />
     <span>{label}</span>
   </button>
-);
-
-const Avatar: React.FC<{ username: string; avatar?: string | null; size?: string }> = ({ username, avatar, size = 'w-8 h-8' }) => (
-  <div className={`${size} rounded-xl bg-[var(--bg-beige)] flex items-center justify-center shrink-0 overflow-hidden`}>
-    {avatar ? (
-      <img src={avatar} alt={username} className="w-full h-full object-cover" />
-    ) : (
-      <span className="text-xs font-bold text-[#A0522D]">{username.charAt(0).toUpperCase()}</span>
-    )}
-  </div>
 );
 
 // ─── New Discussion Form ─────────────────────────────────────────────────────
@@ -244,7 +223,17 @@ export const ClubDetailView: React.FC = () => {
   const navigate = useNavigate();
   // We can safely cast clubId because the route is only matched if the id exists
   const { club, discussions, loading, error, join, leave, createDiscussion } = useBookClub(clubId as string);
-  const [selectedDiscussionId, setSelectedDiscussionId] = useState<string | null>(null);
+  // Which thread is open lives in the URL (?discussion=<id>) so a reply
+  // notification can deep-link straight to it, and Back leaves the thread
+  // rather than the club.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedDiscussionId = searchParams.get('discussion');
+  const setSelectedDiscussionId = (id: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (id) next.set('discussion', id);
+    else next.delete('discussion');
+    setSearchParams(next, { replace: true });
+  };
   const [showNewDiscussion, setShowNewDiscussion] = useState(false);
   const [busy, setBusy] = useState(false);
 

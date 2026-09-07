@@ -6,6 +6,7 @@ import { Bookmark, Orbit, BookOpen, Star, X } from 'lucide-react';
 import { BookCardSkeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorBanner } from '../components/ErrorBanner';
+import { LoadMore } from '../components/LoadMore';
 
 const priorityBadge = (priority: 'HIGH' | 'MEDIUM' | 'LOW') => {
   if (priority === 'HIGH') return { label: 'High', cls: 'bg-red-100 text-red-700' };
@@ -15,7 +16,7 @@ const priorityBadge = (priority: 'HIGH' | 'MEDIUM' | 'LOW') => {
 
 export const WishlistView: React.FC = () => {
   const navigate = useNavigate();
-  const { entries, loading, error, removeBook } = useWishlist();
+  const { entries, total, loading, loadingMore, error, hasMore, loadMore, removeBook } = useWishlist();
 
   return (
     <div className="space-y-8 pb-12">
@@ -28,7 +29,7 @@ export const WishlistView: React.FC = () => {
             <span>Saved Volumes</span>
           </div>
           <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">My Reading Wishlist</h1>
-          <p className="text-xs text-[var(--muted)] mt-1">{entries.length} Volumes Saved for Future Sessions</p>
+          <p className="text-xs text-[var(--muted)] mt-1">{total} Volumes Saved for Future Sessions</p>
         </div>
         <button
           onClick={() => navigate('/wishlist-galaxy')}
@@ -96,6 +97,10 @@ export const WishlistView: React.FC = () => {
             );
           })}
         </div>
+      )}
+
+      {!loading && entries.length > 0 && (
+        <LoadMore hasMore={hasMore} loadingMore={loadingMore} onLoadMore={loadMore} />
       )}
     </div>
   );

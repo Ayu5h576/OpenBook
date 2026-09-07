@@ -3,29 +3,19 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   Users, MessageSquare, Sparkles, BookOpen, UserCheck, Plus, X, Loader2,
-  Crown, Shield, Lock, Award, UserPlus, PenSquare, Star, Rss,
+  Crown, Shield, Lock, Award, UserPlus, PenSquare, Star, Rss, Search, UserSearch,
 } from 'lucide-react';
 import { useBookClubs } from '../hooks/useBookClubs';
 import { useActivityFeed, FeedScope } from '../hooks/useActivityFeed';
+import { useReaderDiscovery } from '../hooks/useReaderDiscovery';
 import type { ActivityItem, ActivityType, UserSummary } from '../services/api';
 import { ClubCardSkeleton, ActivityItemSkeleton } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
+import { Avatar } from '../components/Avatar';
+import { timeAgo } from '../utils/timeAgo';
 import { ErrorBanner } from '../components/ErrorBanner';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function timeAgo(iso: string): string {
-  const then = new Date(iso).getTime();
-  const secs = Math.max(1, Math.floor((Date.now() - then) / 1000));
-  if (secs < 60) return `${secs}s ago`;
-  const mins = Math.floor(secs / 60);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString();
-}
 
 const ACTIVITY_ICON: Record<ActivityType, React.ComponentType<{ className?: string }>> = {
   FINISHED_BOOK: BookOpen,
@@ -186,12 +176,120 @@ const CreateClubModal: React.FC<{
   );
 };
 
+// ─── Find Readers ────────────────────────────────────────────────────────────
+
+/**
+ * Search + suggestions in one panel. Without this the follow graph has no entry
+ * point: the circle feed only shows readers you already follow or share a club
+ * with, so a new user would otherwise have no way to find anybody.
+ */
+const FindReadersPanel: React.FC<{ onOpenProfile: (id: string) => void }> = ({ onOpenProfile }) => {
+  const {
+    query, setQuery, results, suggestions, searching,
+    loadingSuggestions, error, busyId, toggleFollow,
+  } = useReaderDiscovery();
+
+  // `results === null` means no active search, so fall back to suggestions.
+  const showingSearch = results !== null;
+  const list = showingSearch ? results : suggestions;
+  const loading = showingSearch ? searching : loadingSuggestions;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <UserSearch className="w-4 h-4 text-[#A0522D]" />
+        <h2 className="font-serif-title text-xl font-bold text-[var(--ink)]">Find Readers</h2>
+      </div>
+
+      <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-4 shadow-warm-sm space-y-3">
+        <div className="relative">
+          <Search className="w-4 h-4 text-[var(--muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search readers by username…"
+            className="w-full pl-10 pr-9 py-2.5 rounded-2xl border border-[var(--border-light)] bg-[var(--bg-ivory)] text-sm text-[var(--ink)] focus:outline-none focus:border-[#A0522D]"
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              aria-label="Clear search"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--ink)]"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {error && <ErrorBanner message={error} />}
+
+        {!showingSearch && !loadingSuggestions && suggestions.length > 0 && (
+          <p className="text-[10px] uppercase tracking-wider text-[var(--muted)] font-semibold px-1">
+            Readers you may like
+          </p>
+        )}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-4 h-4 animate-spin text-[#A0522D]" />
+          </div>
+        ) : list.length === 0 ? (
+          <p className="text-xs text-[var(--muted)] text-center py-6 px-2">
+            {showingSearch
+              ? `No readers match “${query.trim()}”.`
+              : 'No suggestions yet. Join a club to meet readers with similar taste.'}
+          </p>
+        ) : (
+          <div className="divide-y divide-[var(--border-light)]">
+            {list.map((u) => (
+              <div key={u.id} className="flex items-center gap-3 py-2.5">
+                <button onClick={() => onOpenProfile(u.id)} className="shrink-0">
+                  <Avatar username={u.username} avatar={u.avatar} size="w-9 h-9" shape="rounded-2xl" />
+                </button>
+                <div className="min-w-0 flex-1">
+                  <button
+                    onClick={() => onOpenProfile(u.id)}
+                    className="block text-sm font-semibold text-[var(--ink)] hover:text-[#A0522D] transition-colors truncate"
+                  >
+                    {u.username}
+                  </button>
+                  <p className="text-[10px] text-[var(--muted)] truncate">
+                    {u.reason ?? u.bio ?? 'Reader on OpenBook'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => toggleFollow(u.id)}
+                  disabled={busyId === u.id}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-60 ${
+                    u.isFollowing
+                      ? 'border border-[var(--border-light)] text-[var(--muted)]'
+                      : 'bg-[var(--ink)] text-[var(--bg-ivory)]'
+                  }`}
+                >
+                  {busyId === u.id ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : u.isFollowing ? (
+                    <UserCheck className="w-3 h-3" />
+                  ) : (
+                    <UserPlus className="w-3 h-3" />
+                  )}
+                  {u.isFollowing ? 'Following' : 'Follow'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // ─── Main View ───────────────────────────────────────────────────────────────
 
 export const CommunityView: React.FC = () => {
   const navigate = useNavigate();
   const { clubs, loading: clubsLoading, error: clubsError, createClub, joinClub, leaveClub } = useBookClubs();
-  const [scope, setScope] = useState<FeedScope>('following');
+  const [scope, setScope] = useState<FeedScope>('circle');
   const { activities, loading: feedLoading, hasMore, loadMore, loadingMore } = useActivityFeed(scope);
   const [showCreate, setShowCreate] = useState(false);
   const [busyClub, setBusyClub] = useState<string | null>(null);
@@ -206,8 +304,7 @@ export const CommunityView: React.FC = () => {
   };
 
   const scopes: { key: FeedScope; label: string }[] = [
-    { key: 'following', label: 'Following' },
-    { key: 'global', label: 'Everyone' },
+    { key: 'circle', label: 'My Circle' },
     { key: 'me', label: 'You' },
   ];
 
@@ -312,8 +409,12 @@ export const CommunityView: React.FC = () => {
           )}
         </div>
 
-        {/* Activity Feed */}
-        <div className="space-y-4">
+        {/* Sidebar: reader discovery above the feed it fills */}
+        <div className="space-y-8">
+          <FindReadersPanel onOpenProfile={(id) => navigate(`/profile/${id}`)} />
+
+          {/* Activity Feed */}
+          <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Rss className="w-4 h-4 text-[#A0522D]" />
             <h2 className="font-serif-title text-xl font-bold text-[var(--ink)]">Activity</h2>
@@ -342,8 +443,8 @@ export const CommunityView: React.FC = () => {
               <div className="text-center py-12 px-4">
                 <MessageSquare className="w-7 h-7 text-[#A0522D] mx-auto mb-2" />
                 <p className="text-xs text-[var(--muted)]">
-                  {scope === 'following'
-                    ? 'No activity yet. Follow readers to see what they’re reading.'
+                  {scope === 'circle'
+                    ? 'Your circle is quiet. Follow a reader or join a club to fill this feed.'
                     : 'No activity yet. Finish a book or write a review to get started.'}
                 </p>
               </div>
@@ -358,7 +459,16 @@ export const CommunityView: React.FC = () => {
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs text-[var(--muted)] leading-relaxed">{activityText(a, navigate)}</p>
-                        <span className="text-[10px] text-[#A0A0A0]">{timeAgo(a.createdAt)}</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] text-[#A0A0A0]">{timeAgo(a.createdAt)}</span>
+                          {/* Why this row is in the merged circle feed. */}
+                          {a.reason && (
+                            <>
+                              <span className="text-[10px] text-[#D0C8BE]">·</span>
+                              <span className="text-[10px] text-[#A0A0A0]">{a.reason}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -377,6 +487,7 @@ export const CommunityView: React.FC = () => {
                 </button>
               </div>
             )}
+          </div>
           </div>
         </div>
       </div>

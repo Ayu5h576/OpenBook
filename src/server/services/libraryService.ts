@@ -1,17 +1,90 @@
-import { LibraryStatus } from '@prisma/client';
+import { LibraryStatus, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { ConflictError, NotFoundError, mapPrismaError } from '../utils/errors';
 import { recordActivity } from './socialService';
 import { invalidateUserStats } from './analyticsService';
-import type { AddToLibraryInput, UpdateLibraryEntryInput, LogSessionInput } from '../validators/books';
+import type {
+  AddToLibraryInput,
+  UpdateLibraryEntryInput,
+  LogSessionInput,
+  LibraryQueryInput,
+  WishlistQueryInput,
+  ListQueryInput,
+} from '../validators/books';
+
+/**
+ * Pinned first, then most recently read. Two keys here are load-bearing:
+ *
+ *  - `nulls: 'last'` on `lastReadAt`. Postgres sorts NULLs *first* for DESC, so
+ *    without it every never-opened book floats above the one you are actually
+ *    reading. That was merely odd while the whole shelf came back in a single
+ *    response; now that only the first page does, it would starve "Continue
+ *    reading" and "Recently opened" of anything in progress.
+ *  - `id` as the final key. Prisma resolves a cursor as "the rows after this id
+ *    in this order", so a non-total order lets rows with equal keys repeat or
+ *    vanish between pages. `isPinned`, `lastReadAt` and `createdAt` are all
+ *    non-unique; `id` makes the order total.
+ */
+const LIBRARY_ORDER: Prisma.LibraryEntryOrderByWithRelationInput[] = [
+  { isPinned: 'desc' },
+  { lastReadAt: { sort: 'desc', nulls: 'last' } },
+  { createdAt: 'desc' },
+  { id: 'desc' },
+];
+
+/** Same total-order requirement as LIBRARY_ORDER; priority is an enum, so HIGH first. */
+const WISHLIST_ORDER: Prisma.WishlistEntryOrderByWithRelationInput[] = [
+  { priority: 'asc' },
+  { createdAt: 'desc' },
+  { id: 'desc' },
+];
+
+/**
+ * Memory cards are a chronology of finishing books, so `finishedAt` leads.
+ * `nulls: 'last'` for the same reason as LIBRARY_ORDER — Postgres sorts NULLs
+ * first on DESC, which would float books marked COMPLETED before the column
+ * existed above everything actually finished recently.
+ */
+const MEMORY_ORDER: Prisma.LibraryEntryOrderByWithRelationInput[] = [
+  { finishedAt: { sort: 'desc', nulls: 'last' } },
+  { updatedAt: 'desc' },
+  { id: 'desc' },
+];
 
 export class LibraryService {
-  async getUserLibrary(userId: string, status?: LibraryStatus) {
-    return prisma.libraryEntry.findMany({
-      where: { userId, ...(status ? { status } : {}) },
-      include: { book: true },
-      orderBy: [{ isPinned: 'desc' }, { lastReadAt: 'desc' }, { createdAt: 'desc' }],
-    });
+  /**
+   * One cursor-paginated page of the reader's shelf, newest activity first.
+   *
+   * `total` is the real size of the filtered set, not the page — the library
+   * header reads "N Total Volumes Curated", which would otherwise silently
+   * degrade into "N loaded so far".
+   */
+  async getUserLibrary(userId: string, { status, bookId, limit, cursor }: LibraryQueryInput) {
+    const where: Prisma.LibraryEntryWhereInput = {
+      userId,
+      ...(status && { status: status as LibraryStatus }),
+      ...(bookId && { bookId }),
+    };
+
+    const [rows, total] = await Promise.all([
+      prisma.libraryEntry.findMany({
+        where,
+        include: { book: true },
+        orderBy: LIBRARY_ORDER,
+        take: limit + 1,
+        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+      }),
+      prisma.libraryEntry.count({ where }),
+    ]);
+
+    const hasMore = rows.length > limit;
+    const entries = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      entries,
+      nextCursor: hasMore ? entries[entries.length - 1].id : null,
+      total,
+    };
   }
 
   async addToLibrary(userId: string, input: AddToLibraryInput) {
@@ -134,12 +207,125 @@ export class LibraryService {
     return entry;
   }
 
-  async getWishlist(userId: string) {
-    return prisma.wishlistEntry.findMany({
-      where: { userId },
-      include: { book: true },
-      orderBy: [{ priority: 'asc' }, { createdAt: 'desc' }],
+  /**
+   * The user's copy of a book, if they have one. Returns null rather than
+   * throwing so the reader can branch on ownership (annotate vs. offer to add
+   * the book) without an exception round-trip. Ownership is enforced by `userId`
+   * in the where clause — one reader can never resolve another's entry.
+   */
+  async getEntryByBook(userId: string, bookId: string) {
+    return prisma.libraryEntry.findFirst({ where: { userId, bookId } });
+  }
+
+  /**
+   * The finished shelf as memory cards: what the reader kept from each book.
+   *
+   * Every field is read off a real row and is nullable — there are deliberately
+   * no placeholder strings. A book the reader never annotated yields a card with
+   * a cover, a title and a date, and the client hides the parts that are absent.
+   * Inventing a takeaway would be the same mistake as synthesizing a price.
+   */
+  async getMemories(userId: string, { limit, cursor }: ListQueryInput) {
+    const where: Prisma.LibraryEntryWhereInput = { userId, status: LibraryStatus.COMPLETED };
+
+    const [rows, total] = await Promise.all([
+      prisma.libraryEntry.findMany({
+        where,
+        include: {
+          book: true,
+          // One each: the card has room for a single quote and a single takeaway.
+          notes: { orderBy: { createdAt: 'desc' }, take: 1 },
+          highlights: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+        orderBy: MEMORY_ORDER,
+        take: limit + 1,
+        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+      }),
+      prisma.libraryEntry.count({ where }),
+    ]);
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+    const bookIds = page.map((entry) => entry.bookId);
+
+    // Nothing finished on this page, so nothing to join against.
+    if (!bookIds.length) return { memories: [], nextCursor: null, total };
+
+    // Reviews and quotes hang off (userId, bookId), not off LibraryEntry, so they
+    // cannot come from the include above. Two batched queries keyed on the page's
+    // book ids rather than one pair per card.
+    const [reviews, quotes] = await Promise.all([
+      prisma.review.findMany({
+        where: { userId, bookId: { in: bookIds } },
+        select: { bookId: true, rating: true, body: true },
+      }),
+      prisma.userQuote.findMany({
+        where: { userId, bookId: { in: bookIds } },
+        // Favourites first, so the quote the reader starred is the one that makes
+        // the card.
+        orderBy: [{ isFavorite: 'desc' }, { createdAt: 'desc' }],
+        select: { bookId: true, text: true },
+      }),
+    ]);
+
+    const reviewByBook = new Map(reviews.map((review) => [review.bookId, review] as const));
+
+    const quoteByBook = new Map<string, string>();
+    for (const quote of quotes) {
+      if (quote.bookId && !quoteByBook.has(quote.bookId)) quoteByBook.set(quote.bookId, quote.text);
+    }
+
+    const memories = page.map((entry) => {
+      const review = reviewByBook.get(entry.bookId);
+      return {
+        entryId: entry.id,
+        book: entry.book,
+        // finishedAt can be null on rows marked COMPLETED before it was written;
+        // updatedAt is the closest honest stand-in for when that happened.
+        finishedDate: entry.finishedAt ?? entry.updatedAt,
+        // Prisma hands back a Decimal, which serializes as an object rather than
+        // a number — the client renders stars from this, so coerce it here.
+        rating: review ? Number(review.rating) : null,
+        // A saved quote outranks a highlight: filing it was a deliberate act,
+        // while a highlight is just a swipe over some text.
+        quote: quoteByBook.get(entry.bookId) ?? entry.highlights[0]?.text ?? null,
+        // The review body is the reader's considered verdict; failing that, their
+        // most recent note is the nearest thing to one.
+        topTakeaway: review?.body ?? entry.notes[0]?.text ?? null,
+        moodTag: entry.book.categories[0] ?? null,
+        isFavorite: entry.isFavorite,
+      };
     });
+
+    return {
+      memories,
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+      total,
+    };
+  }
+
+  async getWishlist(userId: string, { bookId, limit, cursor }: WishlistQueryInput) {
+    const where: Prisma.WishlistEntryWhereInput = { userId, ...(bookId && { bookId }) };
+
+    const [rows, total] = await Promise.all([
+      prisma.wishlistEntry.findMany({
+        where,
+        include: { book: true },
+        orderBy: WISHLIST_ORDER,
+        take: limit + 1,
+        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+      }),
+      prisma.wishlistEntry.count({ where }),
+    ]);
+
+    const hasMore = rows.length > limit;
+    const entries = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      entries,
+      nextCursor: hasMore ? entries[entries.length - 1].id : null,
+      total,
+    };
   }
 
   async addToWishlist(userId: string, bookId: string, priority: string, notes?: string) {

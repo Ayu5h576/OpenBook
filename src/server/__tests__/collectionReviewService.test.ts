@@ -6,7 +6,7 @@
  * once-per-review feed event.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { CollectionService } from '../services/collectionService';
+import { CollectionService, COLLECTION_PREVIEW_BOOKS } from '../services/collectionService';
 import { ReviewService } from '../services/reviewService';
 import { AuthorizationError, NotFoundError } from '../utils/errors';
 
@@ -16,6 +16,7 @@ vi.mock('../config/prisma', () => ({
       findMany: vi.fn(),
       findFirst: vi.fn(),
       findUnique: vi.fn(),
+      count: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -106,17 +107,61 @@ describe('CollectionService CRUD', () => {
     );
   });
 
-  it('lists a user\'s collections with their books sorted by sortOrder', async () => {
-    (prisma.collection.findMany as any).mockResolvedValue([]);
+  it('lists a user\'s collections with a bounded cover preview and a real count', async () => {
+    (prisma.collection.findMany as any).mockResolvedValue([
+      { id: COLLECTION, books: [], _count: { books: 37 } },
+    ]);
+    (prisma.collection.count as any).mockResolvedValue(1);
 
-    await collections.getUserCollections(OWNER);
+    const result = await collections.getUserCollections(OWNER, { limit: 24 } as any);
 
     expect(prisma.collection.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { userId: OWNER },
-        include: { books: { include: { book: true }, orderBy: { sortOrder: 'asc' } } },
+        include: {
+          books: {
+            include: { book: true },
+            orderBy: { sortOrder: 'asc' },
+            take: COLLECTION_PREVIEW_BOOKS,
+          },
+          _count: { select: { books: true } },
+        },
       })
     );
+    // The grid shows six covers but must still say "37 Volumes".
+    expect(result.collections[0]).toMatchObject({ bookCount: 37 });
+    expect(result.collections[0]).not.toHaveProperty('_count');
+    expect(result.total).toBe(1);
+    expect(result.nextCursor).toBeNull();
+  });
+
+  it('trims the over-fetched row and reports the cursor', async () => {
+    (prisma.collection.findMany as any).mockResolvedValue([
+      { id: 'col-1', books: [], _count: { books: 1 } },
+      { id: 'col-2', books: [], _count: { books: 2 } },
+      { id: 'col-3', books: [], _count: { books: 3 } },
+    ]);
+    (prisma.collection.count as any).mockResolvedValue(3);
+
+    const result = await collections.getUserCollections(OWNER, { limit: 2 } as any);
+
+    expect(result.collections.map((c) => c.id)).toEqual(['col-1', 'col-2']);
+    expect(result.nextCursor).toBe('col-2');
+  });
+
+  it('returns every book from getCollection — the list preview is not the contents', async () => {
+    (prisma.collection.findFirst as any).mockResolvedValue({
+      id: COLLECTION,
+      userId: OWNER,
+      books: [{ book: { id: BOOK } }],
+      _count: { books: 1 },
+    });
+
+    const col = await collections.getCollection(OWNER, COLLECTION);
+
+    const { include } = (prisma.collection.findFirst as any).mock.calls[0][0];
+    expect(include.books).not.toHaveProperty('take');
+    expect(col).toMatchObject({ bookCount: 1 });
   });
 
   it('adds a book for the owner', async () => {
@@ -159,6 +204,26 @@ describe('ReviewService', () => {
     expect(prisma.review.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { bookId: BOOK, isPrivate: false } })
     );
+  });
+
+  it('never exposes author credentials on the public review list', async () => {
+    // This route has no authMiddleware, so whatever the author join returns is
+    // world-readable. A Prisma `include` on `user` would return every User
+    // scalar — email and passwordHash among them. Pin the narrow `select`.
+    (prisma.review.findMany as any).mockResolvedValue([]);
+
+    await reviews.getBookReviews(BOOK);
+
+    const arg = (prisma.review.findMany as any).mock.calls[0][0];
+    const userJoin = arg.include.user;
+
+    expect(userJoin.include).toBeUndefined();
+    expect(userJoin.select).toEqual({
+      id: true,
+      profile: { select: { username: true, avatar: true } },
+    });
+    expect(Object.keys(userJoin.select)).not.toContain('email');
+    expect(Object.keys(userJoin.select)).not.toContain('passwordHash');
   });
 
   it('announces a first-time public review to the feed', async () => {

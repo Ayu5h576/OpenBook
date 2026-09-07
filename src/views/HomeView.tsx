@@ -15,12 +15,19 @@ import { googleBookToApp, libraryEntryToApp } from '../utils/bookMapper';
 import { Sparkles, ArrowRight, BookOpen, Flame, Compass, Star, RefreshCw } from 'lucide-react';
 import { m, staggerListContainer, staggerListItem } from '../motion';
 
+/** Rows pulled for the home screen's recent slice and its badge lookups. */
+const HOME_SHELF_PAGE = 60;
+
 export const HomeView: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const aiHome = useAIHome();
-  const { entries: libraryEntries, loading: libLoading } = useLibrary();
-  const { entries: wishlistEntries, loading: wishLoading } = useWishlist();
+  // One deliberately larger page instead of infinite scroll: this screen only
+  // needs a recent slice — "Continue reading", the four most recent covers, and
+  // owned/wishlist badges on twelve featured books. LIBRARY_ORDER puts pinned
+  // and most-recently-read rows first, so page one is what those sections want.
+  const { entries: libraryEntries, loading: libLoading } = useLibrary(undefined, HOME_SHELF_PAGE);
+  const { entries: wishlistEntries, loading: wishLoading } = useWishlist(HOME_SHELF_PAGE);
 
   const { data: featuredBooks = [], isLoading: featuredLoading } = useQuery({
     queryKey: ['featuredBooks'],

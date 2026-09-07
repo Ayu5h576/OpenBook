@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Search, Compass, Sparkles, Moon, Sun, Coffee, Library, RotateCw, Menu } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
+import { NotificationBell } from './NotificationBell';
 
 /** Minimal user shape for navbar display — matches AuthContext's User. */
 interface NavbarUser {
@@ -136,6 +137,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Coffee className="w-3.5 h-3.5 text-[#A0522D]" />
             <span className="hidden sm:inline">Reading Room</span>
           </Link>
+
+          {/* Notifications — only meaningful once signed in */}
+          {isAuthenticated && <NotificationBell />}
 
           {/* Dark mode toggle */}
           <button

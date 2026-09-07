@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, UserCheck, UserPlus, Users } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { AuthContext } from '../context/AuthContext';
 import type { UserSummary } from '../services/api';
+import { Avatar } from '../components/Avatar';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -15,18 +16,6 @@ const BackButton: React.FC<{ onBack: () => void; label?: string }> = ({ onBack, 
     <ArrowLeft className="w-4 h-4" />
     <span>{label}</span>
   </button>
-);
-
-const Avatar: React.FC<{ username: string; avatar?: string | null; size?: string; textSize?: string }> = ({
-  username, avatar, size = 'w-8 h-8', textSize = 'text-xs',
-}) => (
-  <div className={`${size} rounded-2xl bg-[var(--bg-beige)] flex items-center justify-center shrink-0 overflow-hidden`}>
-    {avatar ? (
-      <img src={avatar} alt={username} className="w-full h-full object-cover" />
-    ) : (
-      <span className={`${textSize} font-bold text-[#A0522D]`}>{username.charAt(0).toUpperCase()}</span>
-    )}
-  </div>
 );
 
 // ─── User List (followers / following) ───────────────────────────────────────
@@ -54,7 +43,7 @@ const UserList: React.FC<{
           disabled={u.id === currentId}
           className="w-full flex items-center gap-3 p-4 text-left hover:bg-[var(--bg-ivory)] transition-colors disabled:cursor-default disabled:hover:bg-transparent"
         >
-          <Avatar username={u.username} avatar={u.avatar} />
+          <Avatar username={u.username} avatar={u.avatar} shape="rounded-2xl" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-[var(--ink)] truncate">{u.username}</p>
             {u.bio && <p className="text-xs text-[var(--muted)] truncate">{u.bio}</p>}
@@ -112,7 +101,7 @@ export const ProfileView: React.FC = () => {
       {/* Header card */}
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-          <Avatar username={user.username} avatar={user.avatar} size="w-20 h-20" textSize="text-3xl" />
+          <Avatar username={user.username} avatar={user.avatar} size="w-20 h-20" textSize="text-3xl" shape="rounded-2xl" />
 
           <div className="min-w-0 flex-1">
             <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)] truncate">{user.username}</h1>

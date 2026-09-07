@@ -16,6 +16,46 @@ export const offersQuerySchema = z.object({
   region: z.enum(['IN', 'US']).default('IN'),
 });
 
+/**
+ * Default page size for the personal lists (library, wishlist, collections).
+ * Sized to fill the four-column grids those screens render without an immediate
+ * second fetch.
+ */
+export const DEFAULT_LIST_LIMIT = 24;
+
+/**
+ * Cursor pagination, shared by every personal list. Matches the activity feed
+ * and notification list rather than the offset-style `page`/`limit` that
+ * `searchBooksSchema` uses for Google Books — a cursor cannot skip or repeat
+ * rows when the list changes underneath the reader.
+ *
+ * Note `z.coerce.number()`: query strings arrive as strings, and coerce keeps
+ * the schema's input and output types identical, which `validateData<T>`
+ * requires. A `.transform()` here would fail to type-check.
+ */
+const paginationShape = {
+  limit: z.coerce.number().int().min(1).max(100).default(DEFAULT_LIST_LIMIT),
+  cursor: z.string().uuid().optional(),
+};
+
+export const listQuerySchema = z.object(paginationShape);
+
+export const libraryQuerySchema = z.object({
+  ...paginationShape,
+  status: z.enum(['READING', 'COMPLETED', 'PAUSED', 'DROPPED', 'ARCHIVED', 'OWNED']).optional(),
+  /**
+   * Narrows to a single book. The book page only needs to know whether *this*
+   * book is on the shelf; scanning the first page for it would quietly start
+   * missing books once a library outgrows one page.
+   */
+  bookId: z.string().uuid().optional(),
+});
+
+export const wishlistQuerySchema = z.object({
+  ...paginationShape,
+  bookId: z.string().uuid().optional(),
+});
+
 export const addToLibrarySchema = z.object({
   bookId: z.string().uuid('Invalid book ID'),
   status: z.enum(['READING', 'COMPLETED', 'PAUSED', 'DROPPED', 'ARCHIVED', 'OWNED']).default('OWNED'),
@@ -103,9 +143,45 @@ export const upsertGoalSchema = z.object({
   targetPages: z.number().int().min(1).optional(),
 });
 
+/**
+ * The reader's own commonplace book. Everything here is scoped to the caller —
+ * a quote is never visible to another user — so there is no author or visibility
+ * field to validate.
+ *
+ * `favorite` stays the literal string `'true' | 'false'` for the same reason
+ * `notificationQuerySchema.unreadOnly` does: `validateData<T>` resolves to
+ * `ZodSchema<T, ZodTypeDef, T>`, so a `.transform()` to boolean would change the
+ * output type and fail to type-check. The controller converts it.
+ */
+export const quoteQuerySchema = z.object({
+  ...paginationShape,
+  category: z.string().min(1).max(100).optional(),
+  favorite: z.enum(['true', 'false']).optional(),
+  bookId: z.string().uuid().optional(),
+});
+
+export const createQuoteSchema = z.object({
+  text: z.string().min(1).max(2000),
+  // Optional: a quote can be something the reader wrote down without attaching
+  // it to a book on their shelf.
+  bookId: z.string().uuid().optional(),
+  page: z.number().int().min(1).optional(),
+  category: z.string().min(1).max(100).optional(),
+});
+
+export const updateQuoteSchema = z.object({
+  text: z.string().min(1).max(2000).optional(),
+  page: z.number().int().min(1).optional(),
+  category: z.string().min(1).max(100).optional(),
+  isFavorite: z.boolean().optional(),
+});
+
 export type SearchBooksInput = z.infer<typeof searchBooksSchema>;
 export type ImportBookInput = z.infer<typeof importBookSchema>;
 export type OffersQueryInput = z.infer<typeof offersQuerySchema>;
+export type ListQueryInput = z.infer<typeof listQuerySchema>;
+export type LibraryQueryInput = z.infer<typeof libraryQuerySchema>;
+export type WishlistQueryInput = z.infer<typeof wishlistQuerySchema>;
 export type AddToLibraryInput = z.infer<typeof addToLibrarySchema>;
 export type UpdateLibraryEntryInput = z.infer<typeof updateLibraryEntrySchema>;
 export type LogSessionInput = z.infer<typeof logSessionSchema>;
@@ -118,3 +194,6 @@ export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;
 export type CreateHighlightInput = z.infer<typeof createHighlightSchema>;
 export type AddToWishlistInput = z.infer<typeof addToWishlistSchema>;
 export type UpsertGoalInput = z.infer<typeof upsertGoalSchema>;
+export type QuoteQueryInput = z.infer<typeof quoteQuerySchema>;
+export type CreateQuoteInput = z.infer<typeof createQuoteSchema>;
+export type UpdateQuoteInput = z.infer<typeof updateQuoteSchema>;

@@ -80,6 +80,8 @@ export interface ChatResponse {
   response: string;
   conversationId?: string;
   relatedBooks?: Array<{ bookId: string; title: string; relevance: string }>;
+  /** Saved highlight/note passages the answer drew on (study-chat only). */
+  citations?: string[];
   generatedAt: string;
 }
 
@@ -154,3 +156,66 @@ export interface AIUsageLog {
   success: boolean;
   error?: string;
 }
+
+// ─── Study Companion (in-reader) ─────────────────────────────────────────────
+export interface StudyTerm {
+  term: string;
+  definition: string;
+}
+
+export interface StudyQuizItem {
+  question: string;
+  answer: string;
+}
+
+/** The AI-generated body of a chapter study pack (no book coordinates). */
+export interface StudyPackBody {
+  summary: string;
+  keyIdeas: string[];
+  terms: StudyTerm[];
+  quiz: StudyQuizItem[];
+}
+
+export interface StudyPack extends StudyPackBody {
+  bookId: string;
+  chapterNum: number;
+}
+
+export interface StudyPackResponse {
+  pack: StudyPack;
+  generatedAt: string;
+}
+
+/** A highlight or note supplied to ground a study-chat answer. */
+export interface AnnotationExcerpt {
+  id: string;
+  kind: 'highlight' | 'note';
+  text: string;
+  color?: string;
+  chapter?: number | null;
+}
+
+// ─── Author Insight ──────────────────────────────────────────────────────────
+
+/** Raw JSON shape the model is asked for; it may omit any field. */
+export interface AuthorInsightBody {
+  insight?: string;
+  connections?: string[];
+  startWith?: { title?: string; why?: string };
+}
+
+export interface AuthorInsight {
+  author: string;
+  /** A short introduction to this author, written for this reader. */
+  insight: string;
+  /** Concrete ties to books or authors already on the reader's shelf. */
+  connections: string[];
+  /** Always a real title from the author's bibliography, or absent. */
+  startWith?: { title: string; why: string };
+}
+
+export interface AuthorInsightResponse {
+  insight: AuthorInsight;
+  generatedAt: string;
+}
+

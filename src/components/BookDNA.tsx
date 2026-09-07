@@ -1,14 +1,16 @@
 import React from 'react';
-import { Book } from '../types';
 import { useAIHome } from '../hooks/useAI';
+import { useLibrary } from '../hooks/useLibrary';
 import { Dna, Brain, Clock, Compass } from 'lucide-react';
 
-interface BookDNAProps {
-  books: Book[];
-}
+export const BookDNA: React.FC = () => {
+  // Only the counts are needed, so ask for a single row of each and read `total`
+  // off the page — that is the server's count of the whole filtered shelf, not of
+  // what was fetched, so it stays exact for a library of any size.
+  const { total: readingCount } = useLibrary('READING', 1);
+  const { total: completedCount } = useLibrary('COMPLETED', 1);
+  const activeOrCompleted = readingCount + completedCount;
 
-export const BookDNA: React.FC<BookDNAProps> = ({ books }) => {
-  const readBooks = books.filter((book) => book.status === 'completed' || book.progress > 0);
   const ai = useAIHome();
   const insights = ai.insights.data?.insights;
   const genreStrands = insights?.favoriteGenres?.slice(0, 5) ?? [];
@@ -62,7 +64,7 @@ export const BookDNA: React.FC<BookDNAProps> = ({ books }) => {
             {insights?.readingSpeed ?? 0} Pages / Hour
           </h3>
           <p className="text-xs text-[var(--muted)] leading-relaxed">
-            Based on logged sessions across {readBooks.length} active or completed books.
+            Based on logged sessions across {activeOrCompleted} active or completed books.
           </p>
         </div>
       </div>

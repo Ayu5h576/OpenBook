@@ -5,15 +5,17 @@ import { Book } from '../types';
 import { BookDetailSkeleton } from '../components/Skeleton';
 import { useAIBookDetail } from '../hooks/useAI';
 import { useCollections } from '../hooks/useCollections';
-import { useLibrary } from '../hooks/useLibrary';
-import { useWishlist } from '../hooks/useWishlist';
+import { useLibraryMutations, useLibraryEntryForBook } from '../hooks/useLibrary';
+import { useWishlistMutations, useWishlistEntryForBook } from '../hooks/useWishlist';
 import { useToast } from '../context/ToastContext';
 import { BookApiService, LocalBook } from '../services/api';
 import { googleBookToApp, stripHtml } from '../utils/bookMapper';
 import { ProgressTracker } from '../components/ProgressTracker';
 import { BookSpread } from '../components/BookSpread';
+import { ReviewsSection } from '../components/reviews/ReviewsSection';
 import { AnimatePresence } from '../motion';
 import { BookCover } from '../components/BookCover';
+import { LoadMore } from '../components/LoadMore';
 import { BookOpen, Heart, Bookmark, Share2, Star, ArrowLeft, Play, Sparkles, MessageSquare, Send, RefreshCw, FolderHeart, Check, X, Info } from 'lucide-react';
 
 import { createPortal } from 'react-dom';
@@ -43,11 +45,13 @@ export const BookDetailView: React.FC = () => {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { entries: libEntries, addBook: addLibraryBook } = useLibrary();
-  const { entries: wishEntries, addBook: addWishlist, removeBook: removeWishlist } = useWishlist();
-
-  const libEntry = localBook ? libEntries.find(e => e.book.id === localBook.id) : undefined;
-  const wishEntry = localBook ? wishEntries.find(e => e.book.id === localBook.id) : undefined;
+  // Asked of the server per book rather than searched for in a page of the
+  // library/wishlist: those lists are paginated now, so a book on page 3 would
+  // read as "not in your library" and the Add button would 409.
+  const { addBook: addLibraryBook } = useLibraryMutations();
+  const { addBook: addWishlist, removeBook: removeWishlist } = useWishlistMutations();
+  const { entry: libEntry } = useLibraryEntryForBook(localBook?.id);
+  const { entry: wishEntry } = useWishlistEntryForBook(localBook?.id);
 
   const isFavorite = libEntry?.isFavorite || false;
   const isWishlist = !!wishEntry;
@@ -58,7 +62,8 @@ export const BookDetailView: React.FC = () => {
     id: localBook.id,
     title: localBook.title,
     author: localBook.authors[0] || 'Unknown',
-    authorId: `auth-${localBook.id}`,
+    // Authors are identified by name (see bookMapper.googleBookToApp).
+    authorId: localBook.authors[0] || 'Unknown',
     cover: localBook.coverImage || '',
     spineColor: '#1D1D1D',
     thickness: 30,
@@ -108,7 +113,14 @@ export const BookDetailView: React.FC = () => {
 
   const realUuid = localBook?.id;
   const ai = useAIBookDetail(realUuid);
-  const { collections, loading: collectionsLoading, addBook: addBookToCollection } = useCollections();
+  const {
+    collections,
+    loading: collectionsLoading,
+    loadingMore: loadingMoreCollections,
+    hasMore: hasMoreCollections,
+    loadMore: loadMoreCollections,
+    addBook: addBookToCollection,
+  } = useCollections();
 
   if (isBookLoading || !book) {
     return (
@@ -271,17 +283,38 @@ export const BookDetailView: React.FC = () => {
             </h1>
 
             <p className="text-base text-[var(--muted)] font-medium">
-              by <span className="text-[var(--ink)] font-bold underline cursor-pointer" onClick={() => navigate(`/author/${book.authorId}`)}>{book.author}</span>
+              by{' '}
+              {book.author && book.author !== 'Unknown' ? (
+                // Names carry spaces and periods, so the segment must be encoded.
+                <span
+                  className="text-[var(--ink)] font-bold underline cursor-pointer"
+                  onClick={() => navigate(`/author/${encodeURIComponent(book.authorId)}`)}
+                >
+                  {book.author}
+                </span>
+              ) : (
+                <span className="text-[var(--ink)] font-bold">{book.author}</span>
+              )}
             </p>
 
             {/* Rating Stars & Metadata Grid */}
             <div className="flex items-center gap-4 my-4 text-xs">
-              <div className="flex items-center gap-1.5 text-[#B8860B] font-bold bg-[#FFF8E7] px-3 py-1 rounded-full">
-                <Star className="w-4 h-4 fill-current" />
-                <span>{book.rating}</span>
-                <span className="text-[var(--muted)] font-normal">({book.reviewCount} reviews)</span>
-              </div>
-              <span className="text-[var(--muted)]">•</span>
+              {/* Gated on a real rating count: `book.rating` falls back to 4.0,
+                  so an unrated book used to show a fabricated score in the most
+                  prominent spot on the page. */}
+              {book.reviewCount > 0 && (
+                <>
+                  <button
+                    onClick={() => document.getElementById('reviews')?.scrollIntoView({ behavior: 'smooth' })}
+                    className="flex items-center gap-1.5 text-[#B8860B] font-bold bg-[#FFF8E7] px-3 py-1 rounded-full hover:bg-[#FDF0D5] transition-colors"
+                  >
+                    <Star className="w-4 h-4 fill-current" />
+                    <span>{book.rating}</span>
+                    <span className="text-[var(--muted)] font-normal">({book.reviewCount} reviews)</span>
+                  </button>
+                  <span className="text-[var(--muted)]">•</span>
+                </>
+              )}
               <span className="text-[var(--muted)]">{book.pages} pages</span>
               <span className="text-[var(--muted)]">•</span>
               <span className="text-[var(--muted)]">{book.language}</span>
@@ -495,6 +528,18 @@ export const BookDetailView: React.FC = () => {
         </div>
       </section>
 
+      {/* Reviews — the external aggregate and member-written reviews, kept
+          visibly apart so a Google Books score is never read as a peer's
+          opinion. External figures come straight off `localBook`, not the
+          mapped `book`, which fills a placeholder rating in. */}
+      <ReviewsSection
+        id="reviews"
+        className="scroll-mt-24"
+        bookId={realUuid}
+        externalRating={localBook?.averageRating}
+        externalCount={localBook?.ratingsCount}
+      />
+
       {/* Next Step Recommendations */}
       {relatedBooks && relatedBooks.length > 0 && (
         <section className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md mt-8">
@@ -622,10 +667,17 @@ export const BookDetailView: React.FC = () => {
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-xs text-[var(--ink)]">{collection.name}</p>
-                      <p className="text-[10px] text-[var(--muted)]">{collection.books?.length ?? 0} books</p>
+                      <p className="text-[10px] text-[var(--muted)]">{collection.bookCount} books</p>
                     </div>
                   </label>
                 ))}
+                {/* The picker paginates like the Collections page, so a reader
+                    with more collections than one page can still reach them. */}
+                <LoadMore
+                  hasMore={hasMoreCollections}
+                  loadingMore={loadingMoreCollections}
+                  onLoadMore={loadMoreCollections}
+                />
               </div>
             )}
 

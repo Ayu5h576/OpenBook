@@ -2,7 +2,12 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../types/index';
 import { collectionService } from '../services/collectionService';
 import { validateData } from '../validators/auth';
-import { createCollectionSchema, updateCollectionSchema, addToCollectionSchema } from '../validators/books';
+import {
+  createCollectionSchema,
+  updateCollectionSchema,
+  addToCollectionSchema,
+  listQuerySchema,
+} from '../validators/books';
 import { AuthenticationError } from '../utils/errors';
 
 function requireUser(req: AuthenticatedRequest): string {
@@ -11,10 +16,15 @@ function requireUser(req: AuthenticatedRequest): string {
 }
 
 export class CollectionController {
+  /**
+   * Responds `{ collections, nextCursor, total }`. Each collection carries a
+   * six-book cover preview plus a `bookCount`; the full book list only comes
+   * from getCollection.
+   */
   async getCollections(req: AuthenticatedRequest, res: Response) {
     const userId = requireUser(req);
-    const collections = await collectionService.getUserCollections(userId);
-    res.json({ collections });
+    const query = validateData(listQuerySchema, req.query);
+    res.json(await collectionService.getUserCollections(userId, query));
   }
 
   async getCollection(req: AuthenticatedRequest, res: Response) {

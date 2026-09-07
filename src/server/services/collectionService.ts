@@ -1,46 +1,101 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { NotFoundError, AuthorizationError, mapPrismaError } from '../utils/errors';
-import type { CreateCollectionInput, UpdateCollectionInput } from '../validators/books';
+import type { CreateCollectionInput, UpdateCollectionInput, ListQueryInput } from '../validators/books';
+
+/**
+ * How many covers the collections grid stacks on each card. The list endpoint
+ * returns exactly this many books per collection — see getUserCollections.
+ */
+export const COLLECTION_PREVIEW_BOOKS = 6;
+
+/**
+ * Flattens Prisma's `_count` into a plain `bookCount`, so every collection
+ * response carries its real size even where `books` is only a preview.
+ *
+ * `_count` is optional because the create/update queries that reuse this only
+ * ever hold a freshly written row.
+ */
+function withBookCount<T extends { _count?: { books: number } }>(collection: T) {
+  const { _count, ...rest } = collection;
+  return { ...rest, bookCount: _count?.books ?? 0 };
+}
+
+/** Total order: `createdAt` is non-unique, so `id` anchors the cursor. */
+const COLLECTION_ORDER: Prisma.CollectionOrderByWithRelationInput[] = [
+  { createdAt: 'desc' },
+  { id: 'desc' },
+];
 
 export class CollectionService {
-  async getUserCollections(userId: string) {
-    return prisma.collection.findMany({
-      where: { userId },
-      include: {
-        books: {
-          include: { book: true },
-          orderBy: { sortOrder: 'asc' },
+  /**
+   * One cursor-paginated page of collections, each with a bounded cover preview.
+   *
+   * `books` here is deliberately *not* the contents. The grid stacks six covers
+   * per card and shows `bookCount` as the size, so joining every book of every
+   * collection was an N×M read for rows that were never rendered. The full list
+   * comes from getCollection.
+   */
+  async getUserCollections(userId: string, { limit, cursor }: ListQueryInput) {
+    const where: Prisma.CollectionWhereInput = { userId };
+
+    const [rows, total] = await Promise.all([
+      prisma.collection.findMany({
+        where,
+        include: {
+          books: {
+            include: { book: true },
+            orderBy: { sortOrder: 'asc' },
+            take: COLLECTION_PREVIEW_BOOKS,
+          },
+          _count: { select: { books: true } },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        orderBy: COLLECTION_ORDER,
+        take: limit + 1,
+        ...(cursor && { cursor: { id: cursor }, skip: 1 }),
+      }),
+      prisma.collection.count({ where }),
+    ]);
+
+    const hasMore = rows.length > limit;
+    const page = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      collections: page.map(withBookCount),
+      nextCursor: hasMore ? page[page.length - 1].id : null,
+      total,
+    };
   }
 
+  /** The full contents of one collection — the only endpoint that returns every book. */
   async getCollection(userId: string, collectionId: string) {
     const col = await prisma.collection.findFirst({
       where: { id: collectionId, userId },
       include: {
         books: { include: { book: true }, orderBy: { sortOrder: 'asc' } },
+        _count: { select: { books: true } },
       },
     });
     if (!col) throw new NotFoundError('Collection');
-    return col;
+    return withBookCount(col);
   }
 
   async createCollection(userId: string, input: CreateCollectionInput) {
-    return prisma.collection.create({
+    const created = await prisma.collection.create({
       data: { userId, ...input } as any,
-      include: { books: { include: { book: true } } },
+      include: { books: { include: { book: true } }, _count: { select: { books: true } } },
     });
+    return withBookCount(created);
   }
 
   async updateCollection(userId: string, collectionId: string, input: UpdateCollectionInput) {
     await this.requireOwner(userId, collectionId);
-    return prisma.collection.update({
+    const updated = await prisma.collection.update({
       where: { id: collectionId },
       data: input,
-      include: { books: { include: { book: true } } },
+      include: { books: { include: { book: true } }, _count: { select: { books: true } } },
     });
+    return withBookCount(updated);
   }
 
   async deleteCollection(userId: string, collectionId: string) {

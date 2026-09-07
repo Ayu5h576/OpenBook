@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
-import { Book } from '../types';
+import { useNavigate } from 'react-router-dom';
 import { AIApiService, AIRecommendation } from '../services/api';
-import { Sparkles, Compass, Heart, Loader2, ArrowRight } from 'lucide-react';
+import { Sparkles, Compass, Loader2, ArrowRight } from 'lucide-react';
 
-interface ReadingCompassProps {
-  onSelectBook: (book: Book) => void;
-  allBooks: Book[];
-}
-
-export const ReadingCompass: React.FC<ReadingCompassProps> = ({ onSelectBook, allBooks }) => {
+export const ReadingCompass: React.FC = () => {
+  const navigate = useNavigate();
   const [moodInput, setMoodInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<AIRecommendation[]>([]);
@@ -117,6 +113,16 @@ export const ReadingCompass: React.FC<ReadingCompassProps> = ({ onSelectBook, al
                 <p className="text-xs text-white/80 italic bg-black/20 p-3 rounded-xl border border-white/5">
                   "{rec.reasoning}"
                 </p>
+                {/* A recommendation is a title the AI named, not necessarily a row
+                    in our catalog — so the action is a catalog search for it
+                    rather than a book link that might 404. */}
+                <button
+                  onClick={() => navigate(`/explore?q=${encodeURIComponent(rec.title)}`)}
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-[#E0A96D] hover:text-[#F0C08D] transition-colors"
+                >
+                  <span>Find this book</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
               </div>
             ))}
           </div>

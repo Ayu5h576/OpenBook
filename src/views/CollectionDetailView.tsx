@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BookOpen, ArrowLeft, Edit2, Save, X, Plus, Trash2, Search } from 'lucide-react';
-import { useCollections } from '../hooks/useCollections';
-import { ApiCollection } from '../services/api';
+import { useCollection } from '../hooks/useCollections';
 import { BookCover } from '../components/BookCover';
 
 export const CollectionDetailView: React.FC = () => {
   const { id: collectionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { collections, updateCollection, removeBook, loading } = useCollections();
-  const [collection, setCollection] = useState<ApiCollection | null>(null);
+  // Fetched on its own rather than picked out of the collections list: that list
+  // is paginated and carries only a six-cover preview per collection, so it
+  // holds neither every collection nor every book.
+  const { collection, loading, updateCollection, removeBook } = useCollection(collectionId);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
@@ -17,16 +18,13 @@ export const CollectionDetailView: React.FC = () => {
   const [removingBookId, setRemovingBookId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Find collection from list
+  // Seed the edit fields once the collection arrives, and re-seed if it is
+  // refetched while the form is closed.
   useEffect(() => {
-    if (!collectionId) return;
-    const found = collections.find((c) => c.id === collectionId);
-    if (found) {
-      setCollection(found);
-      setEditName(found.name);
-      setEditDesc(found.description || '');
-    }
-  }, [collections, collectionId]);
+    if (!collection || isEditing) return;
+    setEditName(collection.name);
+    setEditDesc(collection.description || '');
+  }, [collection, isEditing]);
 
   const handleSave = async () => {
     if (!editName.trim() || !collectionId) return;
