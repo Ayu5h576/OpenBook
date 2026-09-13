@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ReaderSettings, Chapter } from '../types';
@@ -10,6 +10,9 @@ import { StudyPanel } from '../components/StudyPanel';
 import { useNotes, HighlightColor } from '../hooks/useNotes';
 import { segmentParagraph } from '../utils/highlightText';
 import { HIGHLIGHT_MARK_BG } from '../utils/highlightStyles';
+import { PdfReader } from '../components/reader/PdfReader';
+import { deletePdf, loadPdf, savePdf } from '../utils/pdfStore';
+import { clampPage, nextPage, pageChapter, pdfFileProblem, previousPage, resumePage } from '../utils/pdfReading';
 import {
   ArrowLeft,
   Settings,
@@ -28,7 +31,9 @@ import {
   MessageSquare,
   Search,
   Highlighter,
-  StickyNote
+  StickyNote,
+  Paperclip,
+  X
 } from 'lucide-react';
 
 export const ReaderView: React.FC = () => {
@@ -103,6 +108,7 @@ export const ReaderView: React.FC = () => {
   const [selToolbar, setSelToolbar] = useState<{ x: number; y: number; text: string } | null>(null);
   const [composer, setComposer] = useState<{ text: string } | null>(null);
   const articleRef = useRef<HTMLElement | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement | null>(null);
 
   // Escape closes the annotation toolbar or the note composer.
   useEffect(() => {
@@ -115,6 +121,109 @@ export const ReaderView: React.FC = () => {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // --- The attached PDF ---------------------------------------------------
+  // The file itself lives in the browser (see utils/pdfStore.ts); only the page
+  // number syncs, through the same `currentPage` every other book uses.
+  const [pdfFile, setPdfFile] = useState<Blob | null>(null);
+  const [pdfName, setPdfName] = useState<string | null>(null);
+  const [pdfNumPages, setPdfNumPages] = useState(0);
+  const [pdfPage, setPdfPage] = useState(1);
+  const [pdfZoom, setPdfZoom] = useState(1);
+  const [pdfPageText, setPdfPageText] = useState('');
+  const [pdfNotice, setPdfNotice] = useState<string | null>(null);
+  // Resuming is a once-per-file decision; without this latch, a progress write
+  // would come back through the entry query and yank the reader to page 1.
+  const pdfResumedRef = useRef(false);
+
+  // Reopen the PDF this reader attached to this book on an earlier visit.
+  useEffect(() => {
+    const bookId = localBook?.id;
+    if (!bookId) return;
+    let cancelled = false;
+    (async () => {
+      const stored = await loadPdf(bookId);
+      if (cancelled || !stored) return;
+      setPdfFile(stored.blob);
+      setPdfName(stored.name);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [localBook?.id]);
+
+  // Land on the page they stopped at — but only once the file's page count is
+  // known, since a stored page can outlive the edition it was saved against.
+  useEffect(() => {
+    if (!pdfFile || pdfNumPages < 1 || pdfResumedRef.current) return;
+    pdfResumedRef.current = true;
+    setPdfPage(resumePage(entryData?.currentPage, pdfNumPages));
+  }, [pdfFile, pdfNumPages, entryData?.currentPage]);
+
+  // Save progress as they read, debounced: turning ten pages should not be ten
+  // writes, and a failure here must never interrupt the reading.
+  useEffect(() => {
+    if (!pdfFile || !entryId || pdfPage < 1) return;
+    const timer = setTimeout(() => {
+      LibraryApiService.updateEntry(entryId, { currentPage: pdfPage }).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [pdfFile, entryId, pdfPage]);
+
+  const attachPdf = async (file: File) => {
+    const bookId = localBook?.id;
+    if (!bookId) return;
+    const problem = pdfFileProblem(file);
+    if (problem) {
+      setPdfNotice(problem);
+      return;
+    }
+    setPdfNotice(null);
+    pdfResumedRef.current = false;
+    setPdfPage(1);
+    setPdfNumPages(0);
+    setPdfPageText('');
+    setPdfFile(file);
+    setPdfName(file.name);
+    const stored = await savePdf(bookId, file);
+    if (!stored) {
+      // The PDF still reads fine this session; it just will not be here next time.
+      setPdfNotice('This PDF will not be remembered next time — your browser blocked local storage.');
+    }
+  };
+
+  const detachPdf = async () => {
+    const bookId = localBook?.id;
+    if (!bookId) return;
+    await deletePdf(bookId);
+    pdfResumedRef.current = false;
+    setPdfFile(null);
+    setPdfName(null);
+    setPdfNumPages(0);
+    setPdfPage(1);
+    setPdfPageText('');
+    setPdfNotice(null);
+  };
+
+  // What the reader is looking at, as the `chapter` the annotation tables store.
+  //
+  // With a PDF attached the page takes the chapter's place: a PDF has no
+  // chapters, so a page *is* one — which is what lets the existing highlight and
+  // note tables, the highlight replay, and the notes panel all work on a PDF
+  // with no migration and no parallel code path. `pageChapter` never returns 0,
+  // because the validators reject chapter 0.
+  //
+  // Resolved here, above the loading guard, because the memo below is a hook and
+  // hooks cannot follow a conditional return.
+  const chapterNum = pdfFile ? pageChapter(pdfPage) : currentChapterIdx + 1;
+
+  // Only replay highlights saved against what is on screen. Memoised because the
+  // PDF renderer repaints its highlight layer whenever this identity changes,
+  // and it must not do that on every unrelated re-render.
+  const activeChapterHighlights = useMemo(
+    () => annotations.highlights.filter((h) => (h.chapter ?? chapterNum) === chapterNum),
+    [annotations.highlights, chapterNum]
+  );
 
   if (isLoading || !localBook) {
     return (
@@ -137,17 +246,17 @@ export const ReaderView: React.FC = () => {
 
   const activeChapter = chapters[currentChapterIdx] || chapters[0];
 
-  // Chapters are 1-based in the store (validators enforce min 1).
-  const chapterNum = currentChapterIdx + 1;
+  // What is on screen, from whichever source is showing. Everything downstream
+  // that used to read the chapter — TTS, the AI drawer, the study panel — reads
+  // these instead, so those features ground on the PDF page the reader is
+  // actually looking at rather than on the book's description.
+  const activeTitle = pdfFile ? pdfName ?? localBook.title : activeChapter.title;
+  const activeText = pdfFile ? pdfPageText : activeChapter.content;
   const annotateCount = annotations.notes.length + annotations.highlights.length;
   // The API returns the color as an open string; the palette lookup below
   // narrows it to a HighlightColor before indexing the style map.
   const highlightColorById = new Map<string, string>(
     annotations.highlights.map((h) => [h.id, h.color])
-  );
-  // Only replay highlights that were saved against the chapter on screen.
-  const activeChapterHighlights = annotations.highlights.filter(
-    (h) => (h.chapter ?? chapterNum) === chapterNum
   );
 
   const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max);
@@ -274,7 +383,7 @@ export const ReaderView: React.FC = () => {
       window.speechSynthesis.cancel();
       setIsPlayingTts(false);
     } else {
-      const utterance = new SpeechSynthesisUtterance(activeChapter.content);
+      const utterance = new SpeechSynthesisUtterance(activeText);
       utterance.onend = () => setIsPlayingTts(false);
       window.speechSynthesis.speak(utterance);
       setIsPlayingTts(true);
@@ -293,7 +402,7 @@ export const ReaderView: React.FC = () => {
       const response = await AIApiService.chat({
         bookId: localBook.id,
         message: aiPrompt,
-        context: `Chapter: ${activeChapter.title}\nReader excerpt: ${activeChapter.content.slice(0, 4000)}`,
+        context: `Chapter: ${activeTitle}\nReader excerpt: ${activeText.slice(0, 4000)}`,
       });
       setAiResponse(response.data?.response ?? response.error ?? 'Failed to generate AI response.');
     } catch (err) {
@@ -330,10 +439,31 @@ export const ReaderView: React.FC = () => {
 
         <div className="text-center">
           <span className="font-serif-title font-bold text-base block">{localBook.title}</span>
-          <span className="text-[11px] opacity-70">{activeChapter.title}</span>
+          <span className="text-[11px] opacity-70 line-clamp-1">{activeTitle}</span>
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Attach a PDF — reading material the catalog has only metadata for */}
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              // Cleared so picking the same file twice still fires a change.
+              e.target.value = '';
+              if (file) attachPdf(file);
+            }}
+          />
+          <button
+            onClick={() => (pdfFile ? detachPdf() : pdfInputRef.current?.click())}
+            className="p-2 rounded-full border border-current opacity-80 hover:opacity-100 transition-opacity"
+            title={pdfFile ? 'Remove the attached PDF' : 'Attach a PDF to read here'}
+            aria-label={pdfFile ? 'Remove the attached PDF' : 'Attach a PDF to read here'}
+          >
+            {pdfFile ? <X className="w-4 h-4" /> : <Paperclip className="w-4 h-4" />}
+          </button>
           {/* Timer Display */}
           <div className="hidden sm:flex items-center gap-1.5 text-xs opacity-80 bg-black/5 px-3 py-1 rounded-full">
             <Clock className="w-3.5 h-3.5" />
@@ -412,40 +542,51 @@ export const ReaderView: React.FC = () => {
       {showSettings && (
         <div className="fixed top-16 right-6 z-50 w-80 bg-[var(--ink)] text-[var(--bg-ivory)] rounded-3xl p-6 shadow-2xl border border-white/20 space-y-4">
           <h4 className="font-serif-title text-xl font-bold border-b border-white/10 pb-2">Reader Customization</h4>
-          
-          {/* Typography Selector */}
-          <div>
-            <label className="text-xs uppercase font-semibold text-[#A0A0A0] block mb-2">Typography</label>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              {['Newsreader', 'Cormorant Garamond', 'Plus Jakarta Sans', 'Monospace'].map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setReaderSettings({ ...readerSettings, fontFamily: f as any })}
-                  className={`py-2 px-2 rounded-xl text-center border transition-all ${
-                    readerSettings.fontFamily === f ? 'bg-white text-[var(--ink)] font-bold' : 'border-white/20 text-white/70'
-                  }`}
-                >
-                  {f.split(' ')[0]}
-                </button>
-              ))}
-            </div>
-          </div>
 
-          {/* Font Size Slider */}
-          <div>
-            <div className="flex justify-between text-xs text-[#A0A0A0] mb-1">
-              <span>Font Size</span>
-              <span>{readerSettings.fontSize}px</span>
-            </div>
-            <input
-              type="range"
-              min="14"
-              max="28"
-              value={readerSettings.fontSize}
-              onChange={(e) => setReaderSettings({ ...readerSettings, fontSize: Number(e.target.value) })}
-              className="w-full accent-[#E0A96D]"
-            />
-          </div>
+          {/* A PDF page carries its own type at its own size, so re-fonting it
+              would do nothing — zoom, in the page strip, is what scales it. */}
+          {pdfFile ? (
+            <p className="text-xs text-[#A0A0A0]">
+              This book is a PDF, so its type is fixed. Use the zoom controls above the page to
+              resize it.
+            </p>
+          ) : (
+            <>
+              {/* Typography Selector */}
+              <div>
+                <label className="text-xs uppercase font-semibold text-[#A0A0A0] block mb-2">Typography</label>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {['Newsreader', 'Cormorant Garamond', 'Plus Jakarta Sans', 'Monospace'].map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setReaderSettings({ ...readerSettings, fontFamily: f as any })}
+                      className={`py-2 px-2 rounded-xl text-center border transition-all ${
+                        readerSettings.fontFamily === f ? 'bg-white text-[var(--ink)] font-bold' : 'border-white/20 text-white/70'
+                      }`}
+                    >
+                      {f.split(' ')[0]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Font Size Slider */}
+              <div>
+                <div className="flex justify-between text-xs text-[#A0A0A0] mb-1">
+                  <span>Font Size</span>
+                  <span>{readerSettings.fontSize}px</span>
+                </div>
+                <input
+                  type="range"
+                  min="14"
+                  max="28"
+                  value={readerSettings.fontSize}
+                  onChange={(e) => setReaderSettings({ ...readerSettings, fontSize: Number(e.target.value) })}
+                  className="w-full accent-[#E0A96D]"
+                />
+              </div>
+            </>
+          )}
 
           {/* Theme Color Presets */}
           <div>
@@ -476,9 +617,18 @@ export const ReaderView: React.FC = () => {
       <main className="max-w-2xl mx-auto px-6 py-12 md:py-20 min-h-[70vh]">
         
         <h2 className="font-serif-title text-3xl md:text-4xl font-bold mb-8 text-center">
-          {activeChapter.title}
+          {activeTitle}
         </h2>
 
+        {pdfNotice && (
+          <p className="mb-6 rounded-lg border px-4 py-3 text-xs" style={{ borderColor: themeStyle.border }}>
+            {pdfNotice}
+          </p>
+        )}
+
+        {/* The PDF renders *inside* this article on purpose: the selection
+            handler below only asks that the selection be inside `articleRef`,
+            so attaching a PDF needs no second copy of the annotation logic. */}
         <article
           ref={articleRef}
           onMouseUp={handleArticleMouseUp}
@@ -489,34 +639,77 @@ export const ReaderView: React.FC = () => {
             fontFamily: readerSettings.fontFamily === 'Newsreader' ? 'Newsreader, serif' : readerSettings.fontFamily,
           }}
         >
-          {activeChapter.content.split('\n\n').map((para, i) => renderParagraph(para, i))}
+          {pdfFile ? (
+            <PdfReader
+              file={pdfFile}
+              page={pdfPage}
+              onPageChange={setPdfPage}
+              zoom={pdfZoom}
+              onZoomChange={setPdfZoom}
+              onNumPages={setPdfNumPages}
+              onPageText={setPdfPageText}
+              highlights={activeChapterHighlights}
+              borderColor={themeStyle.border}
+            />
+          ) : (
+            activeChapter.content.split('\n\n').map((para, i) => renderParagraph(para, i))
+          )}
         </article>
 
       </main>
 
-      {/* Chapter Navigation Footer */}
+      {/* Chapter Navigation Footer — page navigation while a PDF is open.
+          Kept sticky, so the reader can keep turning pages on a long one. */}
       <footer className="sticky bottom-0 z-40 border-t px-6 py-4 flex items-center justify-between backdrop-blur-md bg-opacity-80" style={{ borderColor: themeStyle.border }}>
-        <button
-          disabled={currentChapterIdx === 0}
-          onClick={() => setCurrentChapterIdx((prev) => Math.max(0, prev - 1))}
-          className="flex items-center gap-2 text-xs font-semibold disabled:opacity-30"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          <span>Previous Chapter</span>
-        </button>
+        {pdfFile ? (
+          <>
+            <button
+              disabled={pdfPage <= 1}
+              onClick={() => setPdfPage((p) => previousPage(p, pdfNumPages))}
+              className="flex items-center gap-2 text-xs font-semibold disabled:opacity-30"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Previous Page</span>
+            </button>
 
-        <span className="text-xs opacity-70">
-          Chapter {currentChapterIdx + 1} of {chapters.length}
-        </span>
+            <span className="text-xs opacity-70 tabular-nums">
+              Page {clampPage(pdfPage, pdfNumPages)} of {pdfNumPages || '—'}
+            </span>
 
-        <button
-          disabled={currentChapterIdx === chapters.length - 1}
-          onClick={() => setCurrentChapterIdx((prev) => Math.min(chapters.length - 1, prev + 1))}
-          className="flex items-center gap-2 text-xs font-semibold disabled:opacity-30"
-        >
-          <span>Next Chapter</span>
-          <ChevronRight className="w-4 h-4" />
-        </button>
+            <button
+              disabled={pdfNumPages < 1 || pdfPage >= pdfNumPages}
+              onClick={() => setPdfPage((p) => nextPage(p, pdfNumPages))}
+              className="flex items-center gap-2 text-xs font-semibold disabled:opacity-30"
+            >
+              <span>Next Page</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              disabled={currentChapterIdx === 0}
+              onClick={() => setCurrentChapterIdx((prev) => Math.max(0, prev - 1))}
+              className="flex items-center gap-2 text-xs font-semibold disabled:opacity-30"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Previous Chapter</span>
+            </button>
+
+            <span className="text-xs opacity-70">
+              Chapter {currentChapterIdx + 1} of {chapters.length}
+            </span>
+
+            <button
+              disabled={currentChapterIdx === chapters.length - 1}
+              onClick={() => setCurrentChapterIdx((prev) => Math.min(chapters.length - 1, prev + 1))}
+              className="flex items-center gap-2 text-xs font-semibold disabled:opacity-30"
+            >
+              <span>Next Chapter</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </>
+        )}
       </footer>
 
       {/* AI Assistant Side Drawer */}
@@ -658,8 +851,8 @@ export const ReaderView: React.FC = () => {
         addingToLibrary={addingToLibrary}
         onAddToLibrary={addBookToLibrary}
         chapterNum={chapterNum}
-        chapterTitle={activeChapter.title}
-        chapterText={activeChapter.content}
+        chapterTitle={activeTitle}
+        chapterText={activeText}
       />
 
     </div>
