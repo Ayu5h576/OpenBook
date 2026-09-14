@@ -36,7 +36,7 @@ export const CollectionsView: React.FC = () => {
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-2">
-            <FolderHeart className="w-3.5 h-3.5 text-[#A0522D]" />
+            <FolderHeart className="w-3.5 h-3.5 text-[var(--accent)]" />
             <span>Theme Archives</span>
           </div>
           <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">Curated Collections</h1>
@@ -44,7 +44,7 @@ export const CollectionsView: React.FC = () => {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[#333333] transition-all shadow-warm-md"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[var(--ink-hover)] transition-all shadow-warm-md"
         >
           <Plus className="w-4 h-4" />
           <span>New Collection</span>
@@ -77,7 +77,7 @@ export const CollectionsView: React.FC = () => {
                 <X className="w-3.5 h-3.5" /> Cancel
               </button>
               <button type="submit" disabled={creating}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[#333333] disabled:opacity-50">
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[var(--ink-hover)] disabled:opacity-50">
                 <Check className="w-3.5 h-3.5" /> {creating ? 'Creating...' : 'Create'}
               </button>
             </div>
@@ -113,7 +113,7 @@ export const CollectionsView: React.FC = () => {
                 <div className="flex items-center justify-between mb-3">
                   {/* `books` is only a six-cover preview, so the size has to
                       come from the server's count. */}
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--accent)]">
                     {col.bookCount} Volumes
                   </span>
                   <button
@@ -121,7 +121,7 @@ export const CollectionsView: React.FC = () => {
                       e.stopPropagation();
                       deleteCollection(col.id);
                     }}
-                    className="p-1.5 rounded-full text-[#C53030] hover:bg-[#FEE5E5] transition-colors">
+                    className="p-1.5 rounded-full text-[var(--danger)] hover:bg-[#C53030]/10 transition-colors">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>

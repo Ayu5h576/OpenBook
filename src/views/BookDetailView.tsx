@@ -272,7 +272,7 @@ export const BookDetailView: React.FC = () => {
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-3">
               {book.genres.map((g) => (
-                <span key={g} className="text-[11px] font-bold uppercase tracking-wider bg-[var(--bg-beige)] text-[#A0522D] px-3 py-1 rounded-full">
+                <span key={g} className="text-[11px] font-bold uppercase tracking-wider bg-[var(--bg-beige)] text-[var(--accent)] px-3 py-1 rounded-full">
                   {g}
                 </span>
               ))}
@@ -336,7 +336,7 @@ export const BookDetailView: React.FC = () => {
                 buying options and cover photos, which exist either way. */}
             <button
               onClick={() => setShowSpread(true)}
-              className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-sm hover:bg-[#333333] transition-all shadow-warm-md active:scale-95"
+              className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-sm hover:bg-[var(--ink-hover)] transition-all shadow-warm-md active:scale-95"
             >
               <Info className="w-4 h-4" />
               <span>More info</span>
@@ -344,9 +344,9 @@ export const BookDetailView: React.FC = () => {
 
             <button
               onClick={() => setShowTrailerModal(true)}
-              className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] font-bold text-sm hover:bg-[#E5DCCF] transition-all"
+              className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] font-bold text-sm hover:bg-[var(--border-light)] transition-all"
             >
-              <Play className="w-4 h-4 fill-current text-[#A0522D]" />
+              <Play className="w-4 h-4 fill-current text-[var(--accent)]" />
               <span>Book Trailer</span>
             </button>
 
@@ -354,7 +354,7 @@ export const BookDetailView: React.FC = () => {
               onClick={() => setShowCollectionModal(true)}
               className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[var(--white)] border border-[var(--border-light)] text-[var(--ink)] font-bold text-sm hover:bg-[var(--bg-beige)] transition-all shadow-warm-sm"
             >
-              <FolderHeart className="w-4 h-4 text-[#A0522D]" />
+              <FolderHeart className="w-4 h-4 text-[var(--accent)]" />
               <span>Add to Collection</span>
             </button>
 
@@ -397,9 +397,9 @@ export const BookDetailView: React.FC = () => {
                 await addLibraryBook(book.id, 'READING');
                 toast.success('Added to library — track your progress below.');
               }}
-              className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] font-bold text-sm hover:bg-[#E5DCCF] transition-all self-start"
+              className="flex items-center gap-2 px-6 py-3.5 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] font-bold text-sm hover:bg-[var(--border-light)] transition-all self-start"
             >
-              <BookOpen className="w-4 h-4 text-[#A0522D]" />
+              <BookOpen className="w-4 h-4 text-[var(--accent)]" />
               <span>Add to library to track progress</span>
             </button>
           )}
@@ -411,7 +411,7 @@ export const BookDetailView: React.FC = () => {
       <section id="ai-section" className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md scroll-mt-24">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-xs font-semibold mb-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--accent)] text-xs font-semibold mb-2">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Gemini Reading Companion</span>
             </div>
@@ -441,7 +441,7 @@ export const BookDetailView: React.FC = () => {
                 <div className="h-3 bg-[var(--bg-beige)] rounded animate-pulse w-2/3" />
               </div>
             ) : (
-              <p className="text-xs text-[#555555] leading-relaxed whitespace-pre-wrap">{ai.summary.data?.summary ?? 'No AI summary yet.'}</p>
+              <p className="text-xs text-[var(--muted)] leading-relaxed whitespace-pre-wrap">{ai.summary.data?.summary ?? 'No AI summary yet.'}</p>
             )}
           </div>
 
@@ -481,7 +481,7 @@ export const BookDetailView: React.FC = () => {
 
           <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-5">
             <h3 className="font-serif-title text-xl font-bold text-[var(--ink)] mb-3">Smart Planner</h3>
-            <p className="text-xs text-[#555555]">
+            <p className="text-xs text-[var(--muted)]">
               {ai.planner.data
                 ? `${ai.planner.data.plan.dailyPages} pages/day, ${ai.planner.data.plan.weeklyGoal} pages/week. Estimated finish: ${ai.planner.data.plan.estimatedFinishDate}.`
                 : 'Planner will use your measured reading speed and current page.'}
@@ -490,7 +490,7 @@ export const BookDetailView: React.FC = () => {
           </div>
         </div>
 
-        <div className="mt-6 bg-[var(--ink)] text-[var(--bg-ivory)] rounded-2xl p-5">
+        <div className="mt-6 bg-[var(--panel-dark)] text-white rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-4">
             <MessageSquare className="w-4 h-4 text-[#E0A96D]" />
             <h3 className="font-serif-title text-xl font-bold">Chat With This Book</h3>
@@ -520,7 +520,7 @@ export const BookDetailView: React.FC = () => {
             <button
               onClick={sendChat}
               disabled={!realUuid || !chatInput.trim()}
-              className="p-2.5 rounded-xl bg-[#E0A96D] text-[var(--ink)] disabled:opacity-50"
+              className="p-2.5 rounded-xl bg-[#E0A96D] text-[#1D1D1D] disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
             </button>
@@ -545,7 +545,7 @@ export const BookDetailView: React.FC = () => {
         <section className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md mt-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-xs font-semibold mb-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--accent)] text-xs font-semibold mb-2">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Next Step Recommendation</span>
               </div>
@@ -578,7 +578,7 @@ export const BookDetailView: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <h4 className="font-bold text-[var(--ink)] text-sm line-clamp-1 group-hover:text-[#A0522D] transition-colors">{related.title}</h4>
+                  <h4 className="font-bold text-[var(--ink)] text-sm line-clamp-1 group-hover:text-[var(--accent)] transition-colors">{related.title}</h4>
                   <p className="text-xs text-[var(--muted)]">{related.author}</p>
                 </div>
               </div>
@@ -592,7 +592,7 @@ export const BookDetailView: React.FC = () => {
       {/* Trailer Modal */}
       {showTrailerModal && createPortal(
         <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[var(--ink)] text-white rounded-3xl p-6 max-w-xl w-full border border-white/20 shadow-2xl text-center">
+          <div className="bg-[var(--panel-dark)] text-white rounded-3xl p-6 max-w-xl w-full border border-white/20 shadow-2xl text-center">
             <h3 className="font-serif-title text-2xl font-bold mb-2">Atmospheric Book Trailer</h3>
             <p className="text-xs text-[#A0A0A0] mb-6">Visual and acoustic mood showcase for {book.title}</p>
             <div className="aspect-video bg-black/60 rounded-2xl flex items-center justify-center border border-white/10 mb-6">
@@ -600,7 +600,7 @@ export const BookDetailView: React.FC = () => {
             </div>
             <button
               onClick={() => setShowTrailerModal(false)}
-              className="px-6 py-2.5 rounded-full bg-[#E0A96D] text-[var(--ink)] font-bold text-xs"
+              className="px-6 py-2.5 rounded-full bg-[#E0A96D] text-[#1D1D1D] font-bold text-xs"
             >
               Close Trailer
             </button>
@@ -695,7 +695,7 @@ export const BookDetailView: React.FC = () => {
               <button
                 onClick={handleAddToCollections}
                 disabled={addingToCollection || selectedCollections.size === 0}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[#333333] disabled:opacity-50 transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[var(--ink-hover)] disabled:opacity-50 transition-all"
               >
                 <Check className="w-3.5 h-3.5" />
                 {addingToCollection ? 'Adding...' : 'Add'}

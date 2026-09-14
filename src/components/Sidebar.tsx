@@ -114,25 +114,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       </aside>
 
       {/* ── Mobile bottom navigation bar ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--bg-ivory)]/95 backdrop-blur-md border-t border-[var(--border-light)] flex items-center justify-around px-2 py-2 shadow-warm-lg">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[var(--bg-ivory)] border-t border-[var(--border-light)] flex items-center justify-around px-2 py-2 shadow-warm-lg">
         {mobileNavItems.map(({ id, icon: Icon, label }) => {
           return (
             <NavLink
               key={id}
               to={`/${id}`}
               className={({ isActive }) => `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition-all active:scale-90 ${
-                isActive ? 'text-[var(--ink)]' : 'text-[#999999]'
+                isActive ? 'text-[var(--ink)]' : 'text-[var(--muted)]'
               }`}
               aria-label={label}
             >
               {({ isActive }) => (
                 <>
                   <div className={`w-9 h-9 flex items-center justify-center rounded-2xl transition-all ${
-                    isActive ? 'bg-[var(--ink)] text-[var(--bg-ivory)]' : 'text-[#999999]'
+                    isActive ? 'bg-[var(--ink)] text-[var(--bg-ivory)]' : 'text-[var(--muted)]'
                   }`}>
                     <Icon className="w-4.5 h-4.5" />
                   </div>
-                  <span className={`text-[9px] font-semibold ${isActive ? 'text-[var(--ink)]' : 'text-[#999999]'}`}>
+                  <span className={`text-[9px] font-semibold ${isActive ? 'text-[var(--ink)]' : 'text-[var(--muted)]'}`}>
                     {label}
                   </span>
                 </>

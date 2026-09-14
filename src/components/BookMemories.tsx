@@ -31,7 +31,7 @@ export const BookMemories: React.FC = () => {
       {/* Header */}
       <div className="max-w-2xl mb-8">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-3">
-          <History className="w-3.5 h-3.5 text-[#A0522D]" />
+          <History className="w-3.5 h-3.5 text-[var(--accent)]" />
           <span>Finished Reading Keepsakes</span>
         </div>
         <h2 className="font-serif-title text-4xl font-bold text-[var(--ink)] mb-2">Book Memories</h2>
@@ -47,7 +47,7 @@ export const BookMemories: React.FC = () => {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-[#A0522D]" />
+          <Loader2 className="w-6 h-6 animate-spin text-[var(--accent)]" />
         </div>
       ) : memories.length === 0 ? (
         <div className="text-center py-16 bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl">
@@ -55,7 +55,7 @@ export const BookMemories: React.FC = () => {
           <p className="font-serif-title text-xl text-[var(--ink)]">No keepsakes yet.</p>
           <p className="text-xs text-[var(--muted)] mt-1">
             Mark a book <span className="font-semibold">Completed</span> in your{' '}
-            <button onClick={() => navigate('/library')} className="text-[#A0522D] hover:underline">
+            <button onClick={() => navigate('/library')} className="text-[var(--accent)] hover:underline">
               library
             </button>{' '}
             and its card appears here.
@@ -89,7 +89,7 @@ export const BookMemories: React.FC = () => {
                   <div>
                     <div className="flex items-center justify-between mb-4 gap-2">
                       {mem.moodTag ? (
-                        <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--bg-beige)] text-[#A0522D] px-2.5 py-1 rounded-full truncate">
+                        <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--bg-beige)] text-[var(--accent)] px-2.5 py-1 rounded-full truncate">
                           {mem.moodTag}
                         </span>
                       ) : (
@@ -111,7 +111,7 @@ export const BookMemories: React.FC = () => {
                         className="w-12 h-16 rounded object-cover shadow-warm-sm"
                       />
                       <div className="min-w-0">
-                        <h4 className="font-serif-title text-xl font-bold text-[var(--ink)] group-hover:text-[#A0522D] transition-colors truncate">
+                        <h4 className="font-serif-title text-xl font-bold text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors truncate">
                           {book.title}
                         </h4>
                         <p className="text-xs text-[var(--muted)] truncate">
@@ -122,7 +122,7 @@ export const BookMemories: React.FC = () => {
 
                     {mem.quote && (
                       <div className="bg-[var(--white)] p-4 rounded-xl border border-[var(--border-light)] mb-4">
-                        <QuoteIcon className="w-4 h-4 text-[#A0522D] mb-1" />
+                        <QuoteIcon className="w-4 h-4 text-[var(--accent)] mb-1" />
                         <p className="font-serif-title italic text-sm text-[var(--ink)] leading-snug line-clamp-4">
                           "{mem.quote}"
                         </p>

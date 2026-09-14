@@ -118,7 +118,7 @@ export const HomeView: React.FC = () => {
           </div>
 
           <div className="flex-1 space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-xs font-semibold">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--accent)] text-xs font-semibold">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Resume Reading Session</span>
             </div>
@@ -151,7 +151,7 @@ export const HomeView: React.FC = () => {
             <div className="pt-2 flex items-center gap-4">
               <button
                 onClick={() => handleOpenReader(continueReadingBook)}
-                className="flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-xs hover:bg-[#333333] transition-all shadow-warm-md"
+                className="flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-xs hover:bg-[var(--ink-hover)] transition-all shadow-warm-md"
               >
                 <BookOpen className="w-4 h-4" />
                 <span>Continue Reading</span>
@@ -159,7 +159,7 @@ export const HomeView: React.FC = () => {
 
               <button
                 onClick={() => handleSelectBook(continueReadingBook)}
-                className="px-5 py-3 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] font-bold text-xs hover:bg-[#E5DCCF] transition-all"
+                className="px-5 py-3 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] font-bold text-xs hover:bg-[var(--border-light)] transition-all"
               >
                 Book Details
               </button>
@@ -172,7 +172,7 @@ export const HomeView: React.FC = () => {
       <section className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-xs font-semibold mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--accent)] text-xs font-semibold mb-3">
               <Sparkles className="w-3.5 h-3.5" />
               <span>AI Reading Companion</span>
             </div>
@@ -204,7 +204,7 @@ export const HomeView: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-5">
-              <div className="flex items-center gap-2 text-[#A0522D] text-[10px] font-bold uppercase mb-2">
+              <div className="flex items-center gap-2 text-[var(--accent)] text-[10px] font-bold uppercase mb-2">
                 <Compass className="w-4 h-4" />
                 <span>Current Recommendation</span>
               </div>
@@ -224,7 +224,7 @@ export const HomeView: React.FC = () => {
               </p>
             </div>
             <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-5">
-              <div className="flex items-center gap-2 text-[#2D4030] text-[10px] font-bold uppercase mb-2">
+              <div className="flex items-center gap-2 text-[var(--muted)] text-[10px] font-bold uppercase mb-2">
                 <Flame className="w-4 h-4" />
                 <span>Personal Goal</span>
               </div>

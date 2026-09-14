@@ -133,7 +133,7 @@ const QuizRun: React.FC<{ quiz: StudyQuizItem[] }> = ({ quiz }) => {
             </button>
             <button
               onClick={() => setState((s) => answerCard(s, 'got'))}
-              className="flex-1 rounded-2xl bg-[#E0A96D] text-[var(--ink)] py-2.5 text-xs font-bold hover:bg-[#D49A5B] transition-all"
+              className="flex-1 rounded-2xl bg-[#E0A96D] text-[#1D1D1D] py-2.5 text-xs font-bold hover:bg-[#D49A5B] transition-all"
             >
               Got it
             </button>
@@ -237,7 +237,7 @@ export const StudyPanel: React.FC<StudyPanelProps> = ({
 
   return (
     <aside
-      className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-[var(--ink)] text-[var(--bg-ivory)] shadow-2xl border-l border-white/20 flex flex-col"
+      className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-[var(--panel-dark)] text-white shadow-2xl border-l border-white/20 flex flex-col"
       role="dialog"
       aria-label="Study companion"
     >
@@ -343,7 +343,7 @@ export const StudyPanel: React.FC<StudyPanelProps> = ({
               {pack.quiz.length > 0 && (
                 <button
                   onClick={() => setTab('quiz')}
-                  className="w-full flex items-center justify-center gap-1.5 rounded-2xl bg-[#E0A96D] text-[var(--ink)] py-2.5 text-xs font-bold hover:bg-[#D49A5B] transition-all"
+                  className="w-full flex items-center justify-center gap-1.5 rounded-2xl bg-[#E0A96D] text-[#1D1D1D] py-2.5 text-xs font-bold hover:bg-[#D49A5B] transition-all"
                 >
                   Start the quiz ({pack.quiz.length})
                 </button>
@@ -394,7 +394,7 @@ export const StudyPanel: React.FC<StudyPanelProps> = ({
               <button
                 onClick={onAddToLibrary}
                 disabled={addingToLibrary}
-                className="rounded-full bg-[#E0A96D] text-[var(--ink)] px-4 py-2 text-xs font-bold hover:bg-[#D49A5B] transition-all disabled:opacity-50"
+                className="rounded-full bg-[#E0A96D] text-[#1D1D1D] px-4 py-2 text-xs font-bold hover:bg-[#D49A5B] transition-all disabled:opacity-50"
               >
                 {addingToLibrary ? 'Adding…' : 'Add this book to my library'}
               </button>
@@ -428,7 +428,7 @@ export const StudyPanel: React.FC<StudyPanelProps> = ({
               turns.map((t, i) =>
                 t.role === 'user' ? (
                   <div key={i} className="flex justify-end">
-                    <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-[#E0A96D] text-[var(--ink)] px-4 py-2.5">
+                    <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-[#E0A96D] text-[#1D1D1D] px-4 py-2.5">
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">{t.text}</p>
                     </div>
                   </div>
@@ -487,7 +487,7 @@ export const StudyPanel: React.FC<StudyPanelProps> = ({
               type="submit"
               disabled={asking || !draft.trim()}
               aria-label="Send question"
-              className="shrink-0 p-2.5 rounded-full bg-[#E0A96D] text-[var(--ink)] hover:bg-[#D49A5B] transition-all disabled:opacity-40"
+              className="shrink-0 p-2.5 rounded-full bg-[#E0A96D] text-[#1D1D1D] hover:bg-[#D49A5B] transition-all disabled:opacity-40"
             >
               <Send className="w-4 h-4" />
             </button>

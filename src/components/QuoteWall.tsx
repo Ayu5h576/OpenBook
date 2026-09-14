@@ -235,7 +235,7 @@ export const QuoteWall: React.FC = () => {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-[#A0522D]" />
+          <Loader2 className="w-6 h-6 animate-spin text-[var(--accent)]" />
         </div>
       ) : quotes.length === 0 ? (
         <div className="text-center py-16 bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl">
@@ -271,12 +271,12 @@ export const QuoteWall: React.FC = () => {
                   className="break-inside-avoid bg-[var(--bg-ivory)] border border-[var(--border-light)] hover:border-[var(--ink)] rounded-2xl p-6 shadow-warm-sm hover:shadow-warm-md transition-all flex flex-col justify-between group"
                 >
                   <div>
-                    <QuoteIcon className="w-6 h-6 text-[#A0522D] mb-3 opacity-80" />
+                    <QuoteIcon className="w-6 h-6 text-[var(--accent)] mb-3 opacity-80" />
                     <p className="font-serif-title text-xl md:text-2xl font-bold text-[var(--ink)] leading-snug mb-4">
                       "{q.text}"
                     </p>
                     {q.category && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--bg-beige)] text-[#A0522D] px-2.5 py-1 rounded-full">
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--bg-beige)] text-[var(--accent)] px-2.5 py-1 rounded-full">
                         {q.category}
                       </span>
                     )}
@@ -302,7 +302,7 @@ export const QuoteWall: React.FC = () => {
                           </button>
                           <button
                             onClick={() => setConfirmDelete(null)}
-                            className="px-2.5 py-1 rounded-full bg-white text-[var(--muted)] text-xs font-semibold hover:text-[var(--ink)]"
+                            className="px-2.5 py-1 rounded-full bg-[var(--white)] text-[var(--muted)] text-xs font-semibold hover:text-[var(--ink)]"
                           >
                             Keep
                           </button>
@@ -315,7 +315,7 @@ export const QuoteWall: React.FC = () => {
                             onClick={() => setFavorite(q.id, !q.isFavorite)}
                             aria-label={q.isFavorite ? 'Unstar this quote' : 'Star this quote'}
                             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
-                              q.isFavorite ? 'bg-red-50 text-red-600' : 'bg-white text-[var(--muted)] hover:text-[var(--ink)]'
+                              q.isFavorite ? 'bg-red-50 text-red-600' : 'bg-[var(--white)] text-[var(--muted)] hover:text-[var(--ink)]'
                             }`}
                           >
                             <Heart className={`w-3.5 h-3.5 ${q.isFavorite ? 'fill-current' : ''}`} />
@@ -324,7 +324,7 @@ export const QuoteWall: React.FC = () => {
                           <button
                             onClick={() => setConfirmDelete(q.id)}
                             aria-label="Remove this quote"
-                            className="p-1.5 rounded-full bg-white text-[var(--muted)] opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-red-600 transition-all"
+                            className="p-1.5 rounded-full bg-[var(--white)] text-[var(--muted)] opacity-0 group-hover:opacity-100 focus:opacity-100 hover:text-red-600 transition-all"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>

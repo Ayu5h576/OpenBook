@@ -11,7 +11,7 @@ const STEPS = [
   {
     icon: <BookOpen className="w-10 h-10" />,
     iconBg: 'bg-[var(--bg-beige)]',
-    iconColor: 'text-[#A0522D]',
+    iconColor: 'text-[var(--accent)]',
     title: 'Welcome to OpenBook',
     subtitle: 'Your personal AI-powered reading companion',
     body: 'OpenBook transforms how you discover, read, and connect with books. Immersive 3D bookshelves, AI recommendations, community clubs, and reading analytics — all in one place.',
@@ -74,7 +74,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   return (
     /* Backdrop */
     <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-[var(--ink)]/60 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
       onClick={(e) => { if (e.target === e.currentTarget) handleSkip(); }}
     >
       {/* Card */}
@@ -100,7 +100,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
         {/* Greeting (first step only) */}
         {step === 0 && username && (
-          <p className="text-xs font-semibold text-[#A0522D] uppercase tracking-widest mb-1">
+          <p className="text-xs font-semibold text-[var(--accent)] uppercase tracking-widest mb-1">
             Hey, {username} 👋
           </p>
         )}
@@ -109,7 +109,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           {current.title}
         </h2>
         <p className="text-xs font-semibold text-[var(--muted)] mb-4">{current.subtitle}</p>
-        <p className="text-sm text-[#555555] leading-relaxed mb-8">{current.body}</p>
+        <p className="text-sm text-[var(--muted)] leading-relaxed mb-8">{current.body}</p>
 
         {/* Dot indicators */}
         <div className="flex items-center justify-between">
@@ -128,7 +128,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
           <button
             onClick={handleNext}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[#333333] transition-all active:scale-95 shadow-warm-sm"
+            className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[var(--ink-hover)] transition-all active:scale-95 shadow-warm-sm"
           >
             {isLast ? <Check className="w-3.5 h-3.5" /> : null}
             <span>{current.cta}</span>

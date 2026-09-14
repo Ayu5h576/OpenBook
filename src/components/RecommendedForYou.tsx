@@ -111,7 +111,7 @@ export const RecommendedForYou: React.FC<RecommendedForYouProps> = ({
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-[11px] font-bold tracking-wide uppercase mb-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--accent)] text-[11px] font-bold tracking-wide uppercase mb-2">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Gemini AI Curation</span>
           </div>
@@ -131,7 +131,7 @@ export const RecommendedForYou: React.FC<RecommendedForYouProps> = ({
             className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--bg-ivory)] border border-[var(--border-light)] text-xs font-semibold text-[var(--ink)] hover:bg-[var(--bg-beige)] transition-all disabled:opacity-50"
             title="Re-analyze library with Gemini"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#A0522D]' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[var(--accent)]' : ''}`} />
             <span>{isLoading ? 'Analyzing...' : 'Refresh AI Analysis'}</span>
           </button>
         </div>
@@ -157,12 +157,12 @@ export const RecommendedForYou: React.FC<RecommendedForYouProps> = ({
       {/* Gemini Literary Taste Analysis Banner */}
       {!isLoading && analysisSummary && (
         <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-4 flex items-start gap-3.5 text-xs text-[var(--ink)] relative z-10">
-          <div className="p-2 rounded-xl bg-[var(--bg-beige)] text-[#A0522D] flex-shrink-0 mt-0.5">
+          <div className="p-2 rounded-xl bg-[var(--bg-beige)] text-[var(--accent)] flex-shrink-0 mt-0.5">
             <Lightbulb className="w-4 h-4" />
           </div>
           <div className="flex-1">
-            <span className="font-bold text-[#A0522D] block mb-0.5">AI Library Digest</span>
-            <p className="text-[#555555] leading-relaxed">{analysisSummary}</p>
+            <span className="font-bold text-[var(--accent)] block mb-0.5">AI Library Digest</span>
+            <p className="text-[var(--muted)] leading-relaxed">{analysisSummary}</p>
           </div>
         </div>
       )}
@@ -222,7 +222,7 @@ export const RecommendedForYou: React.FC<RecommendedForYouProps> = ({
                     </div>
 
                     <div className="flex-1 space-y-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#A0522D] block">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent)] block">
                         {rec.genre}
                       </span>
                       <h4 className="font-serif-title font-bold text-base text-[var(--ink)] line-clamp-2 leading-tight">
@@ -240,7 +240,7 @@ export const RecommendedForYou: React.FC<RecommendedForYouProps> = ({
                   </div>
 
                   {/* Personalized Gemini Summary */}
-                  <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-xl p-3 mb-4 text-xs text-[#555555] leading-relaxed relative">
+                  <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-xl p-3 mb-4 text-xs text-[var(--muted)] leading-relaxed relative">
                     <span className="font-bold text-[var(--ink)] text-[10px] uppercase tracking-wider block mb-1">
                       Personalized AI Curator Note
                     </span>
@@ -256,7 +256,7 @@ export const RecommendedForYou: React.FC<RecommendedForYouProps> = ({
                     className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-full text-xs font-semibold transition-all ${
                       isAdded
                         ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        : 'bg-[var(--ink)] text-[var(--bg-ivory)] hover:bg-[#333333] shadow-warm-sm'
+                        : 'bg-[var(--ink)] text-[var(--bg-ivory)] hover:bg-[var(--ink-hover)] shadow-warm-sm'
                     }`}
                   >
                     {isAdded ? (
@@ -292,7 +292,7 @@ export const RecommendedForYou: React.FC<RecommendedForYouProps> = ({
                           publisher: 'Recommended',
                         })
                       }
-                      className="p-2 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] hover:bg-[#E5DCCF] transition-all"
+                      className="p-2 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] hover:bg-[var(--border-light)] transition-all"
                       title="Inspect Volume Details"
                     >
                       <ArrowRight className="w-3.5 h-3.5" />

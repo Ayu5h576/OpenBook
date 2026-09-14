@@ -81,7 +81,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
 
         <button
           onClick={() => onOpenPlanner ? onOpenPlanner() : (onNavigate && onNavigate('smart-planner'))}
-          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-2xl bg-[var(--bg-beige)] hover:bg-[#E5DCCF] text-[var(--ink)] text-xs font-semibold transition-all"
+          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-2xl bg-[var(--bg-beige)] hover:bg-[var(--border-light)] text-[var(--ink)] text-xs font-semibold transition-all"
         >
           <Calendar className="w-3.5 h-3.5" />
           <span>Reading Planner</span>
@@ -90,7 +90,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
 
       {/* Quote of the Day Card */}
       {quoteOfDay && (
-        <div className="bg-[var(--ink)] text-[var(--bg-ivory)] rounded-3xl p-5 shadow-warm-md relative overflow-hidden">
+        <div className="bg-[var(--panel-dark)] text-white rounded-3xl p-5 shadow-warm-md relative overflow-hidden">
           <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-[#E0A96D]/10 rounded-full blur-xl pointer-events-none" />
           <div className="flex items-center gap-2 text-[#E0A96D] text-xs font-medium mb-3">
             <Sparkles className="w-3.5 h-3.5" />
@@ -100,7 +100,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
             "{quoteOfDay.text}"
           </p>
           <div className="text-xs text-[#E0E1DD]/80">
-            <span className="font-semibold block text-[var(--bg-ivory)]">{quoteOfDay.author}</span>
+            <span className="font-semibold block text-white">{quoteOfDay.author}</span>
             <span className="text-[11px] text-[#A0A0A0]">{quoteOfDay.bookTitle}</span>
           </div>
         </div>

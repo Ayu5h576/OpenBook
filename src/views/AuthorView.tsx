@@ -48,7 +48,7 @@ const AuthorBookCard: React.FC<{ book: AuthorBook; onOpen: () => void }> = ({ bo
         />
         {book.isFavorite && (
           <span className="absolute top-2 right-2 w-7 h-7 rounded-full bg-[var(--white)]/90 backdrop-blur flex items-center justify-center shadow-warm-sm">
-            <Heart className="w-3.5 h-3.5 text-[#A0522D] fill-[#A0522D]" />
+            <Heart className="w-3.5 h-3.5 text-[var(--accent)] fill-[#A0522D]" />
           </span>
         )}
         {progress !== null && progress > 0 && progress < 100 && (
@@ -63,7 +63,7 @@ const AuthorBookCard: React.FC<{ book: AuthorBook; onOpen: () => void }> = ({ bo
         <div className="flex items-center gap-2 mt-1 text-[11px] text-[var(--muted)]">
           {book.publishedDate && <span>{book.publishedDate.slice(0, 4)}</span>}
           {status && (
-            <span className="px-1.5 py-0.5 rounded-md bg-[var(--bg-beige)] text-[#A0522D] font-bold">
+            <span className="px-1.5 py-0.5 rounded-md bg-[var(--bg-beige)] text-[var(--accent)] font-bold">
               {status}
             </span>
           )}
@@ -103,7 +103,7 @@ const HistoryStrip: React.FC<{ history: AuthorHistory; authorName: string }> = (
   return (
     <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-3xl p-6">
       <div className="flex items-center gap-2 mb-4">
-        <Library className="w-4 h-4 text-[#A0522D]" />
+        <Library className="w-4 h-4 text-[var(--accent)]" />
         <h2 className="text-sm font-bold text-[var(--ink)]">You and {authorName}</h2>
         {since && <span className="text-xs text-[var(--muted)]">since {since}</span>}
       </div>
@@ -131,7 +131,7 @@ const InsightCard: React.FC<{
   return (
     <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-7 shadow-warm-md">
       <div className="flex items-center gap-2 mb-3">
-        <Sparkles className="w-4 h-4 text-[#A0522D]" />
+        <Sparkles className="w-4 h-4 text-[var(--accent)]" />
         <h2 className="text-sm font-bold text-[var(--ink)]">Why you might like {authorName}</h2>
       </div>
 
@@ -168,7 +168,7 @@ const InsightCard: React.FC<{
             <ul className="space-y-2">
               {insight.connections.map((line, i) => (
                 <li key={i} className="flex gap-2.5 text-sm text-[var(--muted)] leading-relaxed">
-                  <span className="text-[#A0522D] mt-0.5">◆</span>
+                  <span className="text-[var(--accent)] mt-0.5">◆</span>
                   <span>{line}</span>
                 </li>
               ))}
@@ -182,7 +182,7 @@ const InsightCard: React.FC<{
               onClick={() => onOpenTitle(insight.startWith!.title)}
               className="w-full text-left bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-4 hover:border-[#A0522D]/40 transition-colors"
             >
-              <p className="text-[11px] font-bold text-[#A0522D] uppercase tracking-wide">Start with</p>
+              <p className="text-[11px] font-bold text-[var(--accent)] uppercase tracking-wide">Start with</p>
               <p className="font-serif-title text-lg font-bold text-[var(--ink)] mt-1">
                 {insight.startWith.title}
               </p>
@@ -213,7 +213,7 @@ const RelatedAuthors: React.FC<{ authors: RelatedAuthor[]; onOpen: (name: string
         {a.sharedGenres.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2.5">
             {a.sharedGenres.slice(0, 3).map((g) => (
-              <span key={g} className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-beige)] text-[#A0522D] font-semibold">
+              <span key={g} className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--bg-beige)] text-[var(--accent)] font-semibold">
                 {g}
               </span>
             ))}
@@ -249,7 +249,7 @@ export const AuthorView: React.FC = () => {
   if (loading) {
     return (
       <div className="h-full min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-[#A0522D]" />
+        <Loader2 className="w-6 h-6 animate-spin text-[var(--accent)]" />
       </div>
     );
   }
@@ -296,7 +296,7 @@ export const AuthorView: React.FC = () => {
             />
           ) : (
             <div className="w-28 h-28 rounded-2xl bg-[var(--bg-beige)] flex items-center justify-center shrink-0">
-              <span className="font-serif-title text-4xl font-bold text-[#A0522D]">
+              <span className="font-serif-title text-4xl font-bold text-[var(--accent)]">
                 {author.name.slice(0, 1).toUpperCase()}
               </span>
             </div>
@@ -324,7 +324,7 @@ export const AuthorView: React.FC = () => {
             {genres.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-4">
                 {genres.slice(0, 8).map((g) => (
-                  <span key={g} className="text-[11px] px-2.5 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D] font-semibold">
+                  <span key={g} className="text-[11px] px-2.5 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--accent)] font-semibold">
                     {g}
                   </span>
                 ))}
@@ -376,7 +376,7 @@ export const AuthorView: React.FC = () => {
             </p>
             <button
               onClick={() => refetch()}
-              className="ml-auto text-xs font-bold text-[#A0522D] hover:underline shrink-0"
+              className="ml-auto text-xs font-bold text-[var(--accent)] hover:underline shrink-0"
             >
               Retry
             </button>

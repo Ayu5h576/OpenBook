@@ -425,7 +425,7 @@ export const ReaderView: React.FC = () => {
     >
       
       {/* Top Header Controls Bar */}
-      <header className="sticky top-0 z-40 border-b px-6 py-4 flex items-center justify-between backdrop-blur-md bg-opacity-80" style={{ borderColor: themeStyle.border }}>
+      <header className="sticky top-0 z-40 border-b px-6 py-4 flex items-center justify-between" style={{ borderColor: themeStyle.border, backgroundColor: themeStyle.bg }}>
         <button
           onClick={() => {
             window.speechSynthesis.cancel();
@@ -503,7 +503,7 @@ export const ReaderView: React.FC = () => {
           >
             <Highlighter className="w-4 h-4" />
             {annotateCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-[#E0A96D] text-[var(--ink)] text-[9px] font-bold flex items-center justify-center">
+              <span className="absolute -top-1.5 -right-1.5 min-w-4 h-4 px-1 rounded-full bg-[#E0A96D] text-[#1D1D1D] text-[9px] font-bold flex items-center justify-center">
                 {annotateCount}
               </span>
             )}
@@ -530,7 +530,7 @@ export const ReaderView: React.FC = () => {
               setShowStudy(false);
               setShowAnnotations(false);
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#E0A96D] text-[var(--ink)] text-xs font-bold shadow-warm-sm hover:scale-105 transition-transform"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#E0A96D] text-[#1D1D1D] text-xs font-bold shadow-warm-sm hover:scale-105 transition-transform"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span className="hidden md:inline">Ask AI</span>
@@ -540,7 +540,7 @@ export const ReaderView: React.FC = () => {
 
       {/* Reader Display Settings Floating Drawer */}
       {showSettings && (
-        <div className="fixed top-16 right-6 z-50 w-80 bg-[var(--ink)] text-[var(--bg-ivory)] rounded-3xl p-6 shadow-2xl border border-white/20 space-y-4">
+        <div className="fixed top-16 right-6 z-50 w-80 bg-[var(--panel-dark)] text-white rounded-3xl p-6 shadow-2xl border border-white/20 space-y-4">
           <h4 className="font-serif-title text-xl font-bold border-b border-white/10 pb-2">Reader Customization</h4>
 
           {/* A PDF page carries its own type at its own size, so re-fonting it
@@ -561,7 +561,7 @@ export const ReaderView: React.FC = () => {
                       key={f}
                       onClick={() => setReaderSettings({ ...readerSettings, fontFamily: f as any })}
                       className={`py-2 px-2 rounded-xl text-center border transition-all ${
-                        readerSettings.fontFamily === f ? 'bg-white text-[var(--ink)] font-bold' : 'border-white/20 text-white/70'
+                        readerSettings.fontFamily === f ? 'bg-[var(--white)] text-[var(--ink)] font-bold' : 'border-white/20 text-white/70'
                       }`}
                     >
                       {f.split(' ')[0]}
@@ -660,7 +660,7 @@ export const ReaderView: React.FC = () => {
 
       {/* Chapter Navigation Footer — page navigation while a PDF is open.
           Kept sticky, so the reader can keep turning pages on a long one. */}
-      <footer className="sticky bottom-0 z-40 border-t px-6 py-4 flex items-center justify-between backdrop-blur-md bg-opacity-80" style={{ borderColor: themeStyle.border }}>
+      <footer className="sticky bottom-0 z-40 border-t px-6 py-4 flex items-center justify-between" style={{ borderColor: themeStyle.border, backgroundColor: themeStyle.bg }}>
         {pdfFile ? (
           <>
             <button
@@ -714,7 +714,7 @@ export const ReaderView: React.FC = () => {
 
       {/* AI Assistant Side Drawer */}
       {showAiDrawer && (
-        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-[var(--ink)] text-[var(--bg-ivory)] p-6 shadow-2xl border-l border-white/20 flex flex-col justify-between">
+        <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-[var(--panel-dark)] text-white p-6 shadow-2xl border-l border-white/20 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
               <div className="flex items-center gap-2 text-[#E0A96D] text-xs font-bold uppercase tracking-wider">
@@ -740,7 +740,7 @@ export const ReaderView: React.FC = () => {
               <button
                 onClick={handleAskAi}
                 disabled={loadingAi || !aiPrompt.trim()}
-                className="w-full py-2.5 rounded-2xl bg-[#E0A96D] text-[var(--ink)] font-bold text-xs hover:bg-[#D49A5B] transition-all disabled:opacity-50"
+                className="w-full py-2.5 rounded-2xl bg-[#E0A96D] text-[#1D1D1D] font-bold text-xs hover:bg-[#D49A5B] transition-all disabled:opacity-50"
               >
                 {loadingAi ? 'Synthesizing...' : 'Ask AI Companion'}
               </button>
@@ -776,7 +776,7 @@ export const ReaderView: React.FC = () => {
           }}
         >
           <div
-            className="w-full max-w-lg bg-[var(--ink)] text-[var(--bg-ivory)] rounded-3xl p-6 shadow-2xl border border-white/20 space-y-4"
+            className="w-full max-w-lg bg-[var(--panel-dark)] text-white rounded-3xl p-6 shadow-2xl border border-white/20 space-y-4"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -806,7 +806,7 @@ export const ReaderView: React.FC = () => {
               <button
                 onClick={saveNote}
                 disabled={!composer.text.trim()}
-                className="px-4 py-2 rounded-full bg-[#E0A96D] text-[var(--ink)] text-xs font-bold hover:bg-[#D49A5B] transition-all disabled:opacity-50"
+                className="px-4 py-2 rounded-full bg-[#E0A96D] text-[#1D1D1D] text-xs font-bold hover:bg-[#D49A5B] transition-all disabled:opacity-50"
               >
                 Save note
               </button>

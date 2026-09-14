@@ -36,7 +36,7 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
     <div
       role="toolbar"
       aria-label="Annotate selection"
-      className="fixed z-[60] flex items-center gap-1 rounded-full bg-[var(--ink)] px-2 py-1.5 shadow-2xl border border-white/10"
+      className="fixed z-[60] flex items-center gap-1 rounded-full bg-[var(--panel-dark)] px-2 py-1.5 shadow-2xl border border-white/10"
       style={{ left: x, top: y }}
     >
       {HIGHLIGHT_COLORS.map((color) => (

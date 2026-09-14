@@ -46,7 +46,7 @@ export const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
   const empty = !loading && notes.length === 0 && highlights.length === 0;
 
   return (
-    <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-[var(--ink)] text-[var(--bg-ivory)] p-6 shadow-2xl border-l border-white/20 overflow-y-auto">
+    <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-[var(--panel-dark)] text-white p-6 shadow-2xl border-l border-white/20 overflow-y-auto">
       <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
         <div className="flex items-center gap-2 text-[#E0A96D] text-xs font-bold uppercase tracking-wider">
           <BookMarked className="w-4 h-4" />
@@ -68,7 +68,7 @@ export const AnnotationsPanel: React.FC<AnnotationsPanelProps> = ({
           <button
             onClick={onAddToLibrary}
             disabled={addingToLibrary}
-            className="px-4 py-2 rounded-full bg-[#E0A96D] text-[var(--ink)] text-xs font-bold hover:bg-[#D49A5B] transition-all disabled:opacity-50"
+            className="px-4 py-2 rounded-full bg-[#E0A96D] text-[#1D1D1D] text-xs font-bold hover:bg-[#D49A5B] transition-all disabled:opacity-50"
           >
             {addingToLibrary ? 'Adding…' : 'Add to library'}
           </button>

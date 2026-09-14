@@ -29,7 +29,7 @@ const UserList: React.FC<{
   if (users.length === 0) {
     return (
       <div className="text-center py-12 px-4">
-        <Users className="w-7 h-7 text-[#A0522D] mx-auto mb-2" />
+        <Users className="w-7 h-7 text-[var(--accent)] mx-auto mb-2" />
         <p className="text-xs text-[var(--muted)]">{emptyLabel}</p>
       </div>
     );
@@ -113,7 +113,7 @@ export const ProfileView: React.FC = () => {
           </div>
 
           {isSelf ? (
-            <span className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-xs font-bold shrink-0">
+            <span className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--bg-beige)] text-[var(--accent)] text-xs font-bold shrink-0">
               <UserCheck className="w-4 h-4" /> This is you
             </span>
           ) : auth?.user?.id ? (
@@ -129,14 +129,14 @@ export const ProfileView: React.FC = () => {
               <button
                 onClick={toggleFollow}
                 disabled={busy}
-                className="px-5 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-sm hover:bg-[#333333] disabled:opacity-60 flex items-center gap-2 shrink-0"
+                className="px-5 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-sm hover:bg-[var(--ink-hover)] disabled:opacity-60 flex items-center gap-2 shrink-0"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />} Follow
               </button>
             )
           ) : null}
         </div>
-        {error && <p className="text-xs text-[#B23B3B] mt-4">{error}</p>}
+        {error && <p className="text-xs text-[var(--danger)] mt-4">{error}</p>}
       </div>
 
       {/* Followers / Following */}

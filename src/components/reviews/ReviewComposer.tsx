@@ -92,7 +92,7 @@ export const ReviewComposer: React.FC<ReviewComposerProps> = ({
 
       <div>
         <label className="block text-xs font-semibold text-[var(--ink)] mb-1.5">
-          Rating <span className="text-[#B23B3B]">*</span>
+          Rating <span className="text-[var(--danger)]">*</span>
         </label>
         <StarRatingInput value={rating} onChange={setRating} disabled={saving} />
       </div>
@@ -133,7 +133,7 @@ export const ReviewComposer: React.FC<ReviewComposerProps> = ({
         aria-pressed={isPrivate}
         className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-semibold border transition-colors ${
           isPrivate
-            ? 'bg-[var(--bg-beige)] border-[#A0522D] text-[#A0522D]'
+            ? 'bg-[var(--bg-beige)] border-[#A0522D] text-[var(--accent)]'
             : 'bg-[var(--bg-ivory)] border-[var(--border-light)] text-[var(--muted)]'
         }`}
       >
@@ -141,7 +141,7 @@ export const ReviewComposer: React.FC<ReviewComposerProps> = ({
         {isPrivate ? 'Private — only you can see this' : 'Keep this private'}
       </button>
 
-      {err && <p className="text-xs text-[#B23B3B]">{err}</p>}
+      {err && <p className="text-xs text-[var(--danger)]">{err}</p>}
 
       <div className="flex flex-wrap gap-3">
         <button

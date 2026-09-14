@@ -35,7 +35,7 @@ export const BookCard3D: React.FC<BookCard3DProps> = ({
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-[10px] font-semibold uppercase text-[var(--muted)] tracking-wider">{book.genres[0]}</span>
-          <h4 className="font-serif-title text-lg font-bold text-[var(--ink)] truncate group-hover:text-[#A0522D] transition-colors">{book.title}</h4>
+          <h4 className="font-serif-title text-lg font-bold text-[var(--ink)] truncate group-hover:text-[var(--accent)] transition-colors">{book.title}</h4>
           <p className="text-xs text-[var(--muted)] mb-2 truncate">by {book.author}</p>
           
           {book.progress > 0 && (
@@ -81,7 +81,7 @@ export const BookCard3D: React.FC<BookCard3DProps> = ({
                 e.stopPropagation();
                 onToggleFavorite(book.id);
               }}
-              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center text-[var(--ink)] hover:scale-110 transition-transform shadow-warm-sm"
+              className="absolute top-3 right-3 w-8 h-8 rounded-full bg-[var(--white)]/80 backdrop-blur-md flex items-center justify-center text-[var(--ink)] hover:scale-110 transition-transform shadow-warm-sm"
             >
               <Heart className={`w-4 h-4 ${book.favorite ? 'fill-red-500 text-red-500' : 'text-[var(--ink)]'}`} />
             </button>
@@ -98,7 +98,7 @@ export const BookCard3D: React.FC<BookCard3DProps> = ({
             </div>
           </div>
 
-          <h3 className="font-serif-title text-xl font-bold text-[var(--ink)] line-clamp-1 group-hover:text-[#A0522D] transition-colors">
+          <h3 className="font-serif-title text-xl font-bold text-[var(--ink)] line-clamp-1 group-hover:text-[var(--accent)] transition-colors">
             {book.title}
           </h3>
 
