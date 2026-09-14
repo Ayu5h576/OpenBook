@@ -19,7 +19,7 @@ export const BookDNA: React.FC = () => {
     <div className="w-full bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-10 shadow-warm-md">
       <div className="max-w-2xl mb-10">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-3">
-          <Dna className="w-3.5 h-3.5 text-[#A0522D]" />
+          <Dna className="w-3.5 h-3.5 text-[var(--accent)]" />
           <span>Personal Reading Genome</span>
         </div>
         <h2 className="font-serif-title text-4xl font-bold text-[var(--ink)] mb-2">Your Book DNA</h2>
@@ -43,7 +43,7 @@ export const BookDNA: React.FC = () => {
         </div>
 
         <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-6">
-          <div className="w-10 h-10 rounded-xl bg-[#A0522D] text-[var(--white)] flex items-center justify-center mb-4">
+          <div className="w-10 h-10 rounded-xl bg-[#A0522D] text-white flex items-center justify-center mb-4">
             <Compass className="w-5 h-5" />
           </div>
           <span className="text-xs uppercase font-semibold text-[var(--muted)] tracking-wider">Taste Trajectory</span>
@@ -56,7 +56,7 @@ export const BookDNA: React.FC = () => {
         </div>
 
         <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-6">
-          <div className="w-10 h-10 rounded-xl bg-[#2D4030] text-[var(--white)] flex items-center justify-center mb-4">
+          <div className="w-10 h-10 rounded-xl bg-[#2D4030] text-white flex items-center justify-center mb-4">
             <Clock className="w-5 h-5" />
           </div>
           <span className="text-xs uppercase font-semibold text-[var(--muted)] tracking-wider">Reading Velocity</span>

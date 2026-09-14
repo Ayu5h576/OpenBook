@@ -33,7 +33,7 @@ function activityText(a: ActivityItem, navigate: (path: string) => void): React.
   const who = (
     <button
       onClick={() => navigate(`/profile/${a.actor.id}`)}
-      className="font-semibold text-[var(--ink)] hover:text-[#A0522D] transition-colors"
+      className="font-semibold text-[var(--ink)] hover:text-[var(--accent)] transition-colors"
     >
       {a.actor.username}
     </button>
@@ -52,7 +52,7 @@ function activityText(a: ActivityItem, navigate: (path: string) => void): React.
         <>
           {who} reviewed {book ?? <span className="italic">{meta.bookTitle}</span>}
           {typeof meta.rating === 'number' && (
-            <span className="inline-flex items-center gap-0.5 ml-1 text-[#A0522D]">
+            <span className="inline-flex items-center gap-0.5 ml-1 text-[var(--accent)]">
               <Star className="w-3 h-3 fill-current" />{meta.rating}
             </span>
           )}
@@ -147,7 +147,7 @@ const CreateClubModal: React.FC<{
               type="checkbox"
               checked={isPrivate}
               onChange={(e) => setIsPrivate(e.target.checked)}
-              className="w-4 h-4 rounded text-[#A0522D] focus:ring-[#A0522D]"
+              className="w-4 h-4 rounded text-[var(--accent)] focus:ring-[#A0522D]"
             />
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-[var(--ink)]">Private Club</span>
@@ -155,7 +155,7 @@ const CreateClubModal: React.FC<{
             </div>
           </label>
 
-          {err && <p className="text-xs text-[#B23B3B]">{err}</p>}
+          {err && <p className="text-xs text-[var(--danger)]">{err}</p>}
 
           <div className="flex gap-3 pt-2">
             <button
@@ -197,7 +197,7 @@ const FindReadersPanel: React.FC<{ onOpenProfile: (id: string) => void }> = ({ o
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <UserSearch className="w-4 h-4 text-[#A0522D]" />
+        <UserSearch className="w-4 h-4 text-[var(--accent)]" />
         <h2 className="font-serif-title text-xl font-bold text-[var(--ink)]">Find Readers</h2>
       </div>
 
@@ -231,7 +231,7 @@ const FindReadersPanel: React.FC<{ onOpenProfile: (id: string) => void }> = ({ o
 
         {loading ? (
           <div className="flex items-center justify-center py-6">
-            <Loader2 className="w-4 h-4 animate-spin text-[#A0522D]" />
+            <Loader2 className="w-4 h-4 animate-spin text-[var(--accent)]" />
           </div>
         ) : list.length === 0 ? (
           <p className="text-xs text-[var(--muted)] text-center py-6 px-2">
@@ -249,7 +249,7 @@ const FindReadersPanel: React.FC<{ onOpenProfile: (id: string) => void }> = ({ o
                 <div className="min-w-0 flex-1">
                   <button
                     onClick={() => onOpenProfile(u.id)}
-                    className="block text-sm font-semibold text-[var(--ink)] hover:text-[#A0522D] transition-colors truncate"
+                    className="block text-sm font-semibold text-[var(--ink)] hover:text-[var(--accent)] transition-colors truncate"
                   >
                     {u.username}
                   </button>
@@ -315,7 +315,7 @@ export const CommunityView: React.FC = () => {
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-2">
-            <Users className="w-3.5 h-3.5 text-[#A0522D]" />
+            <Users className="w-3.5 h-3.5 text-[var(--accent)]" />
             <span>Bibliophile Network</span>
           </div>
           <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">Reader Community</h1>
@@ -334,7 +334,7 @@ export const CommunityView: React.FC = () => {
         {/* Book Clubs */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-[#A0522D]" />
+            <Users className="w-4 h-4 text-[var(--accent)]" />
             <h2 className="font-serif-title text-xl font-bold text-[var(--ink)]">Book Clubs</h2>
           </div>
 
@@ -363,7 +363,7 @@ export const CommunityView: React.FC = () => {
                     className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 shadow-warm-sm hover:shadow-warm-md transition-shadow cursor-pointer flex flex-col"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-bold uppercase text-[#A0522D] tracking-wider">Book Club</span>
+                      <span className="text-[10px] font-bold uppercase text-[var(--accent)] tracking-wider">Book Club</span>
                       {club.isPrivate && <Lock className="w-3.5 h-3.5 text-[var(--muted)]" />}
                     </div>
                     <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)] my-1">{club.name}</h3>
@@ -380,7 +380,7 @@ export const CommunityView: React.FC = () => {
                       </span>
                       {club.isMember ? (
                         roleBadge && club.viewerRole === 'OWNER' ? (
-                          <span className="flex items-center gap-1 text-[11px] font-bold text-[#A0522D]">
+                          <span className="flex items-center gap-1 text-[11px] font-bold text-[var(--accent)]">
                             {RoleIcon && <RoleIcon className="w-3.5 h-3.5" />} {roleBadge.label}
                           </span>
                         ) : (
@@ -416,7 +416,7 @@ export const CommunityView: React.FC = () => {
           {/* Activity Feed */}
           <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <Rss className="w-4 h-4 text-[#A0522D]" />
+            <Rss className="w-4 h-4 text-[var(--accent)]" />
             <h2 className="font-serif-title text-xl font-bold text-[var(--ink)]">Activity</h2>
           </div>
 
@@ -441,7 +441,7 @@ export const CommunityView: React.FC = () => {
               </div>
             ) : activities.length === 0 ? (
               <div className="text-center py-12 px-4">
-                <MessageSquare className="w-7 h-7 text-[#A0522D] mx-auto mb-2" />
+                <MessageSquare className="w-7 h-7 text-[var(--accent)] mx-auto mb-2" />
                 <p className="text-xs text-[var(--muted)]">
                   {scope === 'circle'
                     ? 'Your circle is quiet. Follow a reader or join a club to fill this feed.'
@@ -455,7 +455,7 @@ export const CommunityView: React.FC = () => {
                   return (
                     <div key={a.id} className="flex items-start gap-3 p-3">
                       <div className="w-8 h-8 rounded-xl bg-[var(--bg-beige)] flex items-center justify-center shrink-0">
-                        <Icon className="w-4 h-4 text-[#A0522D]" />
+                        <Icon className="w-4 h-4 text-[var(--accent)]" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-xs text-[var(--muted)] leading-relaxed">{activityText(a, navigate)}</p>
@@ -481,7 +481,7 @@ export const CommunityView: React.FC = () => {
                 <button
                   onClick={loadMore}
                   disabled={loadingMore}
-                  className="w-full py-2 rounded-2xl text-xs font-semibold text-[#A0522D] hover:bg-[var(--bg-ivory)] flex items-center justify-center gap-2 disabled:opacity-60"
+                  className="w-full py-2 rounded-2xl text-xs font-semibold text-[var(--accent)] hover:bg-[var(--bg-ivory)] flex items-center justify-center gap-2 disabled:opacity-60"
                 >
                   {loadingMore ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null} Load more
                 </button>

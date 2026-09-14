@@ -30,7 +30,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   size = 'w-8 h-8',
   textSize = 'text-xs',
   shape = 'rounded-xl',
-  initialClass = 'text-[#A0522D]',
+  initialClass = 'text-[var(--accent)]',
   className = '',
 }) => (
   <div

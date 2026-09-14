@@ -83,7 +83,7 @@ export const SettingsView: React.FC = () => {
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md flex items-center justify-between">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-2">
-            <Settings className="w-3.5 h-3.5 text-[#A0522D]" />
+            <Settings className="w-3.5 h-3.5 text-[var(--accent)]" />
             <span>Preferences & Account</span>
           </div>
           <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">Settings</h1>
@@ -94,7 +94,7 @@ export const SettingsView: React.FC = () => {
       {/* Profile Section */}
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 shadow-warm-sm space-y-5">
         <div className="flex items-center gap-3 mb-1">
-          <User className="w-5 h-5 text-[#A0522D]" />
+          <User className="w-5 h-5 text-[var(--accent)]" />
           <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">Reader Profile</h3>
         </div>
         
@@ -106,7 +106,7 @@ export const SettingsView: React.FC = () => {
               className="w-16 h-16 rounded-full object-cover"
             />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-[var(--ink)] text-white flex items-center justify-center font-bold text-xl">
+            <div className="w-16 h-16 rounded-full bg-[var(--ink)] text-[var(--ink-contrast)] flex items-center justify-center font-bold text-xl">
               {(user?.username ?? 'U').charAt(0).toUpperCase()}
             </div>
           )}
@@ -142,7 +142,7 @@ export const SettingsView: React.FC = () => {
           <button
             onClick={handleSaveProfile}
             disabled={isSavingProfile}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--ink)] text-white text-xs font-bold hover:bg-[#333] transition-all disabled:opacity-50 active:scale-95"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--ink)] text-[var(--ink-contrast)] text-xs font-bold hover:bg-[var(--ink-hover)] transition-all disabled:opacity-50 active:scale-95"
           >
             {isSavingProfile
               ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -155,7 +155,7 @@ export const SettingsView: React.FC = () => {
       {/* Reading Experience Preferences */}
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 shadow-warm-sm space-y-6">
         <div className="flex items-center gap-3 mb-1">
-          <Palette className="w-5 h-5 text-[#A0522D]" />
+          <Palette className="w-5 h-5 text-[var(--accent)]" />
           <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">Reading Environment</h3>
         </div>
         
@@ -195,7 +195,7 @@ export const SettingsView: React.FC = () => {
             onClick={() => setNotifications(!notifications)}
             className={`w-12 h-6 rounded-full transition-colors relative ${notifications ? 'bg-[var(--ink)]' : 'bg-[var(--border-light)]'}`}
           >
-            <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${notifications ? 'right-0.5' : 'left-0.5'}`} />
+            <div className={`w-5 h-5 rounded-full bg-[var(--white)] absolute top-0.5 transition-transform ${notifications ? 'right-0.5' : 'left-0.5'}`} />
           </button>
         </div>
       </div>
@@ -203,7 +203,7 @@ export const SettingsView: React.FC = () => {
       {/* Password Section */}
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 shadow-warm-sm space-y-5">
         <div className="flex items-center gap-3 mb-1">
-          <Lock className="w-5 h-5 text-[#A0522D]" />
+          <Lock className="w-5 h-5 text-[var(--accent)]" />
           <h3 className="font-serif-title text-2xl font-bold text-[var(--ink)]">Security</h3>
         </div>
 
@@ -234,7 +234,7 @@ export const SettingsView: React.FC = () => {
           <button
             onClick={handleChangePassword}
             disabled={isSavingPassword || !newPassword}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--ink)] text-white text-xs font-bold hover:bg-[#333] transition-all disabled:opacity-50 active:scale-95"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--ink)] text-[var(--ink-contrast)] text-xs font-bold hover:bg-[var(--ink-hover)] transition-all disabled:opacity-50 active:scale-95"
           >
             {isSavingPassword
               ? <Loader2 className="w-3.5 h-3.5 animate-spin" />

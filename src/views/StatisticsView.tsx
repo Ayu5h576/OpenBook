@@ -41,7 +41,7 @@ export const StatisticsView: React.FC = () => {
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-2">
-            <BarChart3 className="w-3.5 h-3.5 text-[#A0522D]" />
+            <BarChart3 className="w-3.5 h-3.5 text-[var(--accent)]" />
             <span>Reading Analytics Engine</span>
           </div>
           <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">Reading Statistics</h1>
@@ -81,13 +81,13 @@ export const StatisticsView: React.FC = () => {
         <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl p-5 shadow-warm-sm">
           <span className="text-[10px] font-bold uppercase text-[var(--muted)]">Total Pages Read</span>
           <h3 className="font-serif-title text-3xl font-bold text-[var(--ink)] my-1">{(ov?.totalPagesRead ?? 0).toLocaleString()}</h3>
-          <span className="text-[11px] text-[#A0522D] font-medium">All time</span>
+          <span className="text-[11px] text-[var(--accent)] font-medium">All time</span>
         </div>
 
         <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl p-5 shadow-warm-sm">
           <span className="text-[10px] font-bold uppercase text-[var(--muted)]">Hours Logged</span>
           <h3 className="font-serif-title text-3xl font-bold text-[var(--ink)] my-1">{ov?.totalHours ?? 0} hrs</h3>
-          <span className="text-[11px] text-[#2D4030] font-medium">Deep focus reading</span>
+          <span className="text-[11px] text-[var(--muted)] font-medium">Deep focus reading</span>
         </div>
 
         <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-2xl p-5 shadow-warm-sm">

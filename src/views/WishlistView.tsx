@@ -25,7 +25,7 @@ export const WishlistView: React.FC = () => {
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-2">
-            <Bookmark className="w-3.5 h-3.5 text-[#A0522D]" />
+            <Bookmark className="w-3.5 h-3.5 text-[var(--accent)]" />
             <span>Saved Volumes</span>
           </div>
           <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">My Reading Wishlist</h1>
@@ -33,7 +33,7 @@ export const WishlistView: React.FC = () => {
         </div>
         <button
           onClick={() => navigate('/wishlist-galaxy')}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[#333333] transition-all shadow-warm-md"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[var(--ink-hover)] transition-all shadow-warm-md"
         >
           <Orbit className="w-4 h-4 text-[#E0A96D]" />
           <span>View Wishlist Galaxy</span>
@@ -91,7 +91,7 @@ export const WishlistView: React.FC = () => {
                       {Number(entry.book.averageRating).toFixed(1)}
                     </span>
                   )}
-                  {entry.notes && <p className="text-[10px] text-[#A0522D] mt-1 line-clamp-2 italic">{entry.notes}</p>}
+                  {entry.notes && <p className="text-[10px] text-[var(--accent)] mt-1 line-clamp-2 italic">{entry.notes}</p>}
                 </div>
               </div>
             );

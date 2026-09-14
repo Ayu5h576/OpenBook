@@ -24,7 +24,7 @@ const PRESETS: Record<
   EmptyStatePreset,
   { icon: React.ReactNode; color: string; bg: string }
 > = {
-  library:      { icon: <BookOpen className="w-10 h-10" />,   color: 'text-[#A0522D]', bg: 'bg-[var(--bg-beige)]' },
+  library:      { icon: <BookOpen className="w-10 h-10" />,   color: 'text-[var(--accent)]', bg: 'bg-[var(--bg-beige)]' },
   wishlist:     { icon: <Heart className="w-10 h-10" />,      color: 'text-[#C53030]', bg: 'bg-[#FEE5E5]' },
   community:    { icon: <Users className="w-10 h-10" />,      color: 'text-[#2563EB]', bg: 'bg-[#EFF6FF]' },
   collections:  { icon: <FolderOpen className="w-10 h-10" />, color: 'text-[#7C3AED]', bg: 'bg-[#F5F3FF]' },
@@ -81,7 +81,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       {action && (
         <button
           onClick={action.onClick}
-          className="px-6 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[#333333] transition-all active:scale-95 shadow-warm-sm"
+          className="px-6 py-2.5 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[var(--ink-hover)] transition-all active:scale-95 shadow-warm-sm"
         >
           {action.label}
         </button>

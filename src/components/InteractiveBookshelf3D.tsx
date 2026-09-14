@@ -193,7 +193,7 @@ export const InteractiveBookshelf3D: React.FC = () => {
       >
         {/* Header */}
         <div className="max-w-4xl mx-auto text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[#A0522D] text-xs font-semibold mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--accent)] text-xs font-semibold mb-3">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Interactive Grand Library</span>
           </div>
@@ -209,7 +209,7 @@ export const InteractiveBookshelf3D: React.FC = () => {
         <div className="max-w-6xl mx-auto space-y-4">
           {loading ? (
             <div className="flex justify-center py-24">
-              <Loader2 className="w-7 h-7 animate-spin text-[#A0522D]" />
+              <Loader2 className="w-7 h-7 animate-spin text-[var(--accent)]" />
             </div>
           ) : books.length === 0 ? (
             <div className="text-center py-20 max-w-md mx-auto">
@@ -220,7 +220,7 @@ export const InteractiveBookshelf3D: React.FC = () => {
               </p>
               <button
                 onClick={() => navigate('/explore')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-semibold text-sm hover:bg-[#333333] transition-all shadow-warm-md"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-semibold text-sm hover:bg-[var(--ink-hover)] transition-all shadow-warm-md"
               >
                 <span>Find books to shelve</span>
                 <MoveRight className="w-4 h-4" />
@@ -262,11 +262,11 @@ export const InteractiveBookshelf3D: React.FC = () => {
                     </div>
                   </div>
 
-                  <span className="text-xs uppercase font-bold text-[#A0522D] tracking-widest mb-1.5">{book.genres.join(' • ')}</span>
+                  <span className="text-xs uppercase font-bold text-[var(--accent)] tracking-widest mb-1.5">{book.genres.join(' • ')}</span>
                   <h3 className="font-serif-title text-3xl md:text-4xl font-bold text-[var(--ink)] mb-1">{book.title}</h3>
                   <p className="text-sm font-medium text-[var(--muted)] mb-4">by {book.author}</p>
                   
-                  <p className="text-xs text-[#555555] max-w-lg mb-6 line-clamp-3 leading-relaxed bg-[var(--bg-beige)]/50 p-3 rounded-2xl border border-[var(--border-light)]">
+                  <p className="text-xs text-[var(--muted)] max-w-lg mb-6 line-clamp-3 leading-relaxed bg-[var(--bg-beige)]/50 p-3 rounded-2xl border border-[var(--border-light)]">
                     {book.description || "A captivating volume held in your private collection. Open in reader mode or view complete details and highlights."}
                   </p>
 
@@ -276,7 +276,7 @@ export const InteractiveBookshelf3D: React.FC = () => {
                     {book.status !== 'wishlist' && (
                       <button
                         onClick={() => navigate(`/reader/${book.id}`)}
-                        className="flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-semibold text-sm hover:bg-[#333333] transition-all shadow-warm-md"
+                        className="flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] font-semibold text-sm hover:bg-[var(--ink-hover)] transition-all shadow-warm-md"
                       >
                         <BookOpen className="w-4 h-4" />
                         <span>Enter Reader Mode</span>
@@ -291,7 +291,7 @@ export const InteractiveBookshelf3D: React.FC = () => {
                     </button>
                     <button
                       onClick={handleCloseCinematic}
-                      className="px-5 py-3 rounded-full bg-[var(--bg-beige)] text-[var(--muted)] hover:text-[var(--ink)] font-semibold text-sm hover:bg-[#E5DCCF] transition-all"
+                      className="px-5 py-3 rounded-full bg-[var(--bg-beige)] text-[var(--muted)] hover:text-[var(--ink)] font-semibold text-sm hover:bg-[var(--border-light)] transition-all"
                     >
                       Return to Shelf
                     </button>

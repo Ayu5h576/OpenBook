@@ -44,7 +44,7 @@ export const AchievementsView: React.FC = () => {
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-2">
-            <Award className="w-3.5 h-3.5 text-[#A0522D]" />
+            <Award className="w-3.5 h-3.5 text-[var(--accent)]" />
             <span>Literary Milestones</span>
           </div>
           <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">Achievements & Badges</h1>
@@ -99,7 +99,7 @@ export const AchievementsView: React.FC = () => {
                       <IconComp className="w-6 h-6" />
                     </div>
                     {b.unlocked ? (
-                      <span className="flex items-center gap-1 text-[11px] font-bold text-[#2D4030] bg-[#E8F0E9] px-2.5 py-1 rounded-full">
+                      <span className="flex items-center gap-1 text-[11px] font-bold text-[var(--muted)] bg-[#E8F0E9] px-2.5 py-1 rounded-full">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Unlocked
                       </span>

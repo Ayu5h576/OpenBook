@@ -32,7 +32,7 @@ export const SmartPlanner: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
         <div className="max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-3">
-            <CalendarDays className="w-3.5 h-3.5 text-[#A0522D]" />
+            <CalendarDays className="w-3.5 h-3.5 text-[var(--accent)]" />
             <span>Intelligent Schedule Generator</span>
           </div>
           <h2 className="font-serif-title text-4xl font-bold text-[var(--ink)] mb-2">Smart Reading Planner</h2>
@@ -79,7 +79,7 @@ export const SmartPlanner: React.FC = () => {
               {(planner?.plan.weeklySchedule ?? []).map((day) => (
                 <div key={day.day} className="rounded-xl bg-[var(--bg-beige)] p-3 text-center">
                   <p className="text-[10px] font-bold text-[var(--ink)]">{day.day.slice(0, 3)}</p>
-                  <p className="font-serif-title text-xl font-bold text-[#A0522D]">{day.targetPages}</p>
+                  <p className="font-serif-title text-xl font-bold text-[var(--accent)]">{day.targetPages}</p>
                   <p className="text-[10px] text-[var(--muted)]">{day.estimatedMinutes}m</p>
                 </div>
               ))}
@@ -88,7 +88,7 @@ export const SmartPlanner: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-[var(--bg-ivory)] border border-[var(--border-light)] rounded-2xl p-5">
-              <Clock className="w-5 h-5 text-[#A0522D] mb-2" />
+              <Clock className="w-5 h-5 text-[var(--accent)] mb-2" />
               <span className="text-[10px] font-bold uppercase text-[var(--muted)] tracking-wider">Daily Goal</span>
               <h4 className="font-serif-title text-2xl font-bold text-[var(--ink)] my-1">{planner?.plan.dailyPages ?? 0} Pages</h4>
             </div>

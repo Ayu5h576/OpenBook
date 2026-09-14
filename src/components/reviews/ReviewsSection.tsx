@@ -53,12 +53,12 @@ const ReviewCard: React.FC<{
           <button
             onClick={open}
             disabled={!canLink}
-            className="text-xs font-semibold text-[var(--ink)] hover:text-[#A0522D] transition-colors disabled:hover:text-[var(--ink)] disabled:cursor-default"
+            className="text-xs font-semibold text-[var(--ink)] hover:text-[var(--accent)] transition-colors disabled:hover:text-[var(--ink)] disabled:cursor-default"
           >
             {username}
           </button>
           {isMine && (
-            <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-[var(--bg-beige)] text-[#A0522D]">
+            <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-[var(--bg-beige)] text-[var(--accent)]">
               You
             </span>
           )}
@@ -160,7 +160,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
       <div className="mt-6 pt-6 border-t border-[var(--border-light)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="font-serif-title text-xl font-bold text-[var(--ink)] flex items-center gap-2">
-            <Users className="w-4 h-4 text-[#A0522D]" />
+            <Users className="w-4 h-4 text-[var(--accent)]" />
             OpenBook members
           </h3>
           {memberAverage !== null && (
@@ -233,7 +233,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({
               </p>
               <button
                 onClick={() => navigate('/auth')}
-                className="px-5 py-2 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[#333333] transition-colors active:scale-95"
+                className="px-5 py-2 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[var(--ink-hover)] transition-colors active:scale-95"
               >
                 Sign in
               </button>

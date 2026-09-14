@@ -63,7 +63,7 @@ const OfferRow: React.FC<{ offer: Offer; region: Region }> = ({ offer, region })
       >
         <span className="min-w-0 flex-1">
           <span className="flex items-baseline gap-2">
-            <span className="text-[13px] font-bold text-[var(--ink)] group-hover:text-[#A0522D] transition-colors truncate">
+            <span className="text-[13px] font-bold text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors truncate">
               {offer.label}
             </span>
             {offer.free && !hasPrice && (
@@ -89,7 +89,7 @@ const OfferRow: React.FC<{ offer: Offer; region: Region }> = ({ offer, region })
               {priceLabel(offer, region)}
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--muted)] group-hover:text-[#A0522D] transition-colors">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--muted)] group-hover:text-[var(--accent)] transition-colors">
               Check price
               <ArrowUpRight className="w-3 h-3" />
             </span>
@@ -129,7 +129,7 @@ export const PurchasePanel: React.FC<PurchasePanelProps> = ({
             className="font-reader text-[15px] leading-[1.75] text-[var(--ink)] whitespace-pre-line text-justify hyphens-auto
                        first-letter:float-left first-letter:font-serif-title first-letter:text-[3.4rem]
                        first-letter:leading-[0.82] first-letter:pr-2 first-letter:pt-1 first-letter:font-bold
-                       first-letter:text-[#A0522D]"
+                       first-letter:text-[var(--accent)]"
           >
             {description}
           </p>
@@ -192,7 +192,7 @@ export const PurchasePanel: React.FC<PurchasePanelProps> = ({
                 rel="noopener noreferrer"
                 className="group block mb-6 pb-6 border-b-2 border-double border-[var(--border-light)]"
               >
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#A0522D] mb-1">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--accent)] mb-1">
                   {best.free || best.price === 0 ? 'Free to read' : 'Best price today'}
                 </p>
                 <p className="font-serif-title text-5xl font-bold text-[var(--ink)] leading-none tabular-nums">
@@ -200,12 +200,12 @@ export const PurchasePanel: React.FC<PurchasePanelProps> = ({
                 </p>
                 <p className="mt-2 text-[13px] text-[var(--muted)]">
                   at{' '}
-                  <span className="font-bold text-[var(--ink)] group-hover:text-[#A0522D] transition-colors">
+                  <span className="font-bold text-[var(--ink)] group-hover:text-[var(--accent)] transition-colors">
                     {best.label}
                   </span>
                   <span className="mx-1.5">·</span>
                   {FORMAT_LABELS[best.format]}
-                  <ArrowUpRight className="inline-block w-3.5 h-3.5 ml-1 -mt-0.5 group-hover:text-[#A0522D] transition-colors" />
+                  <ArrowUpRight className="inline-block w-3.5 h-3.5 ml-1 -mt-0.5 group-hover:text-[var(--accent)] transition-colors" />
                 </p>
               </a>
             )}

@@ -47,8 +47,8 @@ function GoogleBookCard({
         <p className="text-xs text-[var(--muted)]">{book.authors.join(', ') || 'Unknown Author'}</p>
         {book.averageRating != null && (
           <div className="flex items-center gap-1">
-            <Star className="w-3 h-3 text-[#A0522D] fill-[#A0522D]" />
-            <span className="text-xs text-[#555555]">{book.averageRating.toFixed(1)}</span>
+            <Star className="w-3 h-3 text-[var(--accent)] fill-[#A0522D]" />
+            <span className="text-xs text-[var(--muted)]">{book.averageRating.toFixed(1)}</span>
           </div>
         )}
         {book.description && (
@@ -57,7 +57,7 @@ function GoogleBookCard({
         <button
           onClick={(e) => { e.stopPropagation(); onImport(book.googleBooksId); }}
           disabled={importing}
-          className="mt-auto pt-2 flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--ink)] border border-[var(--ink)] rounded-xl py-2 hover:bg-[var(--ink)] hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="mt-auto pt-2 flex items-center justify-center gap-1.5 text-xs font-semibold text-[var(--ink)] border border-[var(--ink)] rounded-xl py-2 hover:bg-[var(--ink)] hover:text-[var(--ink-contrast)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-3.5 h-3.5" />
           {importing ? 'Adding…' : 'Add to Library'}
@@ -160,7 +160,7 @@ export const ExploreView: React.FC = () => {
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-2">
-            <Compass className="w-3.5 h-3.5 text-[#A0522D]" />
+            <Compass className="w-3.5 h-3.5 text-[var(--accent)]" />
             <span>Discover &amp; Search</span>
           </div>
           <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">Explore Books</h1>

@@ -121,7 +121,7 @@ export const ReadingRoom: React.FC = () => {
       {/* Header Controls Bar */}
       <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 bg-black/30 backdrop-blur-md p-4 rounded-2xl border border-white/10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#A0522D] text-[var(--white)] flex items-center justify-center">
+          <div className="w-9 h-9 rounded-xl bg-[#A0522D] text-white flex items-center justify-center">
             <Coffee className="w-5 h-5" />
           </div>
           <div>
@@ -170,7 +170,7 @@ export const ReadingRoom: React.FC = () => {
             onClick={() => setIsLampOn(!isLampOn)}
             className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
               isLampOn
-                ? 'bg-[#FFF2A3] text-[var(--ink)] border-[#FFF2A3]'
+                ? 'bg-[#FFF2A3] text-[#1D1D1D] border-[#FFF2A3]'
                 : 'bg-black/50 text-white/60 border-white/10 hover:text-white'
             }`}
           >
@@ -236,7 +236,7 @@ export const ReadingRoom: React.FC = () => {
           <div className="pt-4 flex flex-wrap items-center justify-center md:justify-start gap-4">
             <button
               onClick={() => navigate(`/reader/${book.id}`)}
-              className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#E0A96D] text-[var(--ink)] font-bold text-sm hover:bg-[#D49A5B] transition-all shadow-warm-lg"
+              className="flex items-center gap-2 px-8 py-3.5 rounded-full bg-[#E0A96D] text-[#1D1D1D] font-bold text-sm hover:bg-[#D49A5B] transition-all shadow-warm-lg"
             >
               <BookOpen className="w-4 h-4" />
               <span>{activeEntry.currentPage > 0 ? 'Continue Reading' : 'Begin Reading'}</span>

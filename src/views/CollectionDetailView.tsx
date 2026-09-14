@@ -123,7 +123,7 @@ export const CollectionDetailView: React.FC = () => {
               <button
                 onClick={handleSave}
                 disabled={!editName.trim()}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[#333333] disabled:opacity-50"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--ink)] text-[var(--bg-ivory)] text-xs font-bold hover:bg-[var(--ink-hover)] disabled:opacity-50"
               >
                 <Save className="w-3.5 h-3.5" />
                 Save
@@ -145,7 +145,7 @@ export const CollectionDetailView: React.FC = () => {
             </div>
             <button
               onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-bold hover:bg-[#E5DCCF] transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-bold hover:bg-[var(--border-light)] transition-all"
             >
               <Edit2 className="w-3.5 h-3.5" />
               Edit
@@ -195,7 +195,7 @@ export const CollectionDetailView: React.FC = () => {
                   className="w-16 h-24 object-cover rounded-lg"
                 />
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-serif text-sm font-bold text-[var(--ink)] line-clamp-2 hover:text-[#A0522D] transition-colors">
+                  <h3 className="font-serif text-sm font-bold text-[var(--ink)] line-clamp-2 hover:text-[var(--accent)] transition-colors">
                     {cb.book.title}
                   </h3>
                   <p className="text-xs text-[var(--muted)] line-clamp-1">
@@ -214,7 +214,7 @@ export const CollectionDetailView: React.FC = () => {
               <button
                 onClick={(e) => { e.stopPropagation(); handleRemoveBook(cb.bookId); }}
                 disabled={removingBookId === cb.bookId}
-                className="mt-auto flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg border border-[var(--border-light)] text-xs font-semibold text-[#C53030] hover:bg-[#FEE5E5] transition-colors disabled:opacity-50"
+                className="mt-auto flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg border border-[var(--border-light)] text-xs font-semibold text-[var(--danger)] hover:bg-[#C53030]/10 transition-colors disabled:opacity-50"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 {removingBookId === cb.bookId ? 'Removing...' : 'Remove'}

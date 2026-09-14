@@ -44,7 +44,7 @@ export const LibraryView: React.FC = () => {
       <div className="bg-[var(--white)] border border-[var(--border-light)] rounded-3xl p-6 md:p-8 shadow-warm-md flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold mb-2">
-            <Library className="w-3.5 h-3.5 text-[#A0522D]" />
+            <Library className="w-3.5 h-3.5 text-[var(--accent)]" />
             <span>Personal Sanctuary Shelf</span>
           </div>
           <h1 className="font-serif-title text-4xl font-bold text-[var(--ink)]">My Personal Library</h1>
@@ -102,7 +102,7 @@ export const LibraryView: React.FC = () => {
           <BookOpen className="w-12 h-12 text-[var(--border-light)] mx-auto mb-3" />
           <p className="font-serif-title text-xl text-[var(--ink)]">No books here yet.</p>
           <p className="text-xs text-[var(--muted)] mt-1">
-            <button onClick={() => navigate('/explore')} className="text-[#A0522D] hover:underline">Search and add books</button> to your library.
+            <button onClick={() => navigate('/explore')} className="text-[var(--accent)] hover:underline">Search and add books</button> to your library.
           </p>
         </div>
       ) : viewMode === 'list' ? (

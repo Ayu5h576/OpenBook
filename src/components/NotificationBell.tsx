@@ -18,7 +18,7 @@ function describe(n: AppNotification): { text: string; icon: React.ReactNode } {
     case 'FOLLOWED_YOU':
       return {
         text: `${who} started following you`,
-        icon: <UserPlus className="w-3.5 h-3.5 text-[#A0522D]" />,
+        icon: <UserPlus className="w-3.5 h-3.5 text-[var(--accent)]" />,
       };
     case 'COMMENTED_ON_DISCUSSION':
       return {
@@ -128,7 +128,7 @@ export const NotificationBell: React.FC = () => {
                 <Loader2 className="w-4 h-4 animate-spin" />
               </div>
             ) : error ? (
-              <p className="px-4 py-8 text-center text-xs text-[#B23B3B]">{error}</p>
+              <p className="px-4 py-8 text-center text-xs text-[var(--danger)]">{error}</p>
             ) : notifications.length === 0 ? (
               <p className="px-4 py-8 text-center text-xs text-[var(--muted)]">
                 Nothing yet. Follows, replies, and club joins will land here.

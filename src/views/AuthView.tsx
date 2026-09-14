@@ -41,14 +41,14 @@ function fieldStatus(touched: boolean, error: string | null): FieldStatus {
 }
 
 function inputBorder(status: FieldStatus) {
-  if (status === 'valid') return 'border-[#22863a]';
+  if (status === 'valid') return 'border-[var(--success)]';
   if (status === 'invalid') return 'border-[#C53030]';
   return 'border-[var(--border-light)]';
 }
 
 function FieldIcon({ status }: { status: FieldStatus }) {
-  if (status === 'valid') return <Check className="w-4 h-4 text-[#22863a]" />;
-  if (status === 'invalid') return <X className="w-4 h-4 text-[#C53030]" />;
+  if (status === 'valid') return <Check className="w-4 h-4 text-[var(--success)]" />;
+  if (status === 'invalid') return <X className="w-4 h-4 text-[var(--danger)]" />;
   return null;
 }
 
@@ -111,7 +111,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
       <div className="max-w-4xl w-full bg-[var(--white)] border border-[var(--border-light)] rounded-3xl overflow-hidden shadow-warm-lg grid grid-cols-1 md:grid-cols-12">
 
         {/* Left panel */}
-        <div className="md:col-span-5 bg-[var(--ink)] text-[var(--bg-ivory)] p-8 flex flex-col justify-between relative overflow-hidden">
+        <div className="md:col-span-5 bg-[var(--panel-dark)] text-white p-8 flex flex-col justify-between relative overflow-hidden">
           <div className="relative z-10">
             <button
               onClick={() => onNavigate('landing')}
@@ -208,7 +208,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                   )}
                 </div>
                 {usernameStatus === 'invalid' ? (
-                  <p className="text-[10px] text-[#C53030] mt-1">{usernameError}</p>
+                  <p className="text-[10px] text-[var(--danger)] mt-1">{usernameError}</p>
                 ) : (
                   <p className="text-[10px] text-[var(--muted)] mt-1">3–30 chars. Letters, numbers, _ and - only.</p>
                 )}
@@ -236,7 +236,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                 )}
               </div>
               {mode === 'signup' && emailStatus === 'invalid' && (
-                <p className="text-[10px] text-[#C53030] mt-1">{emailError}</p>
+                <p className="text-[10px] text-[var(--danger)] mt-1">{emailError}</p>
               )}
             </div>
 
@@ -268,7 +268,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
                     {pwRules.map((rule) => {
                       const ok = rule.test(password);
                       return (
-                        <li key={rule.label} className={`flex items-center gap-1.5 text-[10px] ${ok ? 'text-[#22863a]' : 'text-[#C53030]'}`}>
+                        <li key={rule.label} className={`flex items-center gap-1.5 text-[10px] ${ok ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
                           {ok ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
                           {rule.label}
                         </li>
@@ -282,7 +282,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onNavigate, onLoginSuccess }
             <button
               type="submit"
               disabled={auth.isLoading}
-              className="w-full py-3 rounded-2xl bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-xs hover:bg-[#333333] transition-all shadow-warm-md disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 rounded-2xl bg-[var(--ink)] text-[var(--bg-ivory)] font-bold text-xs hover:bg-[var(--ink-hover)] transition-all shadow-warm-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {auth.isLoading ? 'Loading...' : (
                 <>

@@ -9,6 +9,25 @@
   --border: rgba(0, 0, 0, 0.05);
   --border-light: #E5E0D8;
   --transition-theme: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+
+  /* Derived semantics. `--ink` is the *inverted* surface (dark in light mode,
+     light in dark mode), so anything drawn on top of it — text, a hover shade —
+     must flip with it rather than being hardcoded. --ink-contrast is the text
+     colour that reads on --ink; --ink-hover is one step off it. */
+  --ink-contrast: #F8F6F1;
+  --ink-hover: #333333;
+
+  /* Accents that need to stay legible on a theme surface. The light values are
+     the originals; the dark values are lifted so they clear ~4.5:1 on #181818
+     rather than the ~2.8:1 the raw hex gives. */
+  --accent: #A0522D;
+  --danger: #C53030;
+  --success: #22863A;
+
+  /* A dark surface that is dark in *every* theme — for overlay panels (notes,
+     study, AI drawers) whose content is hardcoded white. Using --ink for these
+     made them flip to a near-white card in dark mode, hiding their own text. */
+  --panel-dark: #1D1D1D;
 }
 
 /* ── Dark mode ─────────────────────────────────────────────── */
@@ -20,6 +39,12 @@ html.dark {
   --white: #252525;
   --border: rgba(255, 255, 255, 0.07);
   --border-light: #3A3A3A;
+  --ink-contrast: #181818;
+  --ink-hover: #D8D4CB;
+  --accent: #D98C5F;
+  --danger: #F08A8A;
+  --success: #6FCF8B;
+  --panel-dark: #101010;
 }
 
 /* ── Sepia mode ────────────────────────────────────────────── */
@@ -31,6 +56,12 @@ html.sepia {
   --white: #FAF3E4;
   --border: rgba(100, 70, 30, 0.08);
   --border-light: #D4C4A8;
+  --ink-contrast: #F4ECD8;
+  --ink-hover: #5A4433;
+  --accent: #8B5A2B;
+  --danger: #B33A3A;
+  --success: #2F6F3E;
+  --panel-dark: #2A1E12;
 }
 
 @layer base {

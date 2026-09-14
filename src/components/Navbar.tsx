@@ -57,7 +57,9 @@ export const Navbar: React.FC<NavbarProps> = ({
     }
   };
   return (
-    <header className="sticky top-0 z-40 bg-[var(--bg-ivory)]/90 backdrop-blur-md border-b border-[var(--border-light)] px-4 md:px-8 py-3 transition-all">
+    <header className="sticky top-0 z-40 bg-[var(--bg-ivory)] border-b border-[var(--border-light)] px-4 md:px-8 py-3 transition-all">
+      {/* Opaque, not translucent: at /90 the page content scrolling underneath
+          showed through as a smeared ghost of headings and covers. */}
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         
         {/* Brand Logo */}
@@ -105,7 +107,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* AI Reading Compass Button */}
           <button
             onClick={onOpenCompass}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold hover:bg-[#E5DCCF] transition-all shadow-warm-sm"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--bg-beige)] text-[var(--ink)] text-xs font-semibold hover:bg-[var(--border-light)] transition-all shadow-warm-sm"
             title="Emotional AI Book Recommendation"
           >
             <Sparkles className="w-3.5 h-3.5 text-[#B8860B]" />
@@ -134,7 +136,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : 'bg-[var(--white)] text-[var(--ink)] border border-[var(--border-light)] hover:bg-[var(--bg-beige)]'
             }`}
           >
-            <Coffee className="w-3.5 h-3.5 text-[#A0522D]" />
+            <Coffee className="w-3.5 h-3.5 text-[var(--accent)]" />
             <span className="hidden sm:inline">Reading Room</span>
           </Link>
 
@@ -160,7 +162,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Simulate data reload"
               className="p-2 rounded-full bg-[var(--white)] border border-[var(--border-light)] text-[var(--ink)] hover:bg-[var(--bg-beige)] transition-all disabled:opacity-50"
             >
-              <RotateCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#A0522D]' : ''}`} />
+              <RotateCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[var(--accent)]' : ''}`} />
             </button>
           )}
 
@@ -177,7 +179,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   className="w-7 h-7 rounded-full object-cover"
                 />
               ) : (
-                <div className="w-7 h-7 rounded-full bg-[var(--ink)] text-white flex items-center justify-center text-xs font-bold">
+                <div className="w-7 h-7 rounded-full bg-[var(--ink)] text-[var(--ink-contrast)] flex items-center justify-center text-xs font-bold">
                   {displayName.charAt(0).toUpperCase()}
                 </div>
               )}
@@ -185,7 +187,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </Link>
 
             {/* Dropdown Menu */}
-            <div className="absolute right-0 mt-1 w-48 bg-white border border-[var(--border-light)] rounded-lg shadow-lg overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+            <div className="absolute right-0 mt-1 w-48 bg-[var(--white)] border border-[var(--border-light)] rounded-lg shadow-lg overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
               {isAuthenticated && onOpenProfile && (
                 <button
                   onClick={onOpenProfile}
@@ -204,7 +206,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   onClick={handleLogout}
                   disabled={isLogoutLoading}
-                  className="w-full text-left px-4 py-2.5 text-xs text-[#C53030] hover:bg-[#FEE5E5] transition-all font-medium disabled:opacity-50"
+                  className="w-full text-left px-4 py-2.5 text-xs text-[var(--danger)] hover:bg-[#C53030]/10 transition-all font-medium disabled:opacity-50"
                 >
                   {isLogoutLoading ? 'Logging out...' : 'Logout'}
                 </button>
