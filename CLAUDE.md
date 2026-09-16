@@ -65,16 +65,13 @@ Optional:
 ## Next Steps & Opportunities
 
 ### Immediate Priorities
-- [x] Reading room (distraction-free reader) implementation — `ReadingRoom.tsx` on live library data with session tracking (PDF rendering still outstanding, see below)
+- [x] Reading room (distraction-free reader) implementation — `ReadingRoom.tsx` on live library data with session tracking, plus attached-PDF rendering via `PdfReader.tsx` / `usePdfDocument.ts` (pdf.js, with `pdfTextLayer.ts` for text selection)
 - [x] Club detail UI (discussions + comments threads) — `ClubDetailView` + `useBookClub`/`useDiscussion`, opened from CommunityView
 - [x] User profile pages with follow buttons + follower/following lists — `ProfileView` + `useProfile`, reachable from the activity feed, club members/owner/discussion authors, and the Navbar "My Profile" menu
 - [x] Readers community loop — scoped "My Circle" feed, reader discovery, notifications (see below)
 - [x] Live data streaming for analytics dashboard — SSE `GET /api/analytics/stream` + `useAnalyticsStream`, opted into by `StatisticsView` (see above)
 
 ### Technical Debt / Blockers
-- PDF reader not yet implemented (reading room)
-- Audio synthesis utility exists but not integrated with UI
-- `noteService`, `profileService`, and `bookService` still have no unit tests
 - Live per-store prices (Amazon / Kindle / Flipkart) need approved affiliate credentials. Until then the purchase page shows one live price (Google Play) plus deep links — see the Purchase Offers section above. Outbound links carry no affiliate tags yet.
 - **Leaked credentials (public repo).** Two separate leaks, both now removed from the tree and gated by `npm run scan:secrets`, but **removal is not a fix — a published key can only be revoked at the provider**:
   - `.env.supabase-backup` (committed in `5c72a5b`, still tracked at HEAD until `e01977f` because an earlier `filter-branch` was never pushed): Supabase service key, Supabase JWT secret, anon key, Gemini key. File deleted — nothing in the codebase references Supabase any more. Since the **JWT secret** itself leaked, anyone can mint arbitrary tokens for project `mypdvrjtqkcjewtgiwks`; rotating the service key alone is not enough, the JWT secret must be rotated (which invalidates all its keys).
