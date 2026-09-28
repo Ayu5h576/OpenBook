@@ -35,6 +35,12 @@ export async function buildApp(): Promise<Express> {
 
   const app = express();
 
+  // Railway terminates TLS and forwards through a single proxy, so without this
+  // req.ip is the proxy's address and every user shares one rate-limit bucket.
+  // `1` trusts exactly one hop; `true` would trust a caller-supplied
+  // X-Forwarded-For and let clients spoof their way around the limiter.
+  app.set('trust proxy', 1);
+
   // Core middleware
   app.use(
     cors({

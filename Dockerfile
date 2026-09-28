@@ -33,4 +33,8 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
 
-CMD ["node", "dist/server.cjs"]
+# Apply pending migrations before serving. railway.toml declares the same start
+# command, but Railway builds from this Dockerfile, so this CMD is what actually
+# runs — `node dist/server.cjs` alone boots against an unmigrated schema and
+# every database-backed route fails with a 500.
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.cjs"]
