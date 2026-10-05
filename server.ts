@@ -53,10 +53,52 @@ export async function buildApp(): Promise<Express> {
   app.use(express.json({ limit: '10mb' }));
   app.use(cookieParser());
 
-  // Security headers
+  // Security headers.
+  //
+  // The CSP is production-only: in dev Vite serves the app and a strict policy
+  // would block HMR. That difference is exactly why covers render locally and
+  // break on the deployed site — helmet's default `img-src 'self' data:` blocks
+  // every remote cover, and a CSP-blocked image never reaches BookCover's
+  // onError, so the Google → Open Library → drawn-cover fallback chain never
+  // runs. The <img> just sits there broken.
   app.use(helmet({
-    // CSP is handled by Vite in dev; relax in production as needed
-    contentSecurityPolicy: env.app.nodeEnv === 'production',
+    contentSecurityPolicy: env.app.nodeEnv === 'production' ? {
+      directives: {
+        defaultSrc: ["'self'"],
+        // Cover art: Google Books and Open Library. Author portraits: Wikimedia.
+        // Demo avatars and wallpapers: Unsplash. Open Library serves part of its
+        // cover set by redirecting to archive.org storage, and the browser
+        // re-checks the policy at every hop — so the destination is needed too,
+        // not just covers.openlibrary.org. The bare host covers the first
+        // redirect; the wildcard covers the iaNNNNNN.us.archive.org node it
+        // lands on (the node number varies per cover).
+        imgSrc: [
+          "'self'",
+          'data:',
+          'https://books.google.com',
+          'https://covers.openlibrary.org',
+          'https://archive.org',
+          'https://*.archive.org',
+          'https://upload.wikimedia.org',
+          'https://images.unsplash.com',
+        ],
+        // Google Fonts serves the stylesheet from googleapis and the font files
+        // from gstatic. 'unsafe-inline' is needed by the inline style attributes
+        // the app sets on its gradients and progress bars.
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
+        scriptSrc: ["'self'"],
+        connectSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
+        // Google Books hands back cover URLs over http://. Without this the
+        // browser blocks them as mixed content on the https deployment — a
+        // break that cannot reproduce against the http:// dev server.
+        upgradeInsecureRequests: [],
+      },
+    } : false,
     crossOriginEmbedderPolicy: false,
   }));
 
